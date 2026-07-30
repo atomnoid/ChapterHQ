@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "install-auth-deps",
+			"type": "shell",
+			"command": "npm install next-auth@beta react-hook-form @hookform/resolvers",
+			"group": "build"
+		}
+	]
+}
