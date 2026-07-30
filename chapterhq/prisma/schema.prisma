@@ -7,84 +7,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum MemberStatus {
-  PENDING
-  ACTIVE
-  SUSPENDED
-  INACTIVE
-  ARCHIVED
-}
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
 
 enum OrganizationStatus {
-  TRIALING
   ACTIVE
+  INACTIVE
   SUSPENDED
-  ARCHIVED
 }
 
-enum EventStatus {
-  DRAFT
-  SCHEDULED
-  ONGOING
-  COMPLETED
-  CANCELLED
+enum MemberStatus {
+  ACTIVE
+  PENDING
+  LEFT
+  BLOCKED
 }
 
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  EXCUSED
-  LATE
-}
-
-enum ExpenseStatus {
-  DRAFT
-  SUBMITTED
-  APPROVED
-  REJECTED
-  PAID
-}
-
-enum NotificationType {
-  SYSTEM
-  SECURITY
-  TRANSACTIONAL
-  REMINDER
-  ANNOUNCEMENT
+enum RoleStatus {
+  ACTIVE
+  INACTIVE
 }
 
 enum RoleScope {
-  GLOBAL
   ORGANIZATION
-  DEPARTMENT
-  UNIT
+  COMMITTEE
 }
 
-enum DocumentVisibility {
-  PRIVATE
-  INTERNAL
-  ORGANIZATION
-  PUBLIC
-}
+//////////////////////////////////////////////////////
+// ORGANIZATION
+//////////////////////////////////////////////////////
 
 model Organization {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  /// Basic Information
   name String
   slug String @unique
 
-  /// System Fields
+  status OrganizationStatus @default(ACTIVE)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  /// Relations
   settings OrganizationSettings?
-  members  Member[]
+  members Member[]
+  roles Role[]
 
   @@map("organizations")
 }
+
+//////////////////////////////////////////////////////
+// ORGANIZATION SETTINGS
+//////////////////////////////////////////////////////
 
 model OrganizationSettings {
   id String @id @default(auto()) @map("_id") @db.ObjectId
@@ -93,58 +68,152 @@ model OrganizationSettings {
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
-  /// System Fields
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("organization_settings")
 }
 
+//////////////////////////////////////////////////////
+// USER
+//////////////////////////////////////////////////////
+
 model User {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  /// Authentication
-  name  String?
-  email String  @unique
+  name String?
+  email String @unique
   image String?
 
-  /// Email Verification
   emailVerified DateTime?
 
-  /// System Fields
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  /// Relations
   members Member[]
 
   @@map("users")
 }
 
+//////////////////////////////////////////////////////
+// MEMBER
+//////////////////////////////////////////////////////
+
 model Member {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  /// Relations
   organizationId String @db.ObjectId
-  userId         String @db.ObjectId
+  userId String @db.ObjectId
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  user         User         @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
-  /// Membership
+  status MemberStatus @default(ACTIVE)
+
   joinedAt DateTime @default(now())
-  isActive Boolean @default(true)
 
-  /// System Fields
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  /// Future Relations
-  // userRoles UserRole[]
+  userRoles UserRole[]
 
   @@unique([organizationId, userId])
 
   @@map("members")
+}
+
+//////////////////////////////////////////////////////
+// ROLE
+//////////////////////////////////////////////////////
+
+model Role {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  name String
+  description String?
+
+  scope RoleScope
+  status RoleStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  userRoles UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([organizationId, name])
+
+  @@map("roles")
+}
+
+//////////////////////////////////////////////////////
+// PERMISSION
+//////////////////////////////////////////////////////
+
+model Permission {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  resource String
+  action String
+
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+
+  @@map("permissions")
+}
+
+//////////////////////////////////////////////////////
+// USER ROLE
+//////////////////////////////////////////////////////
+
+model UserRole {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  memberId String @db.ObjectId
+  roleId String @db.ObjectId
+
+  member Member @relation(fields: [memberId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  assignedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([memberId, roleId])
+
+  @@map("user_roles")
+}
+
+//////////////////////////////////////////////////////
+// ROLE PERMISSION
+//////////////////////////////////////////////////////
+
+model RolePermission {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  roleId String @db.ObjectId
+  permissionId String @db.ObjectId
+
+  role Role @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, permissionId])
+
+  @@map("role_permissions")
 }
