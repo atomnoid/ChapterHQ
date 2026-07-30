@@ -34,6 +34,12 @@ enum RoleScope {
   COMMITTEE
 }
 
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION
 //////////////////////////////////////////////////////
@@ -84,6 +90,12 @@ model User {
   name String?
   email String @unique
   image String?
+  password String?
+  authProvider String @default("credentials")
+  status UserStatus @default(ACTIVE)
+  lastLogin DateTime?
+  passwordResetToken String?
+  passwordResetTokenExpiry DateTime?
 
   emailVerified DateTime?
 
