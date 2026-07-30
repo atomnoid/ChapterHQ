@@ -52,9 +52,7 @@ interface AuthenticatedUser {
 }
 
 export class AuthService {
-  constructor(
-    private readonly userRepository = new UserRepository()
-  ) {}
+  constructor(private readonly userRepository = new UserRepository()) {}
 
   async signup(input: SignupInput) {
     const data = signupSchema.parse(input);
@@ -69,16 +67,26 @@ export class AuthService {
 
     return this.userRepository.createCredentialsUser({
       name: data.name,
-      email: data.email,
+      email: data.email.trim().toLowerCase(),
       password: hashedPassword,
       authProvider: "credentials",
     });
   }
 
   async authenticateCredentials(input: LoginInput): Promise<AuthenticatedUser> {
-    const data = loginSchema.parse(input);
+    const data = loginSchema.parse({
+      ...input,
+      email: input.email.trim().toLowerCase(),
+    });
 
     const user = await this.userRepository.findByEmail(data.email);
+
+    console.log("========== LOGIN DEBUG ==========");
+    console.log("Input Email:", data.email);
+    console.log("User Found:", !!user);
+    console.log("User:", user);
+    console.log("Stored Password:", user?.password);
+    console.log("Stored Status:", user?.status);
 
     if (!user || !user.password) {
       throw new AuthInvalidCredentialsError();
@@ -147,10 +155,14 @@ export class AuthService {
     const hashedToken = this.hashResetToken(rawToken);
 
     const expiresAt = new Date(
-      Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000
+      Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000,
     );
 
-    await this.userRepository.setPasswordResetToken(user.id, hashedToken, expiresAt);
+    await this.userRepository.setPasswordResetToken(
+      user.id,
+      hashedToken,
+      expiresAt,
+    );
 
     return {
       accepted: true,
@@ -164,7 +176,9 @@ export class AuthService {
 
   private hashPassword(password: string) {
     const salt = randomBytes(PASSWORD_SALT_BYTES).toString("hex");
-    const derivedKey = scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString("hex");
+    const derivedKey = scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString(
+      "hex",
+    );
 
     return `${PASSWORD_HASH_PREFIX}$${salt}$${derivedKey}`;
   }
@@ -176,7 +190,9 @@ export class AuthService {
       return false;
     }
 
-    const derivedKey = scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString("hex");
+    const derivedKey = scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString(
+      "hex",
+    );
 
     const hashBuffer = Buffer.from(hash, "hex");
     const derivedKeyBuffer = Buffer.from(derivedKey, "hex");
