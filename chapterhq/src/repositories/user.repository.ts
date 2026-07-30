@@ -15,15 +15,30 @@ interface CreateOAuthUserData {
 }
 
 export class UserRepository {
-  async findByEmail(email: string) {
-    return prisma.user.findFirst({
-      where: {
-        email,
-        deletedAt: null,
-      },
-    });
-  }
+ async findByEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
 
+  console.log("Searching:", normalizedEmail);
+
+  const user1 = await prisma.user.findFirst({
+    where: {
+      email: normalizedEmail,
+    },
+  });
+
+  console.log("WITHOUT deletedAt:", user1);
+
+  const user2 = await prisma.user.findFirst({
+    where: {
+      email: normalizedEmail,
+      deletedAt: null,
+    },
+  });
+
+  console.log("WITH deletedAt:", user2);
+
+  return user1;
+}
   async createCredentialsUser(data: CreateUserData) {
     return prisma.user.create({
       data,
