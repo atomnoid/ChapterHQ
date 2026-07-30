@@ -1,0 +1,9 @@
+export const ORGANIZATION = {
+  MIN_NAME_LENGTH: 2,
+  MAX_NAME_LENGTH: 100,
+
+  MIN_SLUG_LENGTH: 2,
+  MAX_SLUG_LENGTH: 30,
+
+  SLUG_REGEX: /^[a-zA-Z0-9_-]+$/,
+};
