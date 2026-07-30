@@ -7,6 +7,66 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MemberStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  ARCHIVED
+}
+
+enum OrganizationStatus {
+  TRIALING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum EventStatus {
+  DRAFT
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+  LATE
+}
+
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum NotificationType {
+  SYSTEM
+  SECURITY
+  TRANSACTIONAL
+  REMINDER
+  ANNOUNCEMENT
+}
+
+enum RoleScope {
+  GLOBAL
+  ORGANIZATION
+  DEPARTMENT
+  UNIT
+}
+
+enum DocumentVisibility {
+  PRIVATE
+  INTERNAL
+  ORGANIZATION
+  PUBLIC
+}
+
 model Organization {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
