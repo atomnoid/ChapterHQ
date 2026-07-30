@@ -6,3 +6,22 @@ datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
+
+model Organization {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name String
+  slug String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  settings OrganizationSettings?
+
+  members Member[]
+  committees Committee[]
+  events Event[]
+
+  @@map("organizations")
+}
