@@ -25,3 +25,25 @@ model Organization {
 
   @@map("organizations")
 }
+
+model User {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  /// Authentication
+  name String?
+  email String @unique
+  image String?
+
+  /// Email Verification
+  emailVerified DateTime?
+
+  /// System Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  /// Relations
+  members Member[]
+
+  @@map("users")
+}
