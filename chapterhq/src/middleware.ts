@@ -6,6 +6,7 @@ import {
   DEFAULT_AUTHENTICATED_REDIRECT,
   DEFAULT_UNAUTHENTICATED_REDIRECT,
   PROTECTED_ROUTES,
+  PUBLIC_ROUTES,
 } from "@/constants/routes";
 
 function isRouteMatch(pathname: string, routes: readonly string[]) {
@@ -25,6 +26,13 @@ export async function middleware(request: NextRequest) {
   const isAuthenticated = Boolean(token);
   const isAuthRoute = isRouteMatch(pathname, AUTH_ROUTES);
   const isProtectedRoute = isRouteMatch(pathname, PROTECTED_ROUTES);
+  const isPublicRoute = pathname === PUBLIC_ROUTES[0];
+
+  if (isPublicRoute && isAuthenticated) {
+    return NextResponse.redirect(
+      new URL(DEFAULT_AUTHENTICATED_REDIRECT, request.url)
+    );
+  }
 
   if (isAuthRoute && isAuthenticated) {
     return NextResponse.redirect(
@@ -45,5 +53,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/signup", "/forgot-password"],
+  matcher: ["/", "/dashboard/:path*", "/login", "/signup", "/forgot-password"],
 };
