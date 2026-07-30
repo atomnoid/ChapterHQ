@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
+import { DashboardShell } from "@/components/layouts/dashboard-shell";
 import { DEFAULT_UNAUTHENTICATED_REDIRECT } from "@/constants/routes";
+import { auth } from "@/lib/auth";
 
 export default async function DashboardLayout({
   children,
@@ -12,5 +13,15 @@ export default async function DashboardLayout({
     redirect(DEFAULT_UNAUTHENTICATED_REDIRECT);
   }
 
-  return <>{children}</>;
+  return (
+    <DashboardShell
+      user={{
+        name: session.user.name ?? null,
+        email: session.user.email ?? null,
+        image: session.user.image ?? null,
+      }}
+    >
+      {children}
+    </DashboardShell>
+  );
 }
