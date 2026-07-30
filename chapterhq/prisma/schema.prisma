@@ -10,28 +10,42 @@ datasource db {
 model Organization {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
+  /// Basic Information
   name String
   slug String @unique
 
+  /// System Fields
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
+  /// Relations
   settings OrganizationSettings?
-
-  members Member[]
-  committees Committee[]
-  events Event[]
+  members  Member[]
 
   @@map("organizations")
+}
+
+model OrganizationSettings {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @unique @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  /// System Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organization_settings")
 }
 
 model User {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
   /// Authentication
-  name String?
-  email String @unique
+  name  String?
+  email String  @unique
   image String?
 
   /// Email Verification
@@ -46,4 +60,31 @@ model User {
   members Member[]
 
   @@map("users")
+}
+
+model Member {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  /// Relations
+  organizationId String @db.ObjectId
+  userId         String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  /// Membership
+  joinedAt DateTime @default(now())
+  isActive Boolean @default(true)
+
+  /// System Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  /// Future Relations
+  // userRoles UserRole[]
+
+  @@unique([organizationId, userId])
+
+  @@map("members")
 }
