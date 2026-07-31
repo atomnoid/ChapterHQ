@@ -40,6 +40,13 @@ enum UserStatus {
   BLOCKED
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION
 //////////////////////////////////////////////////////
@@ -59,6 +66,7 @@ model Organization {
   settings OrganizationSettings?
   members Member[]
   roles Role[]
+  invitations Invitation[]
 
   @@map("organizations")
 }
@@ -228,4 +236,31 @@ model RolePermission {
   @@unique([roleId, permissionId])
 
   @@map("role_permissions")
+}
+
+//////////////////////////////////////////////////////
+// INVITATION
+//////////////////////////////////////////////////////
+
+model Invitation {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+  roleId         String? @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  email  String
+  token  String @unique
+  status InvitationStatus @default(PENDING)
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@unique([organizationId, email, status])
+
+  @@map("invitations")
 }
