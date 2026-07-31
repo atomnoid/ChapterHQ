@@ -1,4 +1,5 @@
 import { MemberRepository } from "@/repositories/member.repository";
+import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 
 export class MemberAlreadyExistsError extends Error {
   constructor() {
@@ -32,29 +33,15 @@ export class MemberService {
     return this.repository.create({ organizationId, userId });
   }
 
-  async getMembers(params: {
-    organizationId: string;
-    search?: string;
-    status?: any;
-    page: number;
-    limit: number;
-  }) {
-    const skip = (params.page - 1) * params.limit;
+  async getMembers(params: PaginationQuery & { organizationId: string; status?: any }) {
+    const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.repository.list({
+      ...paginationParams,
       organizationId: params.organizationId,
-      search: params.search,
       status: params.status,
-      skip,
-      take: params.limit,
     });
 
-    return {
-      total,
-      page: params.page,
-      limit: params.limit,
-      totalPages: Math.ceil(total / params.limit),
-      items,
-    };
+    return buildPaginatedResult(items, total, params);
   }
 
   async getMember(id: string, organizationId: string) {

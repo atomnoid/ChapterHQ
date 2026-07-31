@@ -1,6 +1,7 @@
 import { RoleRepository } from "@/repositories/role.repository";
 import { UserRoleRepository } from "@/repositories/user-role.repository";
 import { DEFAULT_ORG_ROLES, OWNER_ROLE_NAME } from "@/constants/roles";
+import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 
 export class RoleNotFoundError extends Error {
   constructor(nameOrId: string) {
@@ -71,27 +72,14 @@ export class RoleService {
     });
   }
 
-  async getRoles(params: {
-    organizationId: string;
-    search?: string;
-    page: number;
-    limit: number;
-  }) {
-    const skip = (params.page - 1) * params.limit;
+  async getRoles(params: PaginationQuery & { organizationId: string }) {
+    const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.roleRepository.listByOrganization({
+      ...paginationParams,
       organizationId: params.organizationId,
-      search: params.search,
-      skip,
-      take: params.limit,
     });
 
-    return {
-      total,
-      page: params.page,
-      limit: params.limit,
-      totalPages: Math.ceil(total / params.limit),
-      items,
-    };
+    return buildPaginatedResult(items, total, params);
   }
 
   async getRole(id: string, organizationId: string) {
