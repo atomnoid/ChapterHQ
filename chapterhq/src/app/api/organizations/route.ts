@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { apiResponse } from "@/lib/api-response";
 
 import { auth } from "@/lib/auth";
 import {
@@ -14,14 +14,7 @@ export async function POST(request: Request) {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          message: "Unauthorized.",
-        },
-        {
-          status: 401,
-        }
-      );
+      return apiResponse.unauthorized();
     }
 
     const body = (await request.json()) as {
@@ -34,45 +27,16 @@ export async function POST(request: Request) {
       session.user.id
     );
 
-    return NextResponse.json(
-      {
-        message: "Organization created successfully.",
-        data: organization,
-      },
-      {
-        status: 201,
-      }
-    );
+    return apiResponse.created(organization, "Organization created successfully.");
   } catch (error) {
     if (error instanceof ZodError) {
-      return NextResponse.json(
-        {
-          message: error.issues[0]?.message ?? "Invalid request.",
-        },
-        {
-          status: 400,
-        }
-      );
+      return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
 
     if (error instanceof OrganizationAlreadyExistsError) {
-      return NextResponse.json(
-        {
-          message: error.message,
-        },
-        {
-          status: 409,
-        }
-      );
+      return apiResponse.conflict(error.message);
     }
 
-    return NextResponse.json(
-      {
-        message: "Unable to create organization.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return apiResponse.serverError("Unable to create organization.");
   }
 }

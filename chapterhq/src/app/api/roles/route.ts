@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { RoleService, DuplicateRoleNameError } from "@/services/role.service";
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      return apiResponse.unauthorized();
     }
 
     const { context } = await requirePermission(session.user.id, "roles:read");
@@ -26,18 +26,15 @@ export async function GET(request: Request) {
       organizationId: context.organizationId,
     });
 
-    return NextResponse.json(result, { status: 200 });
+    return apiResponse.success(result);
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0]?.message ?? "Invalid request." },
-        { status: 400 }
-      );
+      return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }
 
@@ -46,7 +43,7 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      return apiResponse.unauthorized();
     }
 
     const { context } = await requirePermission(session.user.id, "roles:create");
@@ -59,23 +56,17 @@ export async function POST(request: Request) {
       validatedData
     );
 
-    return NextResponse.json(
-      { message: "Role created successfully.", data: createdRole },
-      { status: 201 }
-    );
+    return apiResponse.created(createdRole, "Role created successfully.");
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0]?.message ?? "Invalid request." },
-        { status: 400 }
-      );
+      return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
     if (error instanceof DuplicateRoleNameError) {
-      return NextResponse.json({ message: error.message }, { status: 409 });
+      return apiResponse.conflict(error.message);
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }

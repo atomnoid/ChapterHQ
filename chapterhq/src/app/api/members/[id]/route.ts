@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { MemberService, MemberNotFoundError } from "@/services/member.service";
@@ -15,7 +15,7 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      return apiResponse.unauthorized();
     }
 
     // Resolve context & enforce permission
@@ -24,15 +24,15 @@ export async function GET(
     const resolvedParams = await params;
     const member = await memberService.getMember(resolvedParams.id, context.organizationId);
 
-    return NextResponse.json(member, { status: 200 });
+    return apiResponse.success(member);
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof MemberNotFoundError) {
-      return NextResponse.json({ message: error.message }, { status: 444 || 404 }); // Standard 404 status code
+      return apiResponse.notFound(error.message);
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }
 
@@ -44,7 +44,7 @@ export async function PUT(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      return apiResponse.unauthorized();
     }
 
     // Resolve context & enforce permission
@@ -60,24 +60,18 @@ export async function PUT(
       validatedData
     );
 
-    return NextResponse.json(
-      { message: "Member updated successfully.", data: updatedMember },
-      { status: 200 }
-    );
+    return apiResponse.success(updatedMember, "Member updated successfully.");
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0]?.message ?? "Invalid request." },
-        { status: 400 }
-      );
+      return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
     if (error instanceof MemberNotFoundError) {
-      return NextResponse.json({ message: error.message }, { status: 404 });
+      return apiResponse.notFound(error.message);
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }
 
@@ -89,7 +83,7 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      return apiResponse.unauthorized();
     }
 
     // Resolve context & enforce permission
@@ -98,14 +92,14 @@ export async function DELETE(
     const resolvedParams = await params;
     await memberService.deleteMember(resolvedParams.id, context.organizationId);
 
-    return NextResponse.json({ message: "Member deleted successfully." }, { status: 200 });
+    return apiResponse.success(null, "Member deleted successfully.");
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof MemberNotFoundError) {
-      return NextResponse.json({ message: error.message }, { status: 404 });
+      return apiResponse.notFound(error.message);
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }
