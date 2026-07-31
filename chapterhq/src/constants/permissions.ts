@@ -1,6 +1,7 @@
 export const RESOURCES = [
   "members",
   "roles",
+  "dashboard",
   "committees",
   "appointments",
   "societies",
