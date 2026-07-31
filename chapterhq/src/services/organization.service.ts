@@ -1,6 +1,7 @@
 import { OrganizationRepository } from "@/repositories/organization.repository";
 import { MemberService } from "@/services/member.service";
 import { RoleService } from "@/services/role.service";
+import { PermissionService } from "@/services/permission/permission.service";
 import { createOrganizationSchema } from "@/validators/organization.validator";
 import type { CreateOrganizationInput } from "@/validators/organization.validator";
 import { z } from "zod";
@@ -33,7 +34,8 @@ export class OrganizationService {
   constructor(
     private readonly repository = new OrganizationRepository(),
     private readonly memberService = new MemberService(),
-    private readonly roleService = new RoleService()
+    private readonly roleService = new RoleService(),
+    private readonly permissionService = new PermissionService()
   ) {}
 
   async createOrganization(data: CreateOrganizationInput, userId: string) {
@@ -57,6 +59,8 @@ export class OrganizationService {
     await this.roleService.seedDefaultRoles(organization.id);
 
     await this.roleService.assignOwnerRole(organization.id, member.id);
+
+    await this.permissionService.seedDefaultPermissionsAndMappings(organization.id);
 
     return organization;
   }
