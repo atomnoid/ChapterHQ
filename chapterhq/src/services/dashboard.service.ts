@@ -8,4 +8,8 @@ export class DashboardService {
   async getSummary(organizationId: string, memberId: string) {
     return this.repository.getSummary(organizationId, memberId);
   }
+
+  async getActivity(organizationId: string) {
+    return this.repository.getActivity(organizationId);
+  }
 }
