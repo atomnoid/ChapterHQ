@@ -14,6 +14,7 @@ import {
 	Menu,
 	Search,
 	Settings,
+	Shield,
 	Users,
 	X,
 } from "lucide-react";
@@ -36,6 +37,7 @@ type DashboardShellProps = Readonly<{
 const navigationItems = [
 	{ label: "Overview", href: "/dashboard", icon: LayoutDashboard },
 	{ label: "Members", href: "/members", icon: Users },
+	{ label: "Roles", href: "/roles", icon: Shield },
 	{ label: "Organizations", href: "/organizations", icon: Building2 },
 	{ label: "Calendar", href: "/dashboard#calendar", icon: CalendarDays },
 	{ label: "Finance", href: "/dashboard#finance", icon: DollarSign },
