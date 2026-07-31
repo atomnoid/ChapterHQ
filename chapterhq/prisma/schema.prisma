@@ -67,6 +67,7 @@ model Organization {
   members Member[]
   roles Role[]
   invitations Invitation[]
+  auditLogs AuditLog[]
 
   @@map("organizations")
 }
@@ -263,4 +264,30 @@ model Invitation {
   @@unique([organizationId, email, status])
 
   @@map("invitations")
+}
+
+//////////////////////////////////////////////////////
+// AUDIT LOG
+//////////////////////////////////////////////////////
+
+model AuditLog {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  actorId String @db.ObjectId // Can represent User ID or Member ID of who did it
+  actorName String?
+  actorEmail String?
+
+  action    String // e.g. create, update, delete, assign, remove
+  resource  String // e.g. organization, member, role, user_role, role_permission
+  targetId  String? // ID of the affected resource
+  targetName String? // Display name of target if available
+
+  metadata Json?
+
+  timestamp DateTime @default(now())
+
+  @@map("audit_logs")
 }
