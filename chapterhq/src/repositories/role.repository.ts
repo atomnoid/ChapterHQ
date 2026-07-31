@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { RoleScope } from "@prisma/client";
+import { buildOrderBy, PaginationParams } from "@/lib/pagination";
 
 interface CreateRoleData {
   organizationId: string;
@@ -70,12 +71,7 @@ export class RoleRepository {
     });
   }
 
-  async listByOrganization(params: {
-    organizationId: string;
-    search?: string;
-    skip: number;
-    take: number;
-  }) {
+  async listByOrganization(params: PaginationParams & { organizationId: string }) {
     const whereClause: any = {
       organizationId: params.organizationId,
       deletedAt: null,
@@ -85,15 +81,15 @@ export class RoleRepository {
       whereClause.name = { contains: params.search, mode: "insensitive" };
     }
 
+    const orderBy = buildOrderBy(params.sortBy, params.order, "createdAt");
+
     const [total, items] = await Promise.all([
       prisma.role.count({ where: whereClause }),
       prisma.role.findMany({
         where: whereClause,
         skip: params.skip,
         take: params.take,
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy,
       }),
     ]);
 

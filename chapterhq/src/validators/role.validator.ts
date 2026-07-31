@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RoleScope } from "@prisma/client";
+import { paginationQuerySchema } from "@/lib/pagination";
 
 export const roleScopeSchema = z.nativeEnum(RoleScope);
 
@@ -24,19 +25,7 @@ export const updateRoleSchema = z.object({
   scope: roleScopeSchema.optional(),
 });
 
-export const roleQuerySchema = z.object({
-  search: z.string().optional(),
-  page: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 1))
-    .pipe(z.number().int().positive()),
-  limit: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 10))
-    .pipe(z.number().int().positive()),
-});
+export const roleQuerySchema = paginationQuerySchema;
 
 export type CreateRoleInput = z.infer<typeof createRoleSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;

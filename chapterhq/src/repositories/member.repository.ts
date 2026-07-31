@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { buildOrderBy, PaginationParams } from "@/lib/pagination";
 
 interface CreateMemberData {
   organizationId: string;
@@ -61,13 +62,7 @@ export class MemberRepository {
     });
   }
 
-  async list(params: {
-    organizationId: string;
-    search?: string;
-    status?: any;
-    skip: number;
-    take: number;
-  }) {
+  async list(params: PaginationParams & { organizationId: string; status?: any }) {
     const whereClause: any = {
       organizationId: params.organizationId,
       deletedAt: null,
@@ -86,6 +81,8 @@ export class MemberRepository {
       };
     }
 
+    const orderBy = buildOrderBy(params.sortBy, params.order, "joinedAt");
+
     const [total, items] = await Promise.all([
       prisma.member.count({ where: whereClause }),
       prisma.member.findMany({
@@ -102,9 +99,7 @@ export class MemberRepository {
             },
           },
         },
-        orderBy: {
-          joinedAt: "desc",
-        },
+        orderBy,
       }),
     ]);
 
