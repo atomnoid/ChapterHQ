@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
+import { auth } from "@/lib/auth";
 import {
   OrganizationAlreadyExistsError,
   OrganizationService,
@@ -10,12 +11,28 @@ const organizationService = new OrganizationService();
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          message: "Unauthorized.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
     const body = (await request.json()) as {
       name: string;
       slug: string;
     };
 
-    const organization = await organizationService.createOrganization(body);
+    const organization = await organizationService.createOrganization(
+      body,
+      session.user.id
+    );
 
     return NextResponse.json(
       {
