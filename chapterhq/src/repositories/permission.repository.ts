@@ -43,4 +43,31 @@ export class PermissionRepository {
       skipDuplicates: true,
     });
   }
+
+  async replaceRolePermissions(roleId: string, permissionIds: string[]) {
+    return prisma.$transaction([
+      prisma.rolePermission.deleteMany({
+        where: { roleId },
+      }),
+      prisma.rolePermission.createMany({
+        data: permissionIds.map(permissionId => ({
+          roleId,
+          permissionId,
+        })),
+        skipDuplicates: true,
+      }),
+    ]);
+  }
+
+  async validatePermissionIds(permissionIds: string[]) {
+    const validPermissions = await prisma.permission.findMany({
+      where: {
+        id: { in: permissionIds },
+      },
+      select: {
+        id: true,
+      },
+    });
+    return validPermissions.map(p => p.id);
+  }
 }
