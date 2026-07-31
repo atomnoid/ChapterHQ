@@ -183,6 +183,13 @@ export function RoleList() {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={() => window.location.href = "/roles/permissions"}
+          >
+            Permission Matrix
+          </Button>
+          <Button
             className="rounded-full gap-2"
             onClick={() => setDialog({ type: "create" })}
           >
