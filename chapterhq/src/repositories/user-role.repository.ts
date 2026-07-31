@@ -28,9 +28,23 @@ export class UserRoleRepository {
     return prisma.userRole.findMany({
       where: {
         memberId,
+        role: {
+          deletedAt: null,
+        },
       },
       include: {
         role: true,
+      },
+    });
+  }
+
+  async delete(memberId: string, roleId: string) {
+    return prisma.userRole.delete({
+      where: {
+        memberId_roleId: {
+          memberId,
+          roleId,
+        },
       },
     });
   }
