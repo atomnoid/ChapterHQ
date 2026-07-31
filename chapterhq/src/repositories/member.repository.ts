@@ -24,4 +24,20 @@ export class MemberRepository {
       },
     });
   }
+
+  async findActiveByUserId(userId: string) {
+    return prisma.member.findFirst({
+      where: {
+        deletedAt: null,
+        userId,
+        status: "ACTIVE",
+        organization: {
+          deletedAt: null,
+        },
+      },
+      include: {
+        organization: true,
+      },
+    });
+  }
 }
