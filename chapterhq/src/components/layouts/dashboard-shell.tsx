@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DashboardLogoutButton } from "@/features/auth/components/dashboard-logout-button";
 import { cn } from "@/lib/utils";
+import { GlobalSearchInput } from "@/features/dashboard/components/global-search-input";
 
 type DashboardUser = {
 	name: string | null;
@@ -145,10 +146,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
 							</div>
 
 							<div className="hidden min-w-[18rem] max-w-md flex-1 lg:block">
-								<div className="flex h-11 items-center gap-3 rounded-full border border-border bg-card px-4 text-sm text-secondary-foreground shadow-[0_12px_24px_rgba(77,54,37,0.04)]">
-									<Search className="h-4 w-4" />
-									<span>Search chapters, members, and events</span>
-								</div>
+								<GlobalSearchInput />
 							</div>
 
 							<div className="ml-auto flex items-center gap-2">
