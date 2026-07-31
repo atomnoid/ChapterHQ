@@ -60,4 +60,27 @@ export class AuthorizationService {
       roles: userRoles.map(ur => ur.role),
     };
   }
+
+  // Enforce any permission checks and throw PermissionDeniedError if not allowed
+  async enforceAnyPermission(userId: string, permissions: string[]) {
+    const context = await this.resolveContext(userId);
+    const userRoles = await this.userRoleRepository.findUserRoles(context.member.id);
+    const roleIds = userRoles.map(ur => ur.roleId);
+    if (roleIds.length === 0) throw new PermissionDeniedError();
+
+    const rolePermissions = await this.permissionRepository.findRolePermissionsByRoleIds(roleIds);
+    const hasPerm = rolePermissions.some(
+      rp => permissions.includes(`${rp.permission.resource}:${rp.permission.action}`)
+    );
+
+    if (!hasPerm) {
+      throw new PermissionDeniedError();
+    }
+
+    return {
+      context,
+      member: context.member,
+      roles: userRoles.map(ur => ur.role),
+    };
+  }
 }
