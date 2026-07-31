@@ -1,4 +1,5 @@
 import { MemberRepository } from "@/repositories/member.repository";
+import { auth } from "@/lib/auth";
 
 export class OrganizationContextNotFoundError extends Error {
   constructor() {
@@ -23,7 +24,10 @@ export class OrganizationContextService {
   ) {}
 
   async resolve(userId: string): Promise<OrganizationContext> {
-    const member = await this.memberRepository.findActiveByUserId(userId);
+    const session = await auth();
+    const activeOrgId = session?.activeOrganizationId;
+
+    const member = await this.memberRepository.findActiveByUserId(userId, activeOrgId);
 
     if (!member) {
       throw new OrganizationContextNotFoundError();
