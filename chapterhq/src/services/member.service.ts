@@ -1,5 +1,6 @@
 import { MemberRepository } from "@/repositories/member.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
+import { logActivity } from "@/lib/audit-logger";
 
 export class MemberAlreadyExistsError extends Error {
   constructor() {
@@ -20,7 +21,7 @@ export class MemberService {
     private readonly repository = new MemberRepository()
   ) {}
 
-  async createMember(organizationId: string, userId: string) {
+  async createMember(organizationId: string, userId: string, actorUserId?: string) {
     const existing = await this.repository.findByOrganizationAndUser(
       organizationId,
       userId
@@ -30,7 +31,19 @@ export class MemberService {
       throw new MemberAlreadyExistsError();
     }
 
-    return this.repository.create({ organizationId, userId });
+    const member = await this.repository.create({ organizationId, userId });
+
+    if (actorUserId) {
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "create",
+        "member",
+        member.id,
+        `User ${userId}`
+      );
+    }
+
+    return member;
   }
 
   async getMembers(params: PaginationQuery & { organizationId: string; status?: any }) {
@@ -52,19 +65,44 @@ export class MemberService {
     return member;
   }
 
-  async updateMember(id: string, organizationId: string, data: { status?: any }) {
+  async updateMember(id: string, organizationId: string, data: { status?: any }, actorUserId?: string) {
     const member = await this.repository.findByIdAndOrganization(id, organizationId);
     if (!member) {
       throw new MemberNotFoundError();
     }
-    return this.repository.update(id, organizationId, data);
+    const updated = await this.repository.update(id, organizationId, data);
+
+    if (actorUserId) {
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "update",
+        "member",
+        id,
+        member.user?.name || `Member ${id}`,
+        data
+      );
+    }
+
+    return updated;
   }
 
-  async deleteMember(id: string, organizationId: string) {
+  async deleteMember(id: string, organizationId: string, actorUserId?: string) {
     const member = await this.repository.findByIdAndOrganization(id, organizationId);
     if (!member) {
       throw new MemberNotFoundError();
     }
-    return this.repository.delete(id, organizationId);
+    const deleted = await this.repository.delete(id, organizationId);
+
+    if (actorUserId) {
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "delete",
+        "member",
+        id,
+        member.user?.name || `Member ${id}`
+      );
+    }
+
+    return deleted;
   }
 }

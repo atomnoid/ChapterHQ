@@ -5,6 +5,7 @@ import { PermissionService } from "@/services/permission/permission.service";
 import { createOrganizationSchema } from "@/validators/organization.validator";
 import type { CreateOrganizationInput } from "@/validators/organization.validator";
 import { z } from "zod";
+import { logActivity } from "@/lib/audit-logger";
 
 const organizationIdSchema = z
   .string()
@@ -62,6 +63,14 @@ export class OrganizationService {
 
     await this.permissionService.seedDefaultPermissionsAndMappings(organization.id);
 
+    await logActivity(
+      { userId, organizationId: organization.id },
+      "create",
+      "organization",
+      organization.id,
+      organization.name
+    );
+
     return organization;
   }
 
@@ -92,7 +101,7 @@ export class OrganizationService {
     return this.repository.delete(validatedId);
   }
 
-  async updateSettings(id: string, data: { name?: string; slug?: string; status?: any }) {
+  async updateSettings(id: string, data: { name?: string; slug?: string; status?: any }, userId?: string) {
     const existing = await this.repository.findById(id);
     if (!existing) {
       throw new OrganizationNotFoundError();
@@ -105,6 +114,19 @@ export class OrganizationService {
       }
     }
 
-    return this.repository.update(id, data);
+    const updated = await this.repository.update(id, data);
+
+    if (userId) {
+      await logActivity(
+        { userId, organizationId: id },
+        "update",
+        "organization",
+        id,
+        updated.name,
+        data
+      );
+    }
+
+    return updated;
   }
 }

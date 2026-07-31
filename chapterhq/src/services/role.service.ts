@@ -2,6 +2,7 @@ import { RoleRepository } from "@/repositories/role.repository";
 import { UserRoleRepository } from "@/repositories/user-role.repository";
 import { DEFAULT_ORG_ROLES, OWNER_ROLE_NAME } from "@/constants/roles";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
+import { logActivity } from "@/lib/audit-logger";
 
 export class RoleNotFoundError extends Error {
   constructor(nameOrId: string) {
@@ -90,21 +91,33 @@ export class RoleService {
     return role;
   }
 
-  async createRole(organizationId: string, data: { name: string; description?: string; scope?: any }) {
+  async createRole(organizationId: string, data: { name: string; description?: string; scope?: any }, actorUserId?: string) {
     const nameExists = await this.roleRepository.existsByName(organizationId, data.name);
     if (nameExists) {
       throw new DuplicateRoleNameError();
     }
 
-    return this.roleRepository.create({
+    const role = await this.roleRepository.create({
       organizationId,
       name: data.name,
       scope: data.scope ?? "ORGANIZATION",
       ...data,
     });
+
+    if (actorUserId) {
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "create",
+        "role",
+        role.id,
+        role.name
+      );
+    }
+
+    return role;
   }
 
-  async updateRole(id: string, organizationId: string, data: { name?: string; description?: string; scope?: any }) {
+  async updateRole(id: string, organizationId: string, data: { name?: string; description?: string; scope?: any }, actorUserId?: string) {
     const role = await this.roleRepository.findById(id, organizationId);
     if (!role) {
       throw new RoleNotFoundError(id);
@@ -123,10 +136,23 @@ export class RoleService {
       }
     }
 
-    return this.roleRepository.update(id, organizationId, data);
+    const updated = await this.roleRepository.update(id, organizationId, data);
+
+    if (actorUserId) {
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "update",
+        "role",
+        id,
+        updated.name,
+        data
+      );
+    }
+
+    return updated;
   }
 
-  async deleteRole(id: string, organizationId: string) {
+  async deleteRole(id: string, organizationId: string, actorUserId?: string) {
     const role = await this.roleRepository.findById(id, organizationId);
     if (!role) {
       throw new RoleNotFoundError(id);
@@ -136,10 +162,22 @@ export class RoleService {
       throw new ProtectedRoleModificationError("delete");
     }
 
-    return this.roleRepository.softDelete(id, organizationId);
+    const deleted = await this.roleRepository.softDelete(id, organizationId);
+
+    if (actorUserId) {
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "delete",
+        "role",
+        id,
+        role.name
+      );
+    }
+
+    return deleted;
   }
 
-  async duplicateRole(id: string, organizationId: string, data: { name: string; description?: string }) {
+  async duplicateRole(id: string, organizationId: string, data: { name: string; description?: string }, actorUserId?: string) {
     const sourceRole = await this.roleRepository.findById(id, organizationId);
     if (!sourceRole) {
       throw new RoleNotFoundError(id);
@@ -170,6 +208,17 @@ export class RoleService {
           roleId: newRole.id,
           permissionId: rp.permissionId,
         }))
+      );
+    }
+
+    if (actorUserId) {
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "create",
+        "role",
+        newRole.id,
+        newRole.name,
+        { duplicatedFrom: id }
       );
     }
 
