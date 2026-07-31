@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { MemberService, MemberNotFoundError } from "@/services/member.service";
 import { memberQuerySchema } from "@/validators/member.validator";
+import { parsePaginationQuery } from "@/lib/pagination";
 
 const memberService = new MemberService();
 
@@ -20,16 +21,12 @@ export async function GET(request: Request) {
 
     // 2. Parse query parameters
     const { searchParams } = new URL(request.url);
-    const queryParams = Object.fromEntries(searchParams.entries());
-    const parsedQuery = memberQuerySchema.parse(queryParams);
+    const parsedQuery = memberQuerySchema.parse(Object.fromEntries(searchParams.entries()));
 
     // 3. Retrieve list
     const result = await memberService.getMembers({
+      ...parsedQuery,
       organizationId: context.organizationId,
-      search: parsedQuery.search,
-      status: parsedQuery.status,
-      page: parsedQuery.page,
-      limit: parsedQuery.limit,
     });
 
     return NextResponse.json(result, { status: 200 });

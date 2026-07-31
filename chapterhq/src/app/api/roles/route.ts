@@ -22,10 +22,8 @@ export async function GET(request: Request) {
     const parsedQuery = roleQuerySchema.parse(queryParams);
 
     const result = await roleService.getRoles({
+      ...parsedQuery,
       organizationId: context.organizationId,
-      search: parsedQuery.search,
-      page: parsedQuery.page,
-      limit: parsedQuery.limit,
     });
 
     return NextResponse.json(result, { status: 200 });
