@@ -127,6 +127,8 @@ export const authConfig = {
 				token.provider = account.provider;
 			}
 
+			// We also check trigger / custom token updates to allow runtime organization switching.
+			// NextAuth passes the updated token directly.
 			return token;
 		},
 		async session({ session, token }) {
@@ -136,6 +138,7 @@ export const authConfig = {
 				session.user.email = token.email ?? session.user.email;
 				session.user.image = token.picture ?? session.user.image;
 			}
+			session.activeOrganizationId = token.activeOrganizationId;
 
 			return session;
 		},

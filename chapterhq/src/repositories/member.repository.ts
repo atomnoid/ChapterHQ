@@ -26,12 +26,13 @@ export class MemberRepository {
     });
   }
 
-  async findActiveByUserId(userId: string) {
+  async findActiveByUserId(userId: string, activeOrganizationId?: string) {
     return prisma.member.findFirst({
       where: {
         deletedAt: null,
         userId,
         status: "ACTIVE",
+        organizationId: activeOrganizationId,
         organization: {
           deletedAt: null,
         },
@@ -124,6 +125,22 @@ export class MemberRepository {
       },
       data: {
         deletedAt: new Date(),
+      },
+    });
+  }
+
+  async listByUser(userId: string) {
+    return prisma.member.findMany({
+      where: {
+        userId,
+        status: "ACTIVE",
+        deletedAt: null,
+        organization: {
+          deletedAt: null,
+        },
+      },
+      include: {
+        organization: true,
       },
     });
   }
