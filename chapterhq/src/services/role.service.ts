@@ -150,4 +150,41 @@ export class RoleService {
 
     return this.roleRepository.softDelete(id, organizationId);
   }
+
+  async duplicateRole(id: string, organizationId: string, data: { name: string; description?: string }) {
+    const sourceRole = await this.roleRepository.findById(id, organizationId);
+    if (!sourceRole) {
+      throw new RoleNotFoundError(id);
+    }
+
+    const nameExists = await this.roleRepository.existsByName(organizationId, data.name);
+    if (nameExists) {
+      throw new DuplicateRoleNameError();
+    }
+
+    // 1. Create duplicate role
+    const newRole = await this.roleRepository.create({
+      organizationId,
+      name: data.name,
+      scope: sourceRole.scope,
+      description: data.description ?? sourceRole.description ?? undefined,
+    });
+
+    // 2. Fetch original permission mappings
+    const { PermissionRepository } = require("@/repositories/permission.repository");
+    const permissionRepo = new PermissionRepository();
+    const sourcePermissions = await permissionRepo.findRolePermissions(id);
+
+    // 3. Duplicate permission mappings
+    if (sourcePermissions.length > 0) {
+      await permissionRepo.createRolePermissions(
+        sourcePermissions.map((rp: any) => ({
+          roleId: newRole.id,
+          permissionId: rp.permissionId,
+        }))
+      );
+    }
+
+    return newRole;
+  }
 }
