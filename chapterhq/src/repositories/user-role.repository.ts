@@ -23,4 +23,15 @@ export class UserRoleRepository {
       },
     });
   }
+
+  async findUserRoles(memberId: string) {
+    return prisma.userRole.findMany({
+      where: {
+        memberId,
+      },
+      include: {
+        role: true,
+      },
+    });
+  }
 }
