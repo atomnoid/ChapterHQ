@@ -1,5 +1,6 @@
 import { OrganizationRepository } from "@/repositories/organization.repository";
 import { MemberService } from "@/services/member.service";
+import { RoleService } from "@/services/role.service";
 import { createOrganizationSchema } from "@/validators/organization.validator";
 import type { CreateOrganizationInput } from "@/validators/organization.validator";
 import { z } from "zod";
@@ -31,7 +32,8 @@ export class OrganizationNotFoundError extends Error {
 export class OrganizationService {
   constructor(
     private readonly repository = new OrganizationRepository(),
-    private readonly memberService = new MemberService()
+    private readonly memberService = new MemberService(),
+    private readonly roleService = new RoleService()
   ) {}
 
   async createOrganization(data: CreateOrganizationInput, userId: string) {
@@ -47,7 +49,14 @@ export class OrganizationService {
 
     const organization = await this.repository.create(validatedData);
 
-    await this.memberService.createMember(organization.id, userId);
+    const member = await this.memberService.createMember(
+      organization.id,
+      userId
+    );
+
+    await this.roleService.seedDefaultRoles(organization.id);
+
+    await this.roleService.assignOwnerRole(organization.id, member.id);
 
     return organization;
   }
