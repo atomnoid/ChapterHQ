@@ -47,4 +47,24 @@ export class OrganizationRepository {
       },
     });
   }
+
+  async existsBySlug(slug: string, excludeId?: string) {
+    const org = await prisma.organization.findFirst({
+      where: {
+        deletedAt: null,
+        slug: { equals: slug, mode: "insensitive" },
+        NOT: excludeId ? { id: excludeId } : undefined,
+      },
+    });
+    return !!org;
+  }
+
+  async update(id: string, data: { name?: string; slug?: string; status?: any }) {
+    return prisma.organization.update({
+      where: {
+        id,
+      },
+      data,
+    });
+  }
 }

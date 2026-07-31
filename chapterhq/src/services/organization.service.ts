@@ -91,4 +91,20 @@ export class OrganizationService {
 
     return this.repository.delete(validatedId);
   }
+
+  async updateSettings(id: string, data: { name?: string; slug?: string; status?: any }) {
+    const existing = await this.repository.findById(id);
+    if (!existing) {
+      throw new OrganizationNotFoundError();
+    }
+
+    if (data.slug) {
+      const slugExists = await this.repository.existsBySlug(data.slug, id);
+      if (slugExists) {
+        throw new OrganizationAlreadyExistsError();
+      }
+    }
+
+    return this.repository.update(id, data);
+  }
 }
