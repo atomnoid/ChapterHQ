@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import {
@@ -20,7 +20,7 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      return apiResponse.unauthorized();
     }
 
     const { context } = await requirePermission(session.user.id, "roles:read");
@@ -28,15 +28,15 @@ export async function GET(
     const resolvedParams = await params;
     const role = await roleService.getRole(resolvedParams.id, context.organizationId);
 
-    return NextResponse.json(role, { status: 200 });
+    return apiResponse.success(role);
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof RoleNotFoundError) {
-      return NextResponse.json({ message: error.message }, { status: 404 });
+      return apiResponse.notFound(error.message);
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }
 
@@ -48,7 +48,7 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      return apiResponse.unauthorized();
     }
 
     const { context } = await requirePermission(session.user.id, "roles:update");
@@ -60,33 +60,28 @@ export async function PATCH(
     const updatedRole = await roleService.updateRole(
       resolvedParams.id,
       context.organizationId,
-      validatedData
+      validatedData,
+      session.user.id
     );
 
-    return NextResponse.json(
-      { message: "Role updated successfully.", data: updatedRole },
-      { status: 200 }
-    );
+    return apiResponse.success(updatedRole, "Role updated successfully.");
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0]?.message ?? "Invalid request." },
-        { status: 400 }
-      );
+      return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
     if (error instanceof RoleNotFoundError) {
-      return NextResponse.json({ message: error.message }, { status: 404 });
+      return apiResponse.notFound(error.message);
     }
     if (error instanceof DuplicateRoleNameError) {
-      return NextResponse.json({ message: error.message }, { status: 409 });
+      return apiResponse.conflict(error.message);
     }
     if (error instanceof ProtectedRoleModificationError) {
-      return NextResponse.json({ message: error.message }, { status: 400 });
+      return apiResponse.badRequest(error.message);
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }
 
@@ -98,25 +93,25 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      return apiResponse.unauthorized();
     }
 
     const { context } = await requirePermission(session.user.id, "roles:delete");
 
     const resolvedParams = await params;
-    await roleService.deleteRole(resolvedParams.id, context.organizationId);
+    await roleService.deleteRole(resolvedParams.id, context.organizationId, session.user.id);
 
-    return NextResponse.json({ message: "Role deleted successfully." }, { status: 200 });
+    return apiResponse.success(null, "Role deleted successfully.");
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof RoleNotFoundError) {
-      return NextResponse.json({ message: error.message }, { status: 404 });
+      return apiResponse.notFound(error.message);
     }
     if (error instanceof ProtectedRoleModificationError) {
-      return NextResponse.json({ message: error.message }, { status: 400 });
+      return apiResponse.badRequest(error.message);
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }

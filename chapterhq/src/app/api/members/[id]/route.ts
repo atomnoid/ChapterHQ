@@ -57,7 +57,8 @@ export async function PUT(
     const updatedMember = await memberService.updateMember(
       resolvedParams.id,
       context.organizationId,
-      validatedData
+      validatedData,
+      session.user.id
     );
 
     return apiResponse.success(updatedMember, "Member updated successfully.");
@@ -90,7 +91,7 @@ export async function DELETE(
     const { context } = await requirePermission(session.user.id, "members:delete");
 
     const resolvedParams = await params;
-    await memberService.deleteMember(resolvedParams.id, context.organizationId);
+    await memberService.deleteMember(resolvedParams.id, context.organizationId, session.user.id);
 
     return apiResponse.success(null, "Member deleted successfully.");
   } catch (error: any) {

@@ -55,7 +55,8 @@ export async function PATCH(request: Request) {
 
     const updated = await organizationService.updateSettings(
       context.organizationId,
-      validatedData
+      validatedData,
+      session.user.id
     );
 
     return NextResponse.json(
