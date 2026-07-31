@@ -110,4 +110,31 @@ export class PermissionService {
 
     return permissions.every(p => userPermStrings.has(p));
   }
+
+  async getRolePermissions(organizationId: string, roleId: string) {
+    const role = await this.roleRepository.findById(roleId, organizationId);
+    if (!role) {
+      const { RoleNotFoundError } = require("@/services/role.service");
+      throw new RoleNotFoundError(roleId);
+    }
+    const rolePermissions = await this.permissionRepository.findRolePermissions(roleId);
+    return rolePermissions.map(rp => rp.permission);
+  }
+
+  async updateRolePermissions(organizationId: string, roleId: string, permissionIds: string[]) {
+    const role = await this.roleRepository.findById(roleId, organizationId);
+    if (!role) {
+      const { RoleNotFoundError } = require("@/services/role.service");
+      throw new RoleNotFoundError(roleId);
+    }
+
+    const validatedPermissionIds = await this.permissionRepository.validatePermissionIds(permissionIds);
+    await this.permissionRepository.replaceRolePermissions(roleId, validatedPermissionIds);
+
+    return this.getRolePermissions(organizationId, roleId);
+  }
+
+  async getPermissions() {
+    return this.permissionRepository.findPermissions();
+  }
 }
