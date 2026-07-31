@@ -47,4 +47,78 @@ export class RoleRepository {
       },
     });
   }
+
+  async existsByName(organizationId: string, name: string, excludeId?: string) {
+    const role = await prisma.role.findFirst({
+      where: {
+        deletedAt: null,
+        organizationId,
+        name: { equals: name, mode: "insensitive" },
+        NOT: excludeId ? { id: excludeId } : undefined,
+      },
+    });
+    return !!role;
+  }
+
+  async findById(id: string, organizationId: string) {
+    return prisma.role.findFirst({
+      where: {
+        id,
+        organizationId,
+        deletedAt: null,
+      },
+    });
+  }
+
+  async listByOrganization(params: {
+    organizationId: string;
+    search?: string;
+    skip: number;
+    take: number;
+  }) {
+    const whereClause: any = {
+      organizationId: params.organizationId,
+      deletedAt: null,
+    };
+
+    if (params.search) {
+      whereClause.name = { contains: params.search, mode: "insensitive" };
+    }
+
+    const [total, items] = await Promise.all([
+      prisma.role.count({ where: whereClause }),
+      prisma.role.findMany({
+        where: whereClause,
+        skip: params.skip,
+        take: params.take,
+        orderBy: {
+          createdAt: "desc",
+        },
+      }),
+    ]);
+
+    return { total, items };
+  }
+
+  async update(id: string, organizationId: string, data: { name?: string; description?: string; scope?: any }) {
+    return prisma.role.update({
+      where: {
+        id,
+        organizationId,
+      },
+      data,
+    });
+  }
+
+  async softDelete(id: string, organizationId: string) {
+    return prisma.role.update({
+      where: {
+        id,
+        organizationId,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+  }
 }
