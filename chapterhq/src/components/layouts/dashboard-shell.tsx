@@ -35,7 +35,7 @@ type DashboardShellProps = Readonly<{
 
 const navigationItems = [
 	{ label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-	{ label: "Members", href: "/dashboard#members", icon: Users },
+	{ label: "Members", href: "/members", icon: Users },
 	{ label: "Organizations", href: "/organizations", icon: Building2 },
 	{ label: "Calendar", href: "/dashboard#calendar", icon: CalendarDays },
 	{ label: "Finance", href: "/dashboard#finance", icon: DollarSign },
