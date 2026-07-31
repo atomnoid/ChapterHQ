@@ -1,4 +1,5 @@
 import { OrganizationRepository } from "@/repositories/organization.repository";
+import { MemberService } from "@/services/member.service";
 import { createOrganizationSchema } from "@/validators/organization.validator";
 import type { CreateOrganizationInput } from "@/validators/organization.validator";
 import { z } from "zod";
@@ -29,10 +30,11 @@ export class OrganizationNotFoundError extends Error {
 
 export class OrganizationService {
   constructor(
-    private readonly repository = new OrganizationRepository()
+    private readonly repository = new OrganizationRepository(),
+    private readonly memberService = new MemberService()
   ) {}
 
-  async createOrganization(data: CreateOrganizationInput) {
+  async createOrganization(data: CreateOrganizationInput, userId: string) {
     const validatedData = createOrganizationSchema.parse(data);
 
     const existing = await this.repository.findBySlug(
@@ -43,7 +45,11 @@ export class OrganizationService {
       throw new OrganizationAlreadyExistsError();
     }
 
-    return this.repository.create(validatedData);
+    const organization = await this.repository.create(validatedData);
+
+    await this.memberService.createMember(organization.id, userId);
+
+    return organization;
   }
 
   async getOrganization(slug: string) {
