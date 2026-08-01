@@ -90,6 +90,14 @@ export class RoleRepository {
         skip: params.skip,
         take: params.take,
         orderBy,
+        include: {
+          _count: {
+            select: {
+              permissions: true,
+              userRoles: true,
+            },
+          },
+        },
       }),
     ]);
 

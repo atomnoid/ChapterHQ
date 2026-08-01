@@ -1,7 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Edit2, MoreHorizontal, Plus, RefreshCw, Search, Shield, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit2,
+  Key,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Search,
+  Shield,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreateRoleDialog } from "./create-role-dialog";
@@ -15,6 +27,10 @@ interface Role {
   scope: "ORGANIZATION" | "COMMITTEE";
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
+  _count?: {
+    permissions?: number;
+    userRoles?: number;
+  };
 }
 
 interface PaginatedRoles {
@@ -43,66 +59,89 @@ function RoleCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const isPresident = role.name.toLowerCase() === "president";
 
+  const permissionCount = role._count?.permissions ?? 0;
+  const memberCount = role._count?.userRoles ?? 0;
+
   return (
-    <article className="group relative rounded-[1.75rem] border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.05)] transition-shadow hover:shadow-[0_16px_40px_rgba(77,54,37,0.09)]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-            {role.name[0]?.toUpperCase() ?? "R"}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground flex items-center gap-1.5">
-              {role.name}
-              {isPresident && <Shield className="h-3.5 w-3.5 text-primary shrink-0" />}
-            </p>
-            <p className="mt-1 text-xs text-secondary-foreground leading-normal line-clamp-2 min-h-[2rem]">
-              {role.description ?? "No description provided."}
-            </p>
+    <article className="group relative rounded-[1.75rem] border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.05)] transition-shadow hover:shadow-[0_16px_40px_rgba(77,54,37,0.09)] flex flex-col justify-between">
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+              {role.name[0]?.toUpperCase() ?? "R"}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground flex items-center gap-1.5">
+                {role.name}
+                {isPresident && <Shield className="h-3.5 w-3.5 text-primary shrink-0" />}
+              </p>
+              <p className="mt-1 text-xs text-secondary-foreground leading-normal line-clamp-2 min-h-[2rem]">
+                {role.description ?? "No description provided."}
+              </p>
+            </div>
+          </div>
+
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full h-8 w-8"
+              aria-label="Role actions"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]">
+                  <button
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onEdit(role);
+                    }}
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                    Edit
+                  </button>
+                  {!isPresident && (
+                    <button
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onDelete(role);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full h-8 w-8"
-            aria-label="Role actions"
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]">
-                <button
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
-                  onClick={() => { setMenuOpen(false); onEdit(role); }}
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                  Edit
-                </button>
-                {!isPresident && (
-                  <button
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
-                    onClick={() => { setMenuOpen(false); onDelete(role); }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
-                  </button>
-                )}
-              </div>
-            </>
-          )}
+        {/* Permission and Member Counts */}
+        <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+          <div className="flex items-center gap-1.5 rounded-xl bg-secondary/50 px-2.5 py-1.5 text-secondary-foreground">
+            <Key className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span>{permissionCount} {permissionCount === 1 ? "permission" : "permissions"}</span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-xl bg-secondary/50 px-2.5 py-1.5 text-secondary-foreground">
+            <Users className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span>{memberCount} {memberCount === 1 ? "member" : "members"}</span>
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 border-t border-border/60 pt-3">
-        <span className="text-xs font-medium bg-secondary text-secondary-foreground rounded-full px-2.5 py-0.5">
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-secondary-foreground">
+        <span className="font-medium bg-secondary rounded-full px-2.5 py-0.5">
           {role.scope === "ORGANIZATION" ? "Organization" : "Committee"}
         </span>
-        <span className="text-xs text-secondary-foreground">
+        <span>
           Created {new Date(role.createdAt).toLocaleDateString()}
         </span>
       </div>
@@ -128,7 +167,9 @@ export function RoleList() {
       setDebouncedSearch(search);
       setPage(1);
     }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [search]);
 
   const fetchRoles = useCallback(async () => {
@@ -143,8 +184,8 @@ export function RoleList() {
         throw new Error(json.message ?? "Failed to load roles.");
       }
       setData(await res.json());
-    } catch (e: any) {
-      setError(e.message ?? "Something went wrong.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -185,7 +226,7 @@ export function RoleList() {
           <Button
             variant="outline"
             className="rounded-full"
-            onClick={() => window.location.href = "/roles/permissions"}
+            onClick={() => (window.location.href = "/roles/permissions")}
           >
             Permission Matrix
           </Button>
@@ -215,7 +256,7 @@ export function RoleList() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-[140px] animate-pulse rounded-[1.75rem] border border-border bg-secondary/40"
+              className="h-[180px] animate-pulse rounded-[1.75rem] border border-border bg-secondary/40"
             />
           ))}
         </div>
@@ -285,19 +326,25 @@ export function RoleList() {
       {/* Dialogs */}
       <CreateRoleDialog
         open={dialog.type === "create"}
-        onOpenChange={(open) => { if (!open) closeDialog(); }}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
         onSuccess={fetchRoles}
       />
       <EditRoleDialog
         role={dialog.type === "edit" ? dialog.role : null}
         open={dialog.type === "edit"}
-        onOpenChange={(open) => { if (!open) closeDialog(); }}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
         onSuccess={fetchRoles}
       />
       <DeleteRoleDialog
         role={dialog.type === "delete" ? dialog.role : null}
         open={dialog.type === "delete"}
-        onOpenChange={(open) => { if (!open) closeDialog(); }}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
         onSuccess={fetchRoles}
       />
     </div>
