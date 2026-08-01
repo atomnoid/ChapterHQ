@@ -73,6 +73,11 @@ enum AttendanceStatus {
   EXCUSED
 }
 
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION
 //////////////////////////////////////////////////////
@@ -99,6 +104,7 @@ model Organization {
   certificates Certificate[]
   notifications Notification[]
   documents Document[]
+  finances FinanceRecord[]
 
   @@map("organizations")
 }
@@ -560,4 +566,29 @@ model Document {
   deletedAt DateTime?
 
   @@map("documents")
+}
+
+//////////////////////////////////////////////////////
+// FINANCE
+//////////////////////////////////////////////////////
+
+model FinanceRecord {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  type        TransactionType
+  category    String
+  amount      Float
+  date        DateTime
+  description String?
+  createdBy   String?         @db.ObjectId
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("finance_records")
 }
