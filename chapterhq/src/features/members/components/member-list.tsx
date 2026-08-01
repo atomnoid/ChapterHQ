@@ -1,11 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Edit2, MoreHorizontal, RefreshCw, Search, Trash2, Users } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit2,
+  Eye,
+  Filter,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EditMemberDialog } from "./edit-member-dialog";
 import { DeleteMemberDialog } from "./delete-member-dialog";
+import { CreateMemberDialog } from "./create-member-dialog";
+import { ViewMemberDialog } from "./view-member-dialog";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,15 +42,17 @@ interface PaginatedMembers {
 
 type DialogState =
   | { type: "none" }
+  | { type: "create" }
+  | { type: "view"; member: Member }
   | { type: "edit"; member: Member }
   | { type: "delete"; member: Member };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<MemberStatus, string> = {
-  ACTIVE:  "bg-emerald-100 text-emerald-700",
-  PENDING: "bg-amber-100  text-amber-700",
-  LEFT:    "bg-secondary  text-secondary-foreground",
+  ACTIVE: "bg-emerald-100 text-emerald-700",
+  PENDING: "bg-amber-100 text-amber-700",
+  LEFT: "bg-secondary text-secondary-foreground",
   BLOCKED: "bg-destructive/10 text-destructive",
 };
 
@@ -65,23 +81,56 @@ function Avatar({ member }: { member: Member }) {
 
 // ── Row action menu ───────────────────────────────────────────────────────────
 
-function MemberRowMenu({ member, onEdit, onDelete }: { member: Member; onEdit: () => void; onDelete: () => void }) {
+function MemberRowMenu({
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => setOpen((v) => !v)} aria-label="Actions">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="rounded-full h-8 w-8"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Actions"
+      >
         <MoreHorizontal className="h-4 w-4" />
       </Button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-[calc(100%+6px)] z-20 w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]">
-            <button className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
-              onClick={() => { setOpen(false); onEdit(); }}>
+            <button
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
+              onClick={() => {
+                setOpen(false);
+                onView();
+              }}
+            >
+              <Eye className="h-3.5 w-3.5" /> View
+            </button>
+            <button
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
+              onClick={() => {
+                setOpen(false);
+                onEdit();
+              }}
+            >
               <Edit2 className="h-3.5 w-3.5" /> Edit
             </button>
-            <button className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
-              onClick={() => { setOpen(false); onDelete(); }}>
+            <button
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                setOpen(false);
+                onDelete();
+              }}
+            >
               <Trash2 className="h-3.5 w-3.5" /> Remove
             </button>
           </div>
@@ -99,6 +148,7 @@ export function MemberList() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -111,7 +161,9 @@ export function MemberList() {
       setDebouncedSearch(search);
       setPage(1);
     }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [search]);
 
   const fetchMembers = useCallback(async () => {
@@ -120,48 +172,92 @@ export function MemberList() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
       if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
+
       const res = await fetch(`/api/members?${params}`);
       if (!res.ok) {
         const json = await res.json();
         throw new Error(json.message ?? "Failed to load members.");
       }
       setData(await res.json());
-    } catch (e: any) {
-      setError(e.message ?? "Something went wrong.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, statusFilter]);
 
-  useEffect(() => { fetchMembers(); }, [fetchMembers]);
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
 
   const closeDialog = () => setDialog({ type: "none" });
 
   return (
     <div className="space-y-5">
-      {/* Header + search */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
-          <Input
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-            aria-label="Search members"
-          />
+      {/* Header toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
+          {/* Search bar */}
+          <div className="relative flex-1 max-w-sm min-w-[200px]">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
+            <Input
+              placeholder="Search by name or email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+              aria-label="Search members"
+            />
+          </div>
+
+          {/* Status filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-secondary-foreground shrink-0" />
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-10 rounded-2xl border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="PENDING">Pending</option>
+              <option value="LEFT">Left</option>
+              <option value="BLOCKED">Blocked</option>
+            </select>
+          </div>
+
+          {/* Refresh */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full border-border shrink-0"
+            aria-label="Refresh"
+            onClick={fetchMembers}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
         </div>
-        <Button variant="outline" size="icon" className="rounded-full border-border shrink-0"
-          aria-label="Refresh" onClick={fetchMembers} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+
+        {/* Add Member button */}
+        <Button
+          className="rounded-full shrink-0"
+          onClick={() => setDialog({ type: "create" })}
+        >
+          <Plus className="h-4 w-4 mr-2" /> Add Member
         </Button>
       </div>
 
-      {/* Error */}
+      {/* Error state */}
       {!loading && error && (
         <div className="rounded-2xl bg-destructive/5 border border-border px-5 py-4">
           <p className="text-sm font-medium text-destructive">{error}</p>
-          <Button variant="outline" size="sm" className="mt-3 rounded-full" onClick={fetchMembers}>Try again</Button>
+          <Button variant="outline" size="sm" className="mt-3 rounded-full" onClick={fetchMembers}>
+            Try again
+          </Button>
         </div>
       )}
 
@@ -181,7 +277,7 @@ export function MemberList() {
         </div>
       )}
 
-      {/* Empty */}
+      {/* Empty state */}
       {!loading && !error && data?.items.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border bg-card py-16 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
@@ -189,7 +285,9 @@ export function MemberList() {
           </span>
           <p className="mt-4 text-sm font-semibold text-foreground">No members found</p>
           <p className="mt-1 text-sm text-secondary-foreground">
-            {debouncedSearch ? "Try a different search term." : "No members have been added yet."}
+            {debouncedSearch || statusFilter !== "ALL"
+              ? "Try adjusting your search or filters."
+              : "No members have been added to this organization yet."}
           </p>
         </div>
       )}
@@ -198,7 +296,7 @@ export function MemberList() {
       {!loading && !error && data && data.items.length > 0 && (
         <>
           <div className="overflow-hidden rounded-[1.75rem] border border-border">
-            {/* Head */}
+            {/* Table Head */}
             <div className="hidden grid-cols-[minmax(0,1fr)_160px_140px_52px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
               <span>Member</span>
               <span>Joined</span>
@@ -206,11 +304,13 @@ export function MemberList() {
               <span />
             </div>
 
-            {/* Rows */}
+            {/* Table Rows */}
             {data.items.map((member, idx) => (
               <div
                 key={member.id}
-                className={`grid grid-cols-[minmax(0,1fr)_52px] items-center gap-3 px-5 py-4 transition-colors hover:bg-[#fcf8f1] sm:grid-cols-[minmax(0,1fr)_160px_140px_52px] ${idx !== data.items.length - 1 ? "border-b border-border" : ""}`}
+                className={`grid grid-cols-[minmax(0,1fr)_52px] items-center gap-3 px-5 py-4 transition-colors hover:bg-[#fcf8f1] sm:grid-cols-[minmax(0,1fr)_160px_140px_52px] ${
+                  idx !== data.items.length - 1 ? "border-b border-border" : ""
+                }`}
               >
                 {/* Name / email */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -232,7 +332,11 @@ export function MemberList() {
 
                 {/* Status badge */}
                 <div className="hidden sm:block">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[member.status]}`}>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      STATUS_STYLES[member.status]
+                    }`}
+                  >
                     {member.status.charAt(0) + member.status.slice(1).toLowerCase()}
                   </span>
                 </div>
@@ -240,7 +344,7 @@ export function MemberList() {
                 {/* Actions */}
                 <div className="flex justify-end">
                   <MemberRowMenu
-                    member={member}
+                    onView={() => setDialog({ type: "view", member })}
                     onEdit={() => setDialog({ type: "edit", member })}
                     onDelete={() => setDialog({ type: "delete", member })}
                   />
@@ -249,22 +353,32 @@ export function MemberList() {
             ))}
           </div>
 
-          {/* Pagination */}
+          {/* Pagination Controls */}
           {data.totalPages > 1 && (
             <div className="flex items-center justify-between gap-4">
               <p className="text-sm text-secondary-foreground">
                 Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, data.total)} of {data.total}
               </p>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" className="h-8 w-8 rounded-full"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm font-medium text-foreground">
                   {page} / {data.totalPages}
                 </span>
-                <Button variant="outline" size="icon" className="h-8 w-8 rounded-full"
-                  onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))} disabled={page === data.totalPages}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
+                  disabled={page === data.totalPages}
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -274,16 +388,34 @@ export function MemberList() {
       )}
 
       {/* Dialogs */}
+      <CreateMemberDialog
+        open={dialog.type === "create"}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+        onSuccess={fetchMembers}
+      />
+      <ViewMemberDialog
+        member={dialog.type === "view" ? dialog.member : null}
+        open={dialog.type === "view"}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+      />
       <EditMemberDialog
         member={dialog.type === "edit" ? dialog.member : null}
         open={dialog.type === "edit"}
-        onOpenChange={(open) => { if (!open) closeDialog(); }}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
         onSuccess={fetchMembers}
       />
       <DeleteMemberDialog
         member={dialog.type === "delete" ? dialog.member : null}
         open={dialog.type === "delete"}
-        onOpenChange={(open) => { if (!open) closeDialog(); }}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
         onSuccess={fetchMembers}
       />
     </div>

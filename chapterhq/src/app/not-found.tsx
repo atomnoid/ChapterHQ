@@ -1,25 +1,21 @@
 import Link from "next/link";
 
 export default function NotFound() {
-	return (
-		<main className="flex min-h-screen items-center justify-center bg-background px-6">
-			<div className="max-w-md rounded-2xl border border-border bg-card px-8 py-10 text-center shadow-sm">
-				<p className="text-sm font-medium uppercase tracking-[0.28em] text-secondary-foreground">
-					ChapterHQ
-				</p>
-				<h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-foreground">
-					Page not found
-				</h1>
-				<p className="mt-3 text-sm leading-7 text-secondary-foreground">
-					The page you are looking for does not exist or has been moved.
-				</p>
-				<Link
-					href="/"
-					className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[#4a3228]"
-				>
-					Go home
-				</Link>
-			</div>
-		</main>
-	);
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center bg-background text-foreground">
+      <h1 className="text-6xl font-extrabold tracking-tight text-primary">404</h1>
+      <h2 className="mt-4 text-2xl font-bold tracking-tight">Page Not Found</h2>
+      <p className="mt-2 text-muted-foreground max-w-md">
+        Sorry, we couldn&apos;t find the page you are looking for. It might have been moved or deleted.
+      </p>
+      <div className="mt-6">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md shadow hover:bg-primary/90 transition-colors"
+        >
+          Return to Dashboard
+        </Link>
+      </div>
+    </div>
+  );
 }
