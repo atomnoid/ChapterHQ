@@ -1,0 +1,100 @@
+import { prisma } from "@/lib/prisma";
+import { buildOrderBy, PaginationParams } from "@/lib/pagination";
+import { EventStatus } from "@prisma/client";
+
+interface CreateEventData {
+  organizationId: string;
+  title: string;
+  description?: string;
+  venue?: string;
+  startDate: Date;
+  endDate?: Date;
+  capacity?: number;
+  registrationRequired?: boolean;
+  status?: EventStatus;
+}
+
+interface UpdateEventData {
+  title?: string;
+  description?: string;
+  venue?: string;
+  startDate?: Date;
+  endDate?: Date;
+  capacity?: number;
+  registrationRequired?: boolean;
+  status?: EventStatus;
+}
+
+export class EventRepository {
+  async create(data: CreateEventData) {
+    return prisma.event.create({
+      data: {
+        organizationId: data.organizationId,
+        title: data.title,
+        description: data.description,
+        venue: data.venue,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        capacity: data.capacity,
+        registrationRequired: data.registrationRequired ?? false,
+        status: data.status ?? "DRAFT",
+      },
+    });
+  }
+
+  async update(id: string, organizationId: string, data: UpdateEventData) {
+    return prisma.event.update({
+      where: { id, organizationId },
+      data,
+    });
+  }
+
+  async findById(id: string, organizationId: string) {
+    return prisma.event.findFirst({
+      where: { id, organizationId, deletedAt: null },
+    });
+  }
+
+  async list(
+    params: PaginationParams & {
+      organizationId: string;
+      status?: EventStatus;
+    }
+  ) {
+    const whereClause: any = {
+      organizationId: params.organizationId,
+      deletedAt: null,
+    };
+
+    if (params.status) whereClause.status = params.status;
+
+    if (params.search) {
+      whereClause.OR = [
+        { title: { contains: params.search, mode: "insensitive" } },
+        { description: { contains: params.search, mode: "insensitive" } },
+        { venue: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
+    const orderBy = buildOrderBy(params.sortBy, params.order, "startDate");
+
+    const [total, items] = await Promise.all([
+      prisma.event.count({ where: whereClause }),
+      prisma.event.findMany({
+        where: whereClause,
+        skip: params.skip,
+        take: params.take,
+        orderBy,
+      }),
+    ]);
+
+    return { total, items };
+  }
+
+  async softDelete(id: string, organizationId: string) {
+    return prisma.event.update({
+      where: { id, organizationId },
+      data: { deletedAt: new Date(), status: "CANCELLED" },
+    });
+  }
+}
