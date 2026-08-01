@@ -11,7 +11,7 @@ const memberService = new MemberService();
 // GET /api/members/[id]
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -19,15 +19,14 @@ export async function GET(
       return apiResponse.unauthorized();
     }
 
-    // Resolve context & enforce permission
     const { context: authContext } = await requirePermission(session.user.id, "members:read");
 
-    const { id } = await context.params;
+    const { id } = await params;
     const member = await memberService.getMember(id, authContext.organizationId);
 
     return apiResponse.success(member);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof MemberNotFoundError) {
@@ -40,7 +39,7 @@ export async function GET(
 // PUT /api/members/[id]
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -48,13 +47,12 @@ export async function PUT(
       return apiResponse.unauthorized();
     }
 
-    // Resolve context & enforce permission
     const { context: authContext } = await requirePermission(session.user.id, "members:update");
 
     const body = await request.json();
     const validatedData = updateMemberSchema.parse(body);
 
-    const { id } = await context.params;
+    const { id } = await params;
     const updatedMember = await memberService.updateMember(
       id,
       authContext.organizationId,
@@ -63,8 +61,8 @@ export async function PUT(
     );
 
     return apiResponse.success(updatedMember, "Member updated successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
@@ -80,7 +78,7 @@ export async function PUT(
 // DELETE /api/members/[id]
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -88,15 +86,14 @@ export async function DELETE(
       return apiResponse.unauthorized();
     }
 
-    // Resolve context & enforce permission
     const { context: authContext } = await requirePermission(session.user.id, "members:delete");
 
-    const { id } = await context.params;
+    const { id } = await params;
     await memberService.deleteMember(id, authContext.organizationId, session.user.id);
 
     return apiResponse.success(null, "Member deleted successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof MemberNotFoundError) {
