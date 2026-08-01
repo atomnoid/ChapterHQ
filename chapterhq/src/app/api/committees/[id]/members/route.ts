@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
@@ -17,8 +18,8 @@ const committeeMemberService = new CommitteeMemberService();
 
 // GET /api/committees/[id]/members
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -26,17 +27,17 @@ export async function GET(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "committees:read");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:read");
 
     const { searchParams } = new URL(request.url);
     const parsedQuery = committeeMemberQuerySchema.parse(
       Object.fromEntries(searchParams.entries())
     );
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const result = await committeeMemberService.listCommitteeMembers(
-      resolvedParams.id,
-      context.organizationId,
+      id,
+      authContext.organizationId,
       parsedQuery
     );
 
@@ -57,8 +58,8 @@ export async function GET(
 
 // POST /api/committees/[id]/members
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -66,16 +67,16 @@ export async function POST(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "committees:assign");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:assign");
 
     const body = await request.json();
     const { memberId } = assignCommitteeMemberSchema.parse(body);
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const assignment = await committeeMemberService.assignMemberToCommittee(
-      resolvedParams.id,
+      id,
       memberId,
-      context.organizationId,
+      authContext.organizationId,
       session.user.id
     );
 

@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
@@ -9,18 +10,18 @@ const registrationService = new EventRegistrationService();
 
 // GET /api/events/[id]/attendance
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context } = await requirePermission(session.user.id, "events:read");
+    const { context: authContext } = await requirePermission(session.user.id, "events:read");
 
-    const { id: eventId } = await params;
+    const { id: eventId } = await context.params;
     const result = await registrationService.getAttendanceList(
-      context.organizationId,
+      authContext.organizationId,
       eventId
     );
 
@@ -34,23 +35,23 @@ export async function GET(
 
 // PATCH /api/events/[id]/attendance
 export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context } = await requirePermission(session.user.id, "events:update");
+    const { context: authContext } = await requirePermission(session.user.id, "events:update");
 
     const body = await request.json();
-    const { id: eventId } = await params;
+    const { id: eventId } = await context.params;
 
     // Check if it is a bulk update or single update
     if (body && Array.isArray(body.items)) {
       const { items } = bulkAttendanceSchema.parse(body);
       const result = await registrationService.bulkUpdateAttendance(
-        context.organizationId,
+        authContext.organizationId,
         eventId,
         items,
         session.user.id
@@ -59,7 +60,7 @@ export async function PATCH(
     } else {
       const validatedData = markAttendanceSchema.parse(body);
       const result = await registrationService.markAttendance(
-        context.organizationId,
+        authContext.organizationId,
         eventId,
         validatedData,
         session.user.id

@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
@@ -7,18 +8,18 @@ const registrationService = new EventRegistrationService();
 
 // DELETE /api/events/[id]/registrations/[memberId]
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string; memberId: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context } = await requirePermission(session.user.id, "events:update");
+    const { context: authContext } = await requirePermission(session.user.id, "events:update");
 
-    const { id: eventId, memberId } = await params;
+    const { id: eventId, memberId } = await context.params;
     await registrationService.cancelRegistration(
-      context.organizationId,
+      authContext.organizationId,
       eventId,
       memberId,
       session.user.id

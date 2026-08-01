@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { UserRoleService, UserRoleNotFoundError } from "@/services/user-role.service";
@@ -8,8 +8,8 @@ const userRoleService = new UserRoleService();
 
 // DELETE /api/members/[id]/roles/[roleId]
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string; roleId: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string; roleId: string }> }
 ) {
   try {
     const session = await auth();
@@ -17,13 +17,13 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:remove");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:remove");
 
-    const resolvedParams = await params;
+    const { id, roleId } = await context.params;
     await userRoleService.removeRole(
-      context.organizationId,
-      resolvedParams.id,
-      resolvedParams.roleId
+      authContext.organizationId,
+      id,
+      roleId
     );
 
     return NextResponse.json({ message: "Role removed successfully." }, { status: 200 });

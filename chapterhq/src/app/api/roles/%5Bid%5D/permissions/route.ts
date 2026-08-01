@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { PermissionService } from "@/services/permission/permission.service";
@@ -8,8 +8,8 @@ const permissionService = new PermissionService();
 
 // GET /api/roles/[id]/permissions
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -17,12 +17,12 @@ export async function GET(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:read");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:read");
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const permissions = await permissionService.getRolePermissions(
-      context.organizationId,
-      resolvedParams.id
+      authContext.organizationId,
+      id
     );
 
     return NextResponse.json(permissions, { status: 200 });
@@ -39,8 +39,8 @@ export async function GET(
 
 // PATCH /api/roles/[id]/permissions
 export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -48,7 +48,7 @@ export async function PATCH(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:update");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:update");
 
     const body = await request.json();
     const { permissionIds } = body as { permissionIds?: string[] };
@@ -59,10 +59,10 @@ export async function PATCH(
       );
     }
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const updatedPermissions = await permissionService.updateRolePermissions(
-      context.organizationId,
-      resolvedParams.id,
+      authContext.organizationId,
+      id,
       permissionIds
     );
 

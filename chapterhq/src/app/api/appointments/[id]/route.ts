@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
@@ -13,17 +14,17 @@ const appointmentService = new AppointmentService();
 
 // GET /api/appointments/[id]
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context } = await requirePermission(session.user.id, "appointments:read");
+    const { context: authContext } = await requirePermission(session.user.id, "appointments:read");
 
-    const { id } = await params;
-    const appointment = await appointmentService.getAppointment(id, context.organizationId);
+    const { id } = await context.params;
+    const appointment = await appointmentService.getAppointment(id, authContext.organizationId);
 
     return apiResponse.success(appointment);
   } catch (error: any) {
@@ -35,22 +36,22 @@ export async function GET(
 
 // PATCH /api/appointments/[id]
 export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context } = await requirePermission(session.user.id, "appointments:update");
+    const { context: authContext } = await requirePermission(session.user.id, "appointments:update");
 
     const body = await request.json();
     const validatedData = updateAppointmentSchema.parse(body);
 
-    const { id } = await params;
+    const { id } = await context.params;
     const updated = await appointmentService.updateAppointment(
       id,
-      context.organizationId,
+      authContext.organizationId,
       validatedData,
       session.user.id
     );
@@ -69,17 +70,17 @@ export async function PATCH(
 
 // DELETE /api/appointments/[id]
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context } = await requirePermission(session.user.id, "appointments:delete");
+    const { context: authContext } = await requirePermission(session.user.id, "appointments:delete");
 
-    const { id } = await params;
-    await appointmentService.deleteAppointment(id, context.organizationId, session.user.id);
+    const { id } = await context.params;
+    await appointmentService.deleteAppointment(id, authContext.organizationId, session.user.id);
 
     return apiResponse.success(null, "Appointment deleted successfully.");
   } catch (error: any) {

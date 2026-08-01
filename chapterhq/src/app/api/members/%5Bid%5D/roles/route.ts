@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { UserRoleService, UserRoleNotFoundError, InactiveRoleAssignmentError } from "@/services/user-role.service";
@@ -9,8 +9,8 @@ const userRoleService = new UserRoleService();
 
 // GET /api/members/[id]/roles
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -18,10 +18,10 @@ export async function GET(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:read");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:read");
 
-    const resolvedParams = await params;
-    const roles = await userRoleService.getMemberRoles(context.organizationId, resolvedParams.id);
+    const { id } = await context.params;
+    const roles = await userRoleService.getMemberRoles(authContext.organizationId, id);
 
     return NextResponse.json(roles, { status: 200 });
   } catch (error: any) {
@@ -37,8 +37,8 @@ export async function GET(
 
 // POST /api/members/[id]/roles
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -46,7 +46,7 @@ export async function POST(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:assign");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:assign");
 
     const body = await request.json();
     const { roleId } = body as { roleId?: string };
@@ -54,10 +54,10 @@ export async function POST(
       return NextResponse.json({ message: "roleId is required." }, { status: 400 });
     }
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const userRole = await userRoleService.assignRole(
-      context.organizationId,
-      resolvedParams.id,
+      authContext.organizationId,
+      id,
       roleId
     );
 

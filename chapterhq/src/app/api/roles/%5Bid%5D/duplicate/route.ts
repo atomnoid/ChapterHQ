@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
@@ -18,8 +18,8 @@ const duplicateRoleSchema = z.object({
 
 // POST /api/roles/[id]/duplicate
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -27,15 +27,15 @@ export async function POST(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:create");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:create");
 
     const body = await request.json();
     const validatedData = duplicateRoleSchema.parse(body);
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const duplicatedRole = await roleService.duplicateRole(
-      resolvedParams.id,
-      context.organizationId,
+      id,
+      authContext.organizationId,
       validatedData
     );
 

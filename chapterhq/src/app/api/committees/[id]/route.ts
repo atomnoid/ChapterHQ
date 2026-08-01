@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
@@ -13,8 +14,8 @@ const committeeService = new CommitteeService();
 
 // GET /api/committees/[id]
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -22,12 +23,12 @@ export async function GET(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "committees:read");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:read");
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const committee = await committeeService.getCommittee(
-      resolvedParams.id,
-      context.organizationId
+      id,
+      authContext.organizationId
     );
 
     return apiResponse.success(committee);
@@ -44,8 +45,8 @@ export async function GET(
 
 // PATCH /api/committees/[id]
 export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -53,15 +54,15 @@ export async function PATCH(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "committees:update");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:update");
 
     const body = await request.json();
     const validatedData = updateCommitteeSchema.parse(body);
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const updated = await committeeService.updateCommittee(
-      resolvedParams.id,
-      context.organizationId,
+      id,
+      authContext.organizationId,
       validatedData,
       session.user.id
     );
@@ -86,8 +87,8 @@ export async function PATCH(
 
 // DELETE /api/committees/[id]
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -95,12 +96,12 @@ export async function DELETE(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "committees:delete");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:delete");
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     await committeeService.deleteCommittee(
-      resolvedParams.id,
-      context.organizationId,
+      id,
+      authContext.organizationId,
       session.user.id
     );
 

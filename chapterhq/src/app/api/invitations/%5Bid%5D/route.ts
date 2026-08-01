@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { InvitationService, InvitationNotFoundError } from "@/services/invitation.service";
@@ -7,8 +7,8 @@ const invitationService = new InvitationService();
 
 // DELETE /api/invitations/[id]
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -16,10 +16,10 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "members:create");
+    const { context: authContext } = await requirePermission(session.user.id, "members:create");
 
-    const resolvedParams = await params;
-    await invitationService.cancelInvitation(resolvedParams.id, context.organizationId);
+    const { id } = await context.params;
+    await invitationService.cancelInvitation(id, authContext.organizationId);
 
     return NextResponse.json({ message: "Invitation cancelled successfully." }, { status: 200 });
   } catch (error: any) {

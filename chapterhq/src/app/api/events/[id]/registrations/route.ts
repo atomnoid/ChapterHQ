@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
@@ -9,21 +10,21 @@ const registrationService = new EventRegistrationService();
 
 // GET /api/events/[id]/registrations
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context } = await requirePermission(session.user.id, "events:read");
+    const { context: authContext } = await requirePermission(session.user.id, "events:read");
 
     const { searchParams } = new URL(request.url);
     const parsedQuery = registrationQuerySchema.parse(Object.fromEntries(searchParams.entries()));
 
-    const { id: eventId } = await params;
+    const { id: eventId } = await context.params;
     const result = await registrationService.getRegistrations(
-      context.organizationId,
+      authContext.organizationId,
       eventId,
       parsedQuery
     );
@@ -43,22 +44,22 @@ export async function GET(
 
 // POST /api/events/[id]/registrations
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
     // Reusing events:update permission to register a member
-    const { context } = await requirePermission(session.user.id, "events:update");
+    const { context: authContext } = await requirePermission(session.user.id, "events:update");
 
     const body = await request.json();
     const { memberId } = registerMemberSchema.parse(body);
 
-    const { id: eventId } = await params;
+    const { id: eventId } = await context.params;
     const registration = await registrationService.registerMember(
-      context.organizationId,
+      authContext.organizationId,
       eventId,
       memberId,
       session.user.id

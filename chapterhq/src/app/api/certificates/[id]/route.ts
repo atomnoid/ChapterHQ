@@ -3,12 +3,17 @@ import { ZodError } from "zod";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
-import { EventService, EventNotFoundError } from "@/services/event.service";
-import { updateEventSchema } from "@/validators/event.validator";
+import {
+  CertificateService,
+  CertificateNotFoundError,
+  DuplicateCredentialIdError,
+  MemberNotFoundError,
+} from "@/services/certificate.service";
+import { updateCertificateSchema } from "@/validators/certificate.validator";
 
-const eventService = new EventService();
+const certificateService = new CertificateService();
 
-// GET /api/events/[id]
+// GET /api/certificates/[id]
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -17,20 +22,20 @@ export async function GET(
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context: authContext } = await requirePermission(session.user.id, "events:read");
+    const { context: authContext } = await requirePermission(session.user.id, "certificates:read");
 
     const { id } = await context.params;
-    const event = await eventService.getEvent(id, authContext.organizationId);
+    const certificate = await certificateService.getCertificate(id, authContext.organizationId);
 
-    return apiResponse.success(event);
+    return apiResponse.success(certificate);
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
-    if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
+    if (error instanceof CertificateNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }
 }
 
-// PATCH /api/events/[id]
+// PATCH /api/certificates/[id]
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -39,31 +44,33 @@ export async function PATCH(
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context: authContext } = await requirePermission(session.user.id, "events:update");
+    const { context: authContext } = await requirePermission(session.user.id, "certificates:update");
 
     const body = await request.json();
-    const validatedData = updateEventSchema.parse(body);
+    const validatedData = updateCertificateSchema.parse(body);
 
     const { id } = await context.params;
-    const updated = await eventService.updateEvent(
+    const updated = await certificateService.updateCertificate(
       id,
       authContext.organizationId,
       validatedData,
       session.user.id
     );
 
-    return apiResponse.success(updated, "Event updated successfully.");
+    return apiResponse.success(updated, "Certificate updated successfully.");
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
-    if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
+    if (error instanceof CertificateNotFoundError) return apiResponse.notFound(error.message);
+    if (error instanceof MemberNotFoundError) return apiResponse.notFound(error.message);
+    if (error instanceof DuplicateCredentialIdError) return apiResponse.conflict(error.message);
     return apiResponse.serverError();
   }
 }
 
-// DELETE /api/events/[id]
+// DELETE /api/certificates/[id]
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -72,15 +79,15 @@ export async function DELETE(
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context: authContext } = await requirePermission(session.user.id, "events:delete");
+    const { context: authContext } = await requirePermission(session.user.id, "certificates:delete");
 
     const { id } = await context.params;
-    await eventService.deleteEvent(id, authContext.organizationId, session.user.id);
+    await certificateService.deleteCertificate(id, authContext.organizationId, session.user.id);
 
-    return apiResponse.success(null, "Event deleted successfully.");
+    return apiResponse.success(null, "Certificate deleted successfully.");
   } catch (error: any) {
     if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
-    if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
+    if (error instanceof CertificateNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }
 }

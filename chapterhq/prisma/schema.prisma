@@ -96,6 +96,7 @@ model Organization {
   auditLogs AuditLog[]
   committees Committee[]
   events Event[]
+  certificates Certificate[]
 
   @@map("organizations")
 }
@@ -221,6 +222,7 @@ model Member {
   appointments     Appointment[]
   registrations    EventRegistration[]
   attendances      Attendance[]
+  certificates     Certificate[]
 
   @@unique([organizationId, userId])
 
@@ -482,4 +484,31 @@ model AuditLog {
   timestamp DateTime @default(now())
 
   @@map("audit_logs")
+}
+
+//////////////////////////////////////////////////////
+// CERTIFICATE
+//////////////////////////////////////////////////////
+
+model Certificate {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+  memberId       String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  member       Member       @relation(fields: [memberId], references: [id])
+
+  title        String
+  description  String?
+  issueDate    DateTime
+  expiryDate   DateTime?
+  credentialId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@unique([organizationId, credentialId])
+  @@map("certificates")
 }

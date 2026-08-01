@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
@@ -9,8 +10,8 @@ const memberService = new MemberService();
 
 // GET /api/members/[id]
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -19,10 +20,10 @@ export async function GET(
     }
 
     // Resolve context & enforce permission
-    const { context } = await requirePermission(session.user.id, "members:read");
+    const { context: authContext } = await requirePermission(session.user.id, "members:read");
 
-    const resolvedParams = await params;
-    const member = await memberService.getMember(resolvedParams.id, context.organizationId);
+    const { id } = await context.params;
+    const member = await memberService.getMember(id, authContext.organizationId);
 
     return apiResponse.success(member);
   } catch (error: any) {
@@ -38,8 +39,8 @@ export async function GET(
 
 // PUT /api/members/[id]
 export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -48,15 +49,15 @@ export async function PUT(
     }
 
     // Resolve context & enforce permission
-    const { context } = await requirePermission(session.user.id, "members:update");
+    const { context: authContext } = await requirePermission(session.user.id, "members:update");
 
     const body = await request.json();
     const validatedData = updateMemberSchema.parse(body);
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const updatedMember = await memberService.updateMember(
-      resolvedParams.id,
-      context.organizationId,
+      id,
+      authContext.organizationId,
       validatedData,
       session.user.id
     );
@@ -78,8 +79,8 @@ export async function PUT(
 
 // DELETE /api/members/[id]
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -88,10 +89,10 @@ export async function DELETE(
     }
 
     // Resolve context & enforce permission
-    const { context } = await requirePermission(session.user.id, "members:delete");
+    const { context: authContext } = await requirePermission(session.user.id, "members:delete");
 
-    const resolvedParams = await params;
-    await memberService.deleteMember(resolvedParams.id, context.organizationId, session.user.id);
+    const { id } = await context.params;
+    await memberService.deleteMember(id, authContext.organizationId, session.user.id);
 
     return apiResponse.success(null, "Member deleted successfully.");
   } catch (error: any) {

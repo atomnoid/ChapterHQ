@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
@@ -12,8 +13,8 @@ const committeeMemberService = new CommitteeMemberService();
 
 // DELETE /api/committees/[id]/members/[memberId]
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string; memberId: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
     const session = await auth();
@@ -21,14 +22,14 @@ export async function DELETE(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "committees:remove");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:remove");
 
-    const { id: committeeId, memberId } = await params;
+    const { id: committeeId, memberId } = await context.params;
 
     await committeeMemberService.removeMemberFromCommittee(
       committeeId,
       memberId,
-      context.organizationId,
+      authContext.organizationId,
       session.user.id
     );
 

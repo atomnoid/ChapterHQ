@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
@@ -14,8 +15,8 @@ const roleService = new RoleService();
 
 // GET /api/roles/[id]
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -23,10 +24,10 @@ export async function GET(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:read");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:read");
 
-    const resolvedParams = await params;
-    const role = await roleService.getRole(resolvedParams.id, context.organizationId);
+    const { id } = await context.params;
+    const role = await roleService.getRole(id, authContext.organizationId);
 
     return apiResponse.success(role);
   } catch (error: any) {
@@ -42,8 +43,8 @@ export async function GET(
 
 // PATCH /api/roles/[id]
 export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -51,15 +52,15 @@ export async function PATCH(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:update");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:update");
 
     const body = await request.json();
     const validatedData = updateRoleSchema.parse(body);
 
-    const resolvedParams = await params;
+    const { id } = await context.params;
     const updatedRole = await roleService.updateRole(
-      resolvedParams.id,
-      context.organizationId,
+      id,
+      authContext.organizationId,
       validatedData,
       session.user.id
     );
@@ -87,8 +88,8 @@ export async function PATCH(
 
 // DELETE /api/roles/[id]
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -96,10 +97,10 @@ export async function DELETE(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "roles:delete");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:delete");
 
-    const resolvedParams = await params;
-    await roleService.deleteRole(resolvedParams.id, context.organizationId, session.user.id);
+    const { id } = await context.params;
+    await roleService.deleteRole(id, authContext.organizationId, session.user.id);
 
     return apiResponse.success(null, "Role deleted successfully.");
   } catch (error: any) {
