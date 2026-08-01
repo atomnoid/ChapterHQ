@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
+	Award,
 	Bell,
+	Briefcase,
 	Building2,
 	CalendarDays,
 	ChevronDown,
 	DollarSign,
-	FileText,
 	LayoutDashboard,
 	LogOut,
 	Menu,
+	Package,
 	Search,
 	Settings,
 	Shield,
@@ -40,9 +42,14 @@ const navigationItems = [
 	{ label: "Members", href: "/members", icon: Users },
 	{ label: "Roles", href: "/roles", icon: Shield },
 	{ label: "Organizations", href: "/organizations", icon: Building2 },
-	{ label: "Calendar", href: "/dashboard#calendar", icon: CalendarDays },
-	{ label: "Finance", href: "/dashboard#finance", icon: DollarSign },
-	{ label: "Documents", href: "/dashboard#documents", icon: FileText },
+	{ label: "Committees", href: "/committees", icon: Briefcase },
+	{ label: "Appointments", href: "/appointments", icon: CalendarDays },
+	{ label: "Events", href: "/events", icon: CalendarDays },
+	{ label: "Attendance", href: "/attendance", icon: Users },
+	{ label: "Finance", href: "/finance", icon: DollarSign },
+	{ label: "Inventory", href: "/inventory", icon: Package },
+	{ label: "Certificates", href: "/certificates", icon: Award },
+	{ label: "Notifications", href: "/notifications", icon: Bell },
 ];
 
 function getInitials(name: string | null) {
@@ -150,15 +157,16 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
 							</div>
 
 							<div className="ml-auto flex items-center gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									size="icon"
-									className="rounded-full border-border bg-card text-foreground"
-									aria-label="Notifications"
-								>
-									<Bell className="h-4 w-4" />
-								</Button>
+								<Link href="/notifications" aria-label="Notifications">
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										className="rounded-full border-border bg-card text-foreground"
+									>
+										<Bell className="h-4 w-4" />
+									</Button>
+								</Link>
 
 								<div className="relative">
 									<Button
