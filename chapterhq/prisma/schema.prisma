@@ -91,9 +91,35 @@ model Committee {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
+  committeeMembers CommitteeMember[]
+
   @@unique([organizationId, name])
 
   @@map("committees")
+}
+
+//////////////////////////////////////////////////////
+// COMMITTEE MEMBER
+//////////////////////////////////////////////////////
+
+model CommitteeMember {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  committeeId String @db.ObjectId
+  memberId    String @db.ObjectId
+
+  committee Committee @relation(fields: [committeeId], references: [id])
+  member    Member    @relation(fields: [memberId], references: [id])
+
+  assignedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@unique([committeeId, memberId])
+
+  @@map("committee_members")
 }
 
 //////////////////////////////////////////////////////
@@ -163,6 +189,7 @@ model Member {
   deletedAt DateTime?
 
   userRoles UserRole[]
+  committeeMembers CommitteeMember[]
 
   @@unique([organizationId, userId])
 
