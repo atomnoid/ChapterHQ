@@ -97,6 +97,7 @@ model Organization {
   committees Committee[]
   events Event[]
   certificates Certificate[]
+  notifications Notification[]
 
   @@map("organizations")
 }
@@ -511,4 +512,27 @@ model Certificate {
 
   @@unique([organizationId, credentialId])
   @@map("certificates")
+}
+
+//////////////////////////////////////////////////////
+// NOTIFICATION
+//////////////////////////////////////////////////////
+
+model Notification {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  title       String
+  message     String
+  type        String
+  targetScope String
+  isRead      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
 }
