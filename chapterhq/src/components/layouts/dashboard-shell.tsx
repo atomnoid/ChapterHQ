@@ -111,22 +111,8 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
 						})}
 					</nav>
 
-					<div className="mt-auto rounded-[1.5rem] border border-border bg-[#fcf8f1] p-4 shadow-[0_16px_40px_rgba(77,54,37,0.06)]">
-						<p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">
-							Workspace status
-						</p>
-						<div className="mt-3 flex items-center justify-between gap-3">
-							<div>
-								<p className="text-sm font-semibold text-foreground">All systems ready</p>
-								<p className="mt-1 text-xs leading-5 text-secondary-foreground">
-									Your dashboard foundation is live and ready for feature modules.
-								</p>
-							</div>
-							<span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-								OK
-							</span>
-						</div>
-					</div>
+					{/* Organization Overview */}
+					<SidebarOrgOverview />
 				</aside>
 
 				<div className="flex min-w-0 flex-1 flex-col">
@@ -318,6 +304,40 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
 						</div>
 					</div>
 				</aside>
+			</div>
+		</div>
+	);
+}
+
+function SidebarOrgOverview() {
+	const [orgInfo, setOrgInfo] = useState<{ name: string; slug: string; status: string } | null>(null);
+
+	useEffect(() => {
+		fetch("/api/organization/settings")
+			.then((r) => r.json())
+			.then((data) => {
+				if (data && data.name) {
+					setOrgInfo(data);
+				}
+			})
+			.catch(() => {});
+	}, []);
+
+	if (!orgInfo) return null;
+
+	return (
+		<div className="mt-auto rounded-[1.5rem] border border-border bg-[#fcf8f1] p-4 shadow-[0_16px_40px_rgba(77,54,37,0.06)]">
+			<p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-secondary-foreground">
+				Organization Overview
+			</p>
+			<div className="mt-2.5 space-y-1.5">
+				<div>
+					<p className="text-sm font-bold text-foreground truncate">{orgInfo.name}</p>
+					<p className="text-xs text-secondary-foreground">/{orgInfo.slug}</p>
+				</div>
+				<span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+					{orgInfo.status}
+				</span>
 			</div>
 		</div>
 	);
