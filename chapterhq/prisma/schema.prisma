@@ -86,6 +86,19 @@ enum InventoryStatus {
   DISPOSED
 }
 
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION
 //////////////////////////////////////////////////////
@@ -114,6 +127,8 @@ model Organization {
   documents Document[]
   finances FinanceRecord[]
   inventoryItems InventoryItem[]
+  pages Page[]
+  announcements Announcement[]
 
   @@map("organizations")
 }
@@ -625,4 +640,52 @@ model InventoryItem {
   deletedAt DateTime?
 
   @@map("inventory_items")
+}
+
+//////////////////////////////////////////////////////
+// CMS - PAGE & ANNOUNCEMENT
+//////////////////////////////////////////////////////
+
+model Page {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  title       String
+  slug        String
+  content     String
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  authorId    String?       @db.ObjectId
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([organizationId, slug])
+  @@map("cms_pages")
+}
+
+model Announcement {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  title       String
+  content     String
+  priority    PriorityLevel @default(MEDIUM)
+  startDate   DateTime?
+  endDate     DateTime?
+  status      ContentStatus @default(PUBLISHED)
+  authorId    String?       @db.ObjectId
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("cms_announcements")
 }
