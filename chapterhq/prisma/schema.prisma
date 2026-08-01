@@ -61,6 +61,18 @@ enum EventStatus {
   COMPLETED
 }
 
+enum RegistrationStatus {
+  REGISTERED
+  CANCELLED
+  WAITLISTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION
 //////////////////////////////////////////////////////
@@ -207,6 +219,8 @@ model Member {
   userRoles        UserRole[]
   committeeMembers CommitteeMember[]
   appointments     Appointment[]
+  registrations    EventRegistration[]
+  attendances      Attendance[]
 
   @@unique([organizationId, userId])
 
@@ -386,7 +400,62 @@ model Event {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
+  registrations EventRegistration[]
+  attendances   Attendance[]
+
   @@map("events")
+}
+
+//////////////////////////////////////////////////////
+// EVENT REGISTRATION
+//////////////////////////////////////////////////////
+
+model EventRegistration {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  eventId  String @db.ObjectId
+  memberId String @db.ObjectId
+
+  event  Event  @relation(fields: [eventId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+
+  status RegistrationStatus @default(REGISTERED)
+
+  registeredAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@unique([eventId, memberId])
+
+  @@map("event_registrations")
+}
+
+//////////////////////////////////////////////////////
+// ATTENDANCE
+//////////////////////////////////////////////////////
+
+model Attendance {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  eventId  String @db.ObjectId
+  memberId String @db.ObjectId
+
+  event  Event  @relation(fields: [eventId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+
+  status AttendanceStatus @default(ABSENT)
+  notes  String?
+
+  markedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, memberId])
+
+  @@map("attendances")
 }
 
 //////////////////////////////////////////////////////
