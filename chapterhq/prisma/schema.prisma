@@ -47,6 +47,13 @@ enum InvitationStatus {
   CANCELLED
 }
 
+enum AppointmentStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  REVOKED
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION
 //////////////////////////////////////////////////////
@@ -92,6 +99,7 @@ model Committee {
   deletedAt DateTime?
 
   committeeMembers CommitteeMember[]
+  appointments     Appointment[]
 
   @@unique([organizationId, name])
 
@@ -188,12 +196,40 @@ model Member {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  userRoles UserRole[]
+  userRoles        UserRole[]
   committeeMembers CommitteeMember[]
+  appointments     Appointment[]
 
   @@unique([organizationId, userId])
 
   @@map("members")
+}
+
+//////////////////////////////////////////////////////
+// APPOINTMENT
+//////////////////////////////////////////////////////
+
+model Appointment {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+  committeeId    String @db.ObjectId
+  memberId       String @db.ObjectId
+
+  committee Committee @relation(fields: [committeeId], references: [id])
+  member    Member    @relation(fields: [memberId], references: [id])
+
+  designation String
+  startDate   DateTime
+  endDate     DateTime?
+
+  status AppointmentStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@map("appointments")
 }
 
 //////////////////////////////////////////////////////
