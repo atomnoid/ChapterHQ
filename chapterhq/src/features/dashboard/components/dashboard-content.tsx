@@ -1,161 +1,206 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import {
-  Building2, Shield, UserCheck, Users, RefreshCw, LayoutGrid, DollarSign,
-  Package, Bell, CalendarDays, CheckCircle, ArrowUpRight, ArrowDownRight, Clock
+  CalendarDays,
+  CheckCircle,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  FilePlus,
+  Users,
+  Award,
+  DollarSign,
+  TrendingUp,
+  Activity,
+  Calendar,
+  Layers,
+  ChevronRight,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DASHBOARD_WIDGETS } from "@/config/dashboard-widgets";
+import type { DashboardWidget } from "@/config/dashboard-widgets";
 
-interface OrganizationInfo {
-  id: string;
-  name: string;
-  slug: string;
-  status: string;
-  createdAt: string;
+// ---------------------------------------------------------------------------
+// Config Mappings
+// ---------------------------------------------------------------------------
+
+interface QuickAction {
+  label: string;
+  route: string;
+  permission: string;
+  icon: any;
 }
 
-interface Member {
-  id: string;
-  user: {
+const QUICK_ACTIONS: QuickAction[] = [
+  {
+    label: "Invite Member",
+    route: "/members",
+    permission: "members:create",
+    icon: Plus,
+  },
+  {
+    label: "Create Event",
+    route: "/events",
+    permission: "events:create",
+    icon: Calendar,
+  },
+  {
+    label: "Create Committee",
+    route: "/committees",
+    permission: "committees:create",
+    icon: Layers,
+  },
+  {
+    label: "Generate Certificate",
+    route: "/certificates",
+    permission: "certificates:create",
+    icon: Award,
+  },
+  {
+    label: "Add Transaction",
+    route: "/finance",
+    permission: "finance:create",
+    icon: DollarSign,
+  },
+  {
+    label: "Export Report",
+    route: "/reports",
+    permission: "reports:read",
+    icon: FilePlus,
+  },
+  {
+    label: "View Assigned Events",
+    route: "/events",
+    permission: "events:read",
+    icon: CalendarDays,
+  },
+  {
+    label: "Mark Attendance",
+    route: "/attendance",
+    permission: "attendance:create",
+    icon: CheckCircle,
+  },
+];
+
+interface MePermissionsResponse {
+  organization: {
     id: string;
-    name: string | null;
-    email: string | null;
+    name: string;
+    slug: string;
+    status: string;
   };
-}
-
-interface AppNotification {
-  id: string;
-  title: string;
-  message: string | null;
-  type: string;
-  isRead: boolean;
-  createdAt: string;
+  roles: string[];
+  permissions: string[];
 }
 
 export function DashboardContent() {
+  const { data: session } = useSession();
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // User and Org info
-  const [orgInfo, setOrgInfo] = useState<OrganizationInfo | null>(null);
-  const [userRole, setUserRole] = useState<string>("Volunteer");
-  
-  // Permission checks
-  const [permissions, setPermissions] = useState({
-    canReadMembers: false,
-    canReadFinance: false,
-    canReadInventory: false,
-    canReadEvents: false,
-  });
+  // User details resolved dynamically from /api/me/permissions
+  const [meData, setMeData] = useState<MePermissionsResponse | null>(null);
 
-  // Data states
+  // Statistics & lists fetched conditionally based on permissions
   const [membersCount, setMembersCount] = useState<number>(0);
-  const [recentMembers, setRecentMembers] = useState<any[]>([]);
   const [rolesCount, setRolesCount] = useState<number>(0);
   const [financeSummary, setFinanceSummary] = useState<{ totalIncome: number; totalExpense: number; balance: number } | null>(null);
   const [inventoryCount, setInventoryCount] = useState<number>(0);
   const [eventsList, setEventsList] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+
+  // Current date
+  const currentDateString = useMemo(() => {
+    return new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }, []);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
     try {
-      // 1. Fetch Session Info
-      const sessionRes = await fetch("/api/auth/session");
-      const session = await sessionRes.json();
-      const currentUserEmail = session?.user?.email;
-      const currentUserId = session?.user?.id;
+      // 1. Fetch permissions, roles, and org info via `/api/me/permissions`
+      const meRes = await fetch("/api/me/permissions");
+      if (!meRes.ok) {
+        throw new Error("Failed to load user permissions context.");
+      }
+      const permissionsResponse: MePermissionsResponse = await meRes.json();
+      setMeData(permissionsResponse);
 
-      // 2. Fetch Organization Settings (any logged in member can access)
-      const orgRes = await fetch("/api/organization/settings");
-      if (!orgRes.ok) throw new Error("Failed to load organization settings.");
-      const orgData = await orgRes.json();
-      setOrgInfo(orgData);
+      const userPermissions = new Set(permissionsResponse.permissions);
 
-      // 3. Probative Permission & Data Fetches
-      const [membersRes, financeRes, inventoryRes, eventsRes, notificationsRes] = await Promise.all([
-        fetch("/api/members?limit=5"),
-        fetch("/api/finance/summary"),
-        fetch("/api/inventory?limit=5"),
-        fetch("/api/events?limit=5"),
-        fetch("/api/notifications?limit=5"),
-      ]);
+      // Helper to check permissions
+      const hasPerm = (p: string) => userPermissions.has(p);
 
-      const canReadMembers = membersRes.ok;
-      const canReadFinance = financeRes.ok;
-      const canReadInventory = inventoryRes.ok;
-      const canReadEvents = eventsRes.ok;
+      // 2. Fetch allowed datasets in parallel
+      const fetches: Promise<any>[] = [];
+      const fetchKeys: string[] = [];
 
-      setPermissions({
-        canReadMembers,
-        canReadFinance,
-        canReadInventory,
-        canReadEvents,
+      if (hasPerm("members:read")) {
+        fetches.push(fetch("/api/members?limit=5").then((r) => r.json()));
+        fetchKeys.push("members");
+      }
+      if (hasPerm("roles:read")) {
+        fetches.push(fetch("/api/roles?limit=1").then((r) => r.json()));
+        fetchKeys.push("roles");
+      }
+      if (hasPerm("finance:read")) {
+        fetches.push(fetch("/api/finance/summary").then((r) => r.json()));
+        fetchKeys.push("finance");
+      }
+      if (hasPerm("inventory:read")) {
+        fetches.push(fetch("/api/inventory?limit=5").then((r) => r.json()));
+        fetchKeys.push("inventory");
+      }
+      if (hasPerm("events:read")) {
+        fetches.push(fetch("/api/events?limit=5").then((r) => r.json()));
+        fetchKeys.push("events");
+      }
+      if (hasPerm("notifications:read")) {
+        fetches.push(fetch("/api/notifications?limit=5").then((r) => r.json()));
+        fetchKeys.push("notifications");
+      }
+      if (hasPerm("audit-logs:read")) {
+        fetches.push(fetch("/api/audit-logs?limit=5").then((r) => r.json()));
+        fetchKeys.push("audit-logs");
+      }
+
+      const results = await Promise.all(fetches);
+
+      // 3. Map results back to local state
+      results.forEach((data, index) => {
+        const key = fetchKeys[index];
+        if (key === "members") {
+          const items = data?.items ?? data?.data?.items ?? [];
+          setMembersCount(data?.total ?? items.length);
+        } else if (key === "roles") {
+          setRolesCount(data?.total ?? data?.data?.total ?? 0);
+        } else if (key === "finance") {
+          setFinanceSummary(data?.data ?? data);
+        } else if (key === "inventory") {
+          const items = data?.items ?? data?.data?.items ?? [];
+          setInventoryCount(data?.total ?? items.length);
+        } else if (key === "events") {
+          const items = data?.items ?? data?.data?.items ?? [];
+          setEventsList(items);
+        } else if (key === "notifications") {
+          const items = data?.items ?? data?.data?.items ?? [];
+          setNotifications(items);
+        } else if (key === "audit-logs") {
+          const items = data?.items ?? data?.data?.items ?? [];
+          setAuditLogs(items);
+        }
       });
-
-      // 4. Resolve Roles
-      if (canReadMembers && currentUserEmail) {
-        const membersData = await membersRes.json();
-        const items = membersData.items ?? membersData.data?.items ?? [];
-        setRecentMembers(items);
-        setMembersCount(membersData.total ?? items.length);
-
-        // Find current member ID
-        const currentMember = items.find((m: Member) => m.user?.email === currentUserEmail || m.user?.id === currentUserId);
-        if (currentMember) {
-          const rolesRes = await fetch(`/api/members/${currentMember.id}/roles`);
-          if (rolesRes.ok) {
-            const rolesJson = await rolesRes.json();
-            const roles = rolesJson?.items ?? rolesJson?.data ?? rolesJson ?? [];
-            if (roles.length > 0) {
-              setUserRole(roles.map((r: any) => r.name ?? r.role?.name).join(", "));
-            } else {
-              setUserRole("President"); // fallback for members:read success
-            }
-          }
-        } else {
-          setUserRole("President");
-        }
-
-        // Fetch general roles count
-        const allRolesRes = await fetch("/api/roles?limit=1");
-        if (allRolesRes.ok) {
-          const allRolesJson = await allRolesRes.json();
-          setRolesCount(allRolesJson.total ?? allRolesJson.data?.total ?? 0);
-        }
-      } else {
-        setUserRole("Volunteer");
-      }
-
-      // Populate Finance data
-      if (canReadFinance) {
-        const finJson = await financeRes.json();
-        setFinanceSummary(finJson?.data ?? finJson);
-      }
-
-      // Populate Inventory data
-      if (canReadInventory) {
-        const invJson = await inventoryRes.json();
-        const items = invJson.items ?? invJson.data?.items ?? [];
-        setInventoryCount(invJson.total ?? items.length);
-      }
-
-      // Populate Events data
-      if (canReadEvents) {
-        const evJson = await eventsRes.json();
-        const items = evJson.items ?? evJson.data?.items ?? [];
-        setEventsList(items);
-      }
-
-      // Populate Notifications data
-      if (notificationsRes.ok) {
-        const notifJson = await notificationsRes.json();
-        const items = notifJson.items ?? notifJson.data?.items ?? [];
-        setNotifications(items);
-      }
-
     } catch (err: any) {
       setError(err.message ?? "An unexpected error occurred.");
     } finally {
@@ -167,21 +212,36 @@ export function DashboardContent() {
     fetchDashboardData();
   }, []);
 
+  // Filter allowed widgets
+  const allowedWidgets = useMemo(() => {
+    if (!meData) return [];
+    const permSet = new Set(meData.permissions);
+    return DASHBOARD_WIDGETS.filter((w) => permSet.has(w.permission));
+  }, [meData]);
+
+  // Filter allowed quick actions
+  const allowedQuickActions = useMemo(() => {
+    if (!meData) return [];
+    const permSet = new Set(meData.permissions);
+    return QUICK_ACTIONS.filter((qa) => permSet.has(qa.permission));
+  }, [meData]);
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-2">
-          <div className="h-8 w-64 animate-pulse bg-secondary/40 rounded-full" />
-          <div className="h-5 w-32 animate-pulse bg-secondary/40 rounded-full" />
+        <div className="flex flex-col gap-3">
+          <div className="h-4 w-40 animate-pulse bg-secondary/40 rounded-full" />
+          <div className="h-8 w-72 animate-pulse bg-secondary/40 rounded-full" />
+          <div className="h-4 w-52 animate-pulse bg-secondary/40 rounded-full" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-28 animate-pulse rounded-3xl bg-secondary/40 border border-border" />
           ))}
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="h-64 animate-pulse rounded-[2rem] bg-secondary/40 border border-border" />
-          <div className="h-64 animate-pulse rounded-[2rem] bg-secondary/40 border border-border" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="h-80 md:col-span-2 animate-pulse rounded-[2rem] bg-secondary/40 border border-border" />
+          <div className="h-80 animate-pulse rounded-[2rem] bg-secondary/40 border border-border" />
         </div>
       </div>
     );
@@ -190,37 +250,61 @@ export function DashboardContent() {
   if (error) {
     return (
       <div className="rounded-[2rem] border border-border bg-destructive/5 px-6 py-8 text-center">
+        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-3">
+          <AlertTriangle className="h-6 w-6" />
+        </span>
         <p className="text-sm font-semibold text-destructive">{error}</p>
         <Button variant="outline" className="mt-4 rounded-full" onClick={fetchDashboardData}>
-          <RefreshCw className="h-4 w-4 mr-2" /> Retry
+          Retry
         </Button>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Dynamic Header: Organization Name + Role Badge */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-5">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-foreground">
-            {orgInfo?.name ?? "My Organization"}
-          </h2>
-          <p className="mt-1 text-sm text-secondary-foreground">
-            Active workspace context
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-semibold text-primary">
-          <Shield className="h-4 w-4" />
-          {userRole}
-        </div>
-      </div>
+  const orgName = meData?.organization?.name ?? "My Organization";
+  const userRole = meData?.roles?.join(", ") || "Member";
+  const userName = session?.user?.name || session?.user?.email || "Member";
 
-      {/* Summary Row */}
+  return (
+    <div className="space-y-8">
+      {/* ── Dynamic Welcome Section ── */}
+      <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-6 shadow-[0_20px_60px_rgba(77,54,37,0.06)] sm:p-8">
+        <div className="absolute inset-y-0 right-0 -z-10 w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(176,137,104,0.08),transparent_50%)]" />
+        
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-[0.24em] text-secondary-foreground">
+                {orgName}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
+                {userRole}
+              </span>
+            </div>
+            <h2 className="text-2xl font-bold tracking-[-0.04em] text-foreground sm:text-3xl">
+              Welcome back, {userName}
+            </h2>
+            <p className="text-sm text-secondary-foreground">
+              Have a wonderful day managing your organization resources.
+            </p>
+          </div>
+          
+          <div className="text-left sm:text-right shrink-0 border-t border-border/60 pt-3 sm:border-t-0 sm:pt-0">
+            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-secondary-foreground block">
+              Today
+            </span>
+            <span className="text-sm font-bold text-foreground mt-1 block">
+              {currentDateString}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Dynamic Statistics Rows (Conditional render) ── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {permissions.canReadMembers ? (
+        {meData?.permissions.includes("members:read") && (
           <>
-            <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center justify-between">
+            <article className="rounded-3xl border border-border bg-card p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Total Members</p>
                 <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">{membersCount}</p>
@@ -229,9 +313,10 @@ export function DashboardContent() {
                 <Users className="h-5 w-5" />
               </span>
             </article>
-            <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center justify-between">
+
+            <article className="rounded-3xl border border-border bg-card p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Custom Roles</p>
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Roles Count</p>
                 <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">{rolesCount}</p>
               </div>
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-amber-600 bg-amber-50 border-amber-100">
@@ -239,22 +324,12 @@ export function DashboardContent() {
               </span>
             </article>
           </>
-        ) : (
-          <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Assigned Tasks/Events</p>
-              <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">{eventsList.length}</p>
-            </div>
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-blue-600 bg-blue-50 border-blue-100">
-              <CalendarDays className="h-5 w-5" />
-            </span>
-          </article>
         )}
 
-        {permissions.canReadFinance && financeSummary ? (
-          <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center justify-between">
+        {meData?.permissions.includes("finance:read") && financeSummary && (
+          <article className="rounded-3xl border border-border bg-card p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Net Balance</p>
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Ledger Balance</p>
               <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">
                 ${financeSummary.balance.toLocaleString()}
               </p>
@@ -263,181 +338,126 @@ export function DashboardContent() {
               <DollarSign className="h-5 w-5" />
             </span>
           </article>
-        ) : (
-          <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Attendance Status</p>
-              <p className="mt-2 text-xl font-semibold text-foreground">Active Member</p>
-            </div>
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-emerald-600 bg-emerald-50 border-emerald-100">
-              <UserCheck className="h-5 w-5" />
-            </span>
-          </article>
         )}
 
-        {permissions.canReadInventory ? (
-          <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center justify-between">
+        {meData?.permissions.includes("inventory:read") && (
+          <article className="rounded-3xl border border-border bg-card p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Inventory Items</p>
               <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">{inventoryCount}</p>
             </div>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-purple-600 bg-purple-50 border-purple-100">
-              <Package className="h-5 w-5" />
-            </span>
-          </article>
-        ) : (
-          <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Active Workspace</p>
-              <p className="mt-2 text-xl font-semibold text-foreground">/{orgInfo?.slug}</p>
-            </div>
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-purple-600 bg-purple-50 border-purple-100">
-              <Building2 className="h-5 w-5" />
+              <TrendingUp className="h-5 w-5" />
             </span>
           </article>
         )}
       </div>
 
-      {/* Main Grid: Adapts to permissions */}
+      {/* ── Dynamic Quick Actions ── */}
+      {allowedQuickActions.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-bold uppercase tracking-[0.24em] text-secondary-foreground">Quick Actions</h3>
+          </div>
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6">
+            {allowedQuickActions.map((qa) => {
+              const ActionIcon = qa.icon;
+              return (
+                <button
+                  key={qa.label}
+                  type="button"
+                  onClick={() => window.location.href = qa.route}
+                  className="group flex flex-col items-center justify-center text-center p-4 rounded-2xl border border-border bg-card shadow-sm hover:border-primary/20 hover:shadow-md transition-all"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fcf8f1] border border-border text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary">
+                    <ActionIcon className="h-4 w-4" />
+                  </span>
+                  <span className="mt-2.5 text-xs font-semibold text-foreground truncate max-w-full">
+                    {qa.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── Main Layout: Widgets Grid vs Activity ── */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Left/Middle Column(s) */}
-        <div className="space-y-6 md:col-span-2">
-          {permissions.canReadMembers ? (
-            <article className="rounded-[2rem] border border-border bg-card p-6 shadow-[0_20px_60px_rgba(77,54,37,0.06)] sm:p-8">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.28em] text-secondary-foreground">Roster</p>
-                  <h3 className="mt-1 text-xl font-bold tracking-[-0.04em] text-foreground">Recent Members</h3>
-                </div>
-                <Button variant="outline" size="sm" className="rounded-full" onClick={() => window.location.href = "/members"}>
-                  View All
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {recentMembers.slice(0, 4).map((member) => (
-                  <div key={member.id} className="flex items-center gap-3 rounded-2xl border border-border bg-[#fcf8f1] p-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                      {member.user?.name?.[0]?.toUpperCase() ?? member.user?.email?.[0]?.toUpperCase() ?? "?"}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">{member.user?.name ?? "New Member"}</p>
-                      <p className="truncate text-xs text-secondary-foreground">{member.user?.email}</p>
-                    </div>
-                    <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 rounded-full px-2.5 py-0.5 border border-emerald-100">
-                      {member.status.toLowerCase()}
-                    </span>
+        {/* Modules Section */}
+        <section className="space-y-4 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-bold uppercase tracking-[0.24em] text-secondary-foreground">Permitted Modules</h3>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {allowedWidgets.map((widget) => {
+              const WidgetIcon = widget.icon;
+              return (
+                <article
+                  key={widget.id}
+                  onClick={() => window.location.href = widget.route}
+                  className="group cursor-pointer rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/20 hover:shadow-md transition-all flex items-start gap-4"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#fcf8f1] border border-border text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary">
+                    <WidgetIcon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1">
+                      {widget.title}
+                      <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </h4>
+                    <p className="mt-1 text-xs text-secondary-foreground leading-normal line-clamp-2">
+                      {widget.description}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </article>
-          ) : (
-            <article className="rounded-[2rem] border border-border bg-card p-6 shadow-[0_20px_60px_rgba(77,54,37,0.06)] sm:p-8">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.28em] text-secondary-foreground">Calendar</p>
-                  <h3 className="mt-1 text-xl font-bold tracking-[-0.04em] text-foreground">Assigned Events</h3>
-                </div>
-                <Button variant="outline" size="sm" className="rounded-full" onClick={() => window.location.href = "/events"}>
-                  View All
-                </Button>
-              </div>
-              {eventsList.length === 0 ? (
-                <div className="text-center py-8">
-                  <CalendarDays className="h-8 w-8 mx-auto text-secondary-foreground/60 mb-2" />
-                  <p className="text-sm font-semibold text-foreground">No events scheduled</p>
-                  <p className="text-xs text-secondary-foreground">Check back later for newly scheduled activities.</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Dynamic Activity/Audit Logs Section */}
+        {meData?.permissions.includes("audit-logs:read") && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-bold uppercase tracking-[0.24em] text-secondary-foreground">Recent Audit Activity</h3>
+            </div>
+
+            <article className="rounded-3xl border border-border bg-card p-5 shadow-sm space-y-4">
+              {auditLogs.length === 0 ? (
+                <div className="text-center py-10 text-secondary-foreground">
+                  <Clock className="h-7 w-7 mx-auto opacity-50 mb-2" />
+                  <p className="text-xs">No recent actions logged.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {eventsList.map((event) => (
-                    <div key={event.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-[#fcf8f1] p-3.5">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-foreground">{event.title}</p>
-                        <p className="truncate text-xs text-secondary-foreground">
-                          {event.startDate ? new Date(event.startDate).toLocaleDateString() : "No Date"}
-                        </p>
+                  {auditLogs.map((log) => (
+                    <div key={log.id} className="text-xs border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-foreground truncate max-w-[120px]">
+                          {log.actorEmail || log.actorName || "System"}
+                        </span>
+                        <span className="text-[10px] text-secondary-foreground shrink-0">
+                          {new Date(log.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
-                      <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 rounded-full px-2.5 py-0.5 border border-primary/20">
-                        {event.status.toLowerCase()}
-                      </span>
+                      <p className="mt-1 text-secondary-foreground leading-normal">
+                        Performed <strong className="text-foreground">{log.action}</strong> on {log.resource}{" "}
+                        {log.targetName && <span className="italic">("{log.targetName}")</span>}
+                      </p>
                     </div>
                   ))}
                 </div>
               )}
             </article>
-          )}
-
-          {permissions.canReadFinance && financeSummary && (
-            <div className="grid gap-6 sm:grid-cols-2">
-              <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center gap-4">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-emerald-600 bg-emerald-50 border-emerald-100">
-                  <ArrowUpRight className="h-6 w-6" />
-                </span>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Total Income</p>
-                  <p className="mt-1 text-2xl font-semibold text-foreground">${financeSummary.totalIncome.toLocaleString()}</p>
-                </div>
-              </article>
-              <article className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_30px_rgba(77,54,37,0.04)] flex items-center gap-4">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-rose-600 bg-rose-50 border-rose-100">
-                  <ArrowDownRight className="h-6 w-6" />
-                </span>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Total Expense</p>
-                  <p className="mt-1 text-2xl font-semibold text-foreground">${financeSummary.totalExpense.toLocaleString()}</p>
-                </div>
-              </article>
-            </div>
-          )}
-        </div>
-
-        {/* Right-side Notifications Panel */}
-        <article className="rounded-[2rem] border border-border bg-card p-6 shadow-[0_20px_60px_rgba(77,54,37,0.06)] sm:p-8 flex flex-col justify-between h-full">
-          <div>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.28em] text-secondary-foreground">Activity</p>
-                <h3 className="mt-1 text-xl font-bold tracking-[-0.04em] text-foreground">Notifications</h3>
-              </div>
-              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 text-secondary-foreground" onClick={() => window.location.href = "/notifications"}>
-                <Bell className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-secondary-foreground">
-                <CheckCircle className="h-8 w-8 text-secondary-foreground/60 mb-2" />
-                <p className="text-sm font-semibold text-foreground">All caught up!</p>
-                <p className="text-xs">No recent notifications found.</p>
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                {notifications.map((notif) => (
-                  <div key={notif.id} className={`rounded-xl border p-3 flex flex-col gap-1 transition-all ${
-                    notif.isRead ? "bg-[#fcf8f1]/50 border-border/50" : "bg-primary/5 border-primary/20"
-                  }`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={`text-xs font-bold truncate ${notif.isRead ? "text-foreground" : "text-primary"}`}>
-                        {notif.title}
-                      </p>
-                      <span className="text-[9px] text-secondary-foreground shrink-0 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(notif.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {notif.message && (
-                      <p className="text-[11px] text-secondary-foreground line-clamp-2">{notif.message}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Button variant="outline" className="w-full mt-6 rounded-full border-border" onClick={() => window.location.href = "/notifications"}>
-            Open Inbox
-          </Button>
-        </article>
+          </section>
+        )}
       </div>
     </div>
   );
