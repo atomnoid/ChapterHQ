@@ -78,6 +78,14 @@ enum TransactionType {
   EXPENSE
 }
 
+enum InventoryStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  MAINTENANCE
+  DISPOSED
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION
 //////////////////////////////////////////////////////
@@ -105,6 +113,7 @@ model Organization {
   notifications Notification[]
   documents Document[]
   finances FinanceRecord[]
+  inventoryItems InventoryItem[]
 
   @@map("organizations")
 }
@@ -591,4 +600,29 @@ model FinanceRecord {
   deletedAt DateTime?
 
   @@map("finance_records")
+}
+
+//////////////////////////////////////////////////////
+// INVENTORY
+//////////////////////////////////////////////////////
+
+model InventoryItem {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  name        String
+  category    String?
+  quantity    Int             @default(0)
+  unit        String?
+  location    String?
+  status      InventoryStatus @default(IN_STOCK)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("inventory_items")
 }
