@@ -25,9 +25,20 @@ export class OrganizationContextService {
 
   async resolve(userId: string): Promise<OrganizationContext> {
     const session = await auth();
-    const activeOrgId = session?.activeOrganizationId;
+    let activeOrgId = session?.activeOrganizationId;
 
-    const member = await this.memberRepository.findActiveByUserId(userId, activeOrgId);
+    console.log("[OrgContext] resolve userId:", userId, "session.activeOrganizationId:", activeOrgId);
+
+    let member = await this.memberRepository.findActiveByUserId(userId, activeOrgId);
+
+    // Fallback: If no membership was found with the session's activeOrganizationId
+    // or activeOrganizationId was empty, try fetching the first active organization membership.
+    if (!member) {
+      console.log("[OrgContext] primary lookup returned null — trying fallback (no orgId filter)");
+      member = await this.memberRepository.findActiveByUserId(userId);
+    }
+
+    console.log("[OrgContext] final member:", member?.id ?? null);
 
     if (!member) {
       throw new OrganizationContextNotFoundError();

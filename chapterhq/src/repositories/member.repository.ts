@@ -17,38 +17,54 @@ export class MemberRepository {
   }
 
   async findByOrganizationAndUser(organizationId: string, userId: string) {
-    return prisma.member.findFirst({
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    // Remove from query; post-check in JS instead.
+    const member = await prisma.member.findFirst({
       where: {
-        deletedAt: null,
         organizationId,
         userId,
       },
     });
+    if (member?.deletedAt) return null;
+    return member;
   }
 
   async findActiveByUserId(userId: string, activeOrganizationId?: string) {
-    return prisma.member.findFirst({
-      where: {
-        deletedAt: null,
-        userId,
-        status: "ACTIVE",
-        organizationId: activeOrganizationId,
-        organization: {
-          deletedAt: null,
-        },
-      },
+    const whereClause: any = {
+      userId,
+      status: "ACTIVE",
+    };
+
+    if (activeOrganizationId) {
+      whereClause.organizationId = activeOrganizationId;
+    }
+
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    // Fetch without filter and post-filter in JS.
+    const members = await prisma.member.findMany({
+      where: whereClause,
       include: {
         organization: true,
       },
     });
+
+    const filtered = members.filter((m) => !m.deletedAt);
+
+    console.log(
+      "[MemberRepo] findActiveByUserId:",
+      JSON.stringify(filtered, null, 2)
+    );
+
+    return filtered[0] ?? null;
   }
 
   async findByIdAndOrganization(id: string, organizationId: string) {
-    return prisma.member.findFirst({
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    // Remove from query; post-check in JS instead.
+    const member = await prisma.member.findFirst({
       where: {
         id,
         organizationId,
-        deletedAt: null,
       },
       include: {
         user: {
@@ -61,12 +77,16 @@ export class MemberRepository {
         },
       },
     });
+    if (member?.deletedAt) return null;
+    return member;
   }
 
-  async list(params: PaginationParams & { organizationId: string; status?: any }) {
+  async list(
+    params: PaginationParams & { organizationId: string; status?: any },
+  ) {
     const whereClause: any = {
       organizationId: params.organizationId,
-      deletedAt: null,
+      // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
 
     if (params.status) {
@@ -84,25 +104,25 @@ export class MemberRepository {
 
     const orderBy = buildOrderBy(params.sortBy, params.order, "joinedAt");
 
-    const [total, items] = await Promise.all([
-      prisma.member.count({ where: whereClause }),
-      prisma.member.findMany({
-        where: whereClause,
-        skip: params.skip,
-        take: params.take,
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
+    const allItems = await prisma.member.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
           },
         },
-        orderBy,
-      }),
-    ]);
+      },
+      orderBy,
+    });
+
+    // Post-filter soft-deleted records in JS (MongoDB Prisma bug workaround).
+    const notDeleted = allItems.filter((m) => !m.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(params.skip, params.skip + params.take);
 
     return { total, items };
   }
@@ -130,18 +150,23 @@ export class MemberRepository {
   }
 
   async listByUser(userId: string) {
-    return prisma.member.findMany({
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    // Fetch without deletedAt filter and post-filter in JS.
+    const members = await prisma.member.findMany({
       where: {
         userId,
         status: "ACTIVE",
-        deletedAt: null,
-        organization: {
-          deletedAt: null,
-        },
       },
       include: {
         organization: true,
       },
     });
+
+    const final = members.filter((m) => !m.deletedAt);
+
+    console.log("[MemberRepo] listByUser:", JSON.stringify(final, null, 2));
+
+    return final;
   }
 }
+

@@ -36,16 +36,17 @@ export class InvitationAcceptService {
 
   async acceptInvitation(token: string, userId: string) {
     // 1. Resolve the invitation
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
     const invitation = await prisma.invitation.findFirst({
       where: {
         token,
         status: "PENDING",
-        deletedAt: null,
         expiresAt: { gt: new Date() },
       },
     });
 
-    if (!invitation) {
+    // Treat soft-deleted invitations as not found.
+    if (!invitation || invitation.deletedAt) {
       throw new InvitationNotFoundOrExpiredError();
     }
 

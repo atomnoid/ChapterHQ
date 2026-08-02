@@ -52,22 +52,21 @@ export class FinanceRepository {
   }
 
   async findById(id: string, organizationId: string): Promise<FinanceRecord | null> {
-    return prisma.financeRecord.findFirst({
-      where: {
-        id,
-        organizationId,
-        deletedAt: null,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const rec = await prisma.financeRecord.findFirst({
+      where: { id, organizationId },
     });
+    if (rec?.deletedAt) return null;
+    return rec;
   }
 
   async list(organizationId: string, query: ListFinanceQuery = {}) {
     const { search, type, category, startDate, endDate, page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
 
+    // MongoDB Prisma bug: deletedAt: null removed from where; JS post-filter applied below.
     const where: Prisma.FinanceRecordWhereInput = {
       organizationId,
-      deletedAt: null,
       ...(type ? { type } : {}),
       ...(category ? { category } : {}),
       ...((startDate || endDate)
@@ -88,15 +87,14 @@ export class FinanceRepository {
         : {}),
     };
 
-    const [items, total] = await Promise.all([
-      prisma.financeRecord.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { date: "desc" },
-      }),
-      prisma.financeRecord.count({ where }),
-    ]);
+    const allItems = await prisma.financeRecord.findMany({
+      where,
+      orderBy: { date: "desc" },
+    });
+
+    const notDeleted = allItems.filter((r) => !r.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(skip, skip + limit);
 
     return {
       items,
@@ -108,16 +106,14 @@ export class FinanceRepository {
   }
 
   async getSummary(organizationId: string) {
-    const records = await prisma.financeRecord.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-      },
-      select: {
-        type: true,
-        amount: true,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const allRecords = await prisma.financeRecord.findMany({
+      where: { organizationId },
+      select: { type: true, amount: true, deletedAt: true },
     });
+
+    // Post-filter soft-deleted records in JS.
+    const records = allRecords.filter((r) => !r.deletedAt);
 
     let totalIncome = 0;
     let totalExpense = 0;

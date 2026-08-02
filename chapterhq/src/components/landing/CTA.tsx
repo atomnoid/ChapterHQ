@@ -25,7 +25,7 @@ export function CTA() {
             size="lg"
             className="mt-8 h-12 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground shadow-[0_18px_40px_rgba(92,64,51,0.16)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#4a3228]"
           >
-            <Link href="/signup">Get Started</Link>
+            <Link href="/onboarding">Get Started</Link>
           </Button>
         </div>
       </div>

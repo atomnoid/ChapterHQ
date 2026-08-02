@@ -51,22 +51,21 @@ export class InventoryRepository {
   }
 
   async findById(id: string, organizationId: string): Promise<InventoryItem | null> {
-    return prisma.inventoryItem.findFirst({
-      where: {
-        id,
-        organizationId,
-        deletedAt: null,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const item = await prisma.inventoryItem.findFirst({
+      where: { id, organizationId },
     });
+    if (item?.deletedAt) return null;
+    return item;
   }
 
   async list(organizationId: string, query: ListInventoryQuery = {}) {
     const { search, category, status, page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
 
+    // MongoDB Prisma bug: deletedAt: null removed from where; JS post-filter applied below.
     const where: Prisma.InventoryItemWhereInput = {
       organizationId,
-      deletedAt: null,
       ...(category ? { category } : {}),
       ...(status ? { status } : {}),
       ...(search
@@ -80,15 +79,14 @@ export class InventoryRepository {
         : {}),
     };
 
-    const [items, total] = await Promise.all([
-      prisma.inventoryItem.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.inventoryItem.count({ where }),
-    ]);
+    const allItems = await prisma.inventoryItem.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const notDeleted = allItems.filter((i) => !i.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(skip, skip + limit);
 
     return {
       items,

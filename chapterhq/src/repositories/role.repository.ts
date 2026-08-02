@@ -31,50 +31,48 @@ export class RoleRepository {
   }
 
   async findByOrganizationAndName(organizationId: string, name: string) {
-    return prisma.role.findFirst({
-      where: {
-        deletedAt: null,
-        organizationId,
-        name,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const role = await prisma.role.findFirst({
+      where: { organizationId, name },
     });
+    if (role?.deletedAt) return null;
+    return role;
   }
 
   async findManyByOrganization(organizationId: string) {
-    return prisma.role.findMany({
-      where: {
-        deletedAt: null,
-        organizationId,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const roles = await prisma.role.findMany({
+      where: { organizationId },
     });
+    return roles.filter((r) => !r.deletedAt);
   }
 
   async existsByName(organizationId: string, name: string, excludeId?: string) {
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
     const role = await prisma.role.findFirst({
       where: {
-        deletedAt: null,
         organizationId,
         name: { equals: name, mode: "insensitive" },
         NOT: excludeId ? { id: excludeId } : undefined,
       },
     });
+    if (role?.deletedAt) return false;
     return !!role;
   }
 
   async findById(id: string, organizationId: string) {
-    return prisma.role.findFirst({
-      where: {
-        id,
-        organizationId,
-        deletedAt: null,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const role = await prisma.role.findFirst({
+      where: { id, organizationId },
     });
+    if (role?.deletedAt) return null;
+    return role;
   }
 
   async listByOrganization(params: PaginationParams & { organizationId: string }) {
     const whereClause: any = {
       organizationId: params.organizationId,
-      deletedAt: null,
+      // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
 
     if (params.search) {
@@ -83,23 +81,23 @@ export class RoleRepository {
 
     const orderBy = buildOrderBy(params.sortBy, params.order, "createdAt");
 
-    const [total, items] = await Promise.all([
-      prisma.role.count({ where: whereClause }),
-      prisma.role.findMany({
-        where: whereClause,
-        skip: params.skip,
-        take: params.take,
-        orderBy,
-        include: {
-          _count: {
-            select: {
-              permissions: true,
-              userRoles: true,
-            },
+    const allItems = await prisma.role.findMany({
+      where: whereClause,
+      orderBy,
+      include: {
+        _count: {
+          select: {
+            permissions: true,
+            userRoles: true,
           },
         },
-      }),
-    ]);
+      },
+    });
+
+    // Post-filter soft-deleted records in JS (MongoDB Prisma bug workaround).
+    const notDeleted = allItems.filter((r) => !r.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(params.skip, params.skip + params.take);
 
     return { total, items };
   }

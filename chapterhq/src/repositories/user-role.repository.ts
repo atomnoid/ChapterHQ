@@ -25,17 +25,13 @@ export class UserRoleRepository {
   }
 
   async findUserRoles(memberId: string) {
-    return prisma.userRole.findMany({
-      where: {
-        memberId,
-        role: {
-          deletedAt: null,
-        },
-      },
-      include: {
-        role: true,
-      },
+    // MongoDB Prisma bug: nested relation filter { role: { deletedAt: null } } returns no results.
+    const userRoles = await prisma.userRole.findMany({
+      where: { memberId },
+      include: { role: true },
     });
+    // Post-filter: exclude assignments where the role has been soft-deleted.
+    return userRoles.filter((ur) => !ur.role.deletedAt);
   }
 
   async delete(memberId: string, roleId: string) {

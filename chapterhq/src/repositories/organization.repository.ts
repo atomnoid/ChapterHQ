@@ -9,32 +9,29 @@ export class OrganizationRepository {
   }
 
   async findBySlug(slug: string) {
-    return prisma.organization.findFirst({
-      where: {
-        deletedAt: null,
-        slug,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const org = await prisma.organization.findFirst({
+      where: { slug },
     });
+    if (org?.deletedAt) return null;
+    return org;
   }
 
   async findById(id: string) {
-    return prisma.organization.findFirst({
-      where: {
-        deletedAt: null,
-        id,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const org = await prisma.organization.findFirst({
+      where: { id },
     });
+    if (org?.deletedAt) return null;
+    return org;
   }
 
   async getAll() {
-    return prisma.organization.findMany({
-      where: {
-        deletedAt: null,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const orgs = await prisma.organization.findMany({
+      orderBy: { createdAt: "desc" },
     });
+    return orgs.filter((o) => !o.deletedAt);
   }
 
   async delete(id: string) {
@@ -49,13 +46,14 @@ export class OrganizationRepository {
   }
 
   async existsBySlug(slug: string, excludeId?: string) {
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
     const org = await prisma.organization.findFirst({
       where: {
-        deletedAt: null,
         slug: { equals: slug, mode: "insensitive" },
         NOT: excludeId ? { id: excludeId } : undefined,
       },
     });
+    if (org?.deletedAt) return false;
     return !!org;
   }
 

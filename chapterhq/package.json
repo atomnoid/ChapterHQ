@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "inspect-db": "node C:\\Users\\atomn\\.gemini\\antigravity-ide\\brain\\12578d35-f811-483e-ab31-81f3ca6140ce\\scratch\\test-onboarding.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

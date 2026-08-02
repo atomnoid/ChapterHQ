@@ -61,13 +61,13 @@ export class EventRegistrationService {
 
     // Check capacity if set
     if (event.capacity) {
-      const activeRegistrationsCount = await prisma.eventRegistration.count({
-        where: {
-          eventId,
-          status: "REGISTERED",
-          deletedAt: null,
-        },
+      // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+      // Using findMany + JS filter instead of count().
+      const activeRegistrations = await prisma.eventRegistration.findMany({
+        where: { eventId, status: "REGISTERED" },
+        select: { id: true, deletedAt: true },
       });
+      const activeRegistrationsCount = activeRegistrations.filter((r) => !r.deletedAt).length;
       if (activeRegistrationsCount >= event.capacity) {
         throw new RegistrationLimitExceededError();
       }

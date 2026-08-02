@@ -34,19 +34,18 @@ export class CommitteeRepository {
   }
 
   async findById(id: string, organizationId: string) {
-    return prisma.committee.findFirst({
-      where: {
-        id,
-        organizationId,
-        deletedAt: null,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const committee = await prisma.committee.findFirst({
+      where: { id, organizationId },
     });
+    if (committee?.deletedAt) return null;
+    return committee;
   }
 
   async list(params: PaginationParams & { organizationId: string }) {
     const whereClause: any = {
       organizationId: params.organizationId,
-      deletedAt: null,
+      // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
 
     if (params.search) {
@@ -58,28 +57,28 @@ export class CommitteeRepository {
 
     const orderBy = buildOrderBy(params.sortBy, params.order, "createdAt");
 
-    const [total, items] = await Promise.all([
-      prisma.committee.count({ where: whereClause }),
-      prisma.committee.findMany({
-        where: whereClause,
-        skip: params.skip,
-        take: params.take,
-        orderBy,
-      }),
-    ]);
+    const allItems = await prisma.committee.findMany({
+      where: whereClause,
+      orderBy,
+    });
+
+    const notDeleted = allItems.filter((c) => !c.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(params.skip, params.skip + params.take);
 
     return { total, items };
   }
 
   async existsByName(organizationId: string, name: string, excludeId?: string) {
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
     const committee = await prisma.committee.findFirst({
       where: {
-        deletedAt: null,
         organizationId,
         name: { equals: name, mode: "insensitive" },
         NOT: excludeId ? { id: excludeId } : undefined,
       },
     });
+    if (committee?.deletedAt) return false;
     return !!committee;
   }
 

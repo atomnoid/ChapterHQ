@@ -60,6 +60,7 @@ export class OrganizationService {
     await this.roleService.seedDefaultRoles(organization.id);
 
     await this.roleService.assignOwnerRole(organization.id, member.id);
+    await this.roleService.assignMemberRole(organization.id, member.id);
 
     await this.permissionService.seedDefaultPermissionsAndMappings(organization.id);
 

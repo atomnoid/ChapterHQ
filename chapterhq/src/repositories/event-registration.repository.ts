@@ -37,12 +37,10 @@ export class EventRegistrationRepository {
   }
 
   async cancel(eventId: string, memberId: string) {
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    // Removing filter is safe — updating already-cancelled records is idempotent.
     return prisma.eventRegistration.updateMany({
-      where: {
-        eventId,
-        memberId,
-        deletedAt: null,
-      },
+      where: { eventId, memberId },
       data: {
         status: "CANCELLED",
         deletedAt: new Date(),
@@ -51,19 +49,18 @@ export class EventRegistrationRepository {
   }
 
   async findByEventAndMember(eventId: string, memberId: string) {
-    return prisma.eventRegistration.findFirst({
-      where: {
-        eventId,
-        memberId,
-        deletedAt: null,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const reg = await prisma.eventRegistration.findFirst({
+      where: { eventId, memberId },
     });
+    if (reg?.deletedAt) return null;
+    return reg;
   }
 
   async list(eventId: string, params: PaginationParams) {
     const whereClause: any = {
       eventId,
-      deletedAt: null,
+      // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
 
     if (params.search) {
@@ -79,29 +76,29 @@ export class EventRegistrationRepository {
 
     const orderBy = buildOrderBy(params.sortBy, params.order, "registeredAt");
 
-    const [total, items] = await Promise.all([
-      prisma.eventRegistration.count({ where: whereClause }),
-      prisma.eventRegistration.findMany({
-        where: whereClause,
-        skip: params.skip,
-        take: params.take,
-        orderBy,
-        include: {
-          member: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                },
+    const allItems = await prisma.eventRegistration.findMany({
+      where: whereClause,
+      orderBy,
+      include: {
+        member: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
               },
             },
           },
         },
-      }),
-    ]);
+      },
+    });
+
+    // Post-filter soft-deleted records in JS (MongoDB Prisma bug workaround).
+    const notDeleted = allItems.filter((r) => !r.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(params.skip, params.skip + params.take);
 
     return { total, items };
   }

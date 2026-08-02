@@ -48,20 +48,14 @@ export class RoleService {
     );
   }
 
-  async assignOwnerRole(organizationId: string, memberId: string) {
-    const ownerRole = await this.roleRepository.findByOrganizationAndName(
-      organizationId,
-      OWNER_ROLE_NAME
-    );
+  async assignRoleByName(organizationId: string, memberId: string, roleName: string) {
+    const role = await this.roleRepository.findByOrganizationAndName(organizationId, roleName);
 
-    if (!ownerRole) {
-      throw new RoleNotFoundError(OWNER_ROLE_NAME);
+    if (!role) {
+      throw new RoleNotFoundError(roleName);
     }
 
-    const existing = await this.userRoleRepository.findByMemberAndRole(
-      memberId,
-      ownerRole.id
-    );
+    const existing = await this.userRoleRepository.findByMemberAndRole(memberId, role.id);
 
     if (existing) {
       throw new UserRoleAlreadyExistsError();
@@ -69,8 +63,16 @@ export class RoleService {
 
     return this.userRoleRepository.create({
       memberId,
-      roleId: ownerRole.id,
+      roleId: role.id,
     });
+  }
+
+  async assignOwnerRole(organizationId: string, memberId: string) {
+    return this.assignRoleByName(organizationId, memberId, OWNER_ROLE_NAME);
+  }
+
+  async assignMemberRole(organizationId: string, memberId: string) {
+    return this.assignRoleByName(organizationId, memberId, "Member");
   }
 
   async getRoles(params: PaginationQuery & { organizationId: string }) {

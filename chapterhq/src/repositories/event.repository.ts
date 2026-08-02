@@ -50,9 +50,12 @@ export class EventRepository {
   }
 
   async findById(id: string, organizationId: string) {
-    return prisma.event.findFirst({
-      where: { id, organizationId, deletedAt: null },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const event = await prisma.event.findFirst({
+      where: { id, organizationId },
     });
+    if (event?.deletedAt) return null;
+    return event;
   }
 
   async list(
@@ -63,7 +66,7 @@ export class EventRepository {
   ) {
     const whereClause: any = {
       organizationId: params.organizationId,
-      deletedAt: null,
+      // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
 
     if (params.status) whereClause.status = params.status;
@@ -78,15 +81,15 @@ export class EventRepository {
 
     const orderBy = buildOrderBy(params.sortBy, params.order, "startDate");
 
-    const [total, items] = await Promise.all([
-      prisma.event.count({ where: whereClause }),
-      prisma.event.findMany({
-        where: whereClause,
-        skip: params.skip,
-        take: params.take,
-        orderBy,
-      }),
-    ]);
+    const allItems = await prisma.event.findMany({
+      where: whereClause,
+      orderBy,
+    });
+
+    // Post-filter soft-deleted records in JS (MongoDB Prisma bug workaround).
+    const notDeleted = allItems.filter((e) => !e.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(params.skip, params.skip + params.take);
 
     return { total, items };
   }

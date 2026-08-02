@@ -29,6 +29,12 @@ export const createOrganizationSchema = z.object({
       ORGANIZATION.SLUG_REGEX,
       "Slug may only contain letters, numbers, hyphens, and underscores."
     ),
+
+  description: z
+    .string()
+    .trim()
+    .max(500, "Description must be 500 characters or less.")
+    .optional(),
 });
 
 export type CreateOrganizationInput =
@@ -68,4 +74,4 @@ export const updateOrganizationSchema = z.object({
   status: z.nativeEnum(OrganizationStatus).optional(),
 });
 
-export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
+export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;

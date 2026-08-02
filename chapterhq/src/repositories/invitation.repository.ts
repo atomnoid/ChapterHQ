@@ -22,36 +22,30 @@ export class InvitationRepository {
   }
 
   async findPendingByEmailAndOrg(email: string, organizationId: string) {
-    return prisma.invitation.findFirst({
-      where: {
-        email,
-        organizationId,
-        status: "PENDING",
-        deletedAt: null,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const inv = await prisma.invitation.findFirst({
+      where: { email, organizationId, status: "PENDING" },
     });
+    if (inv?.deletedAt) return null;
+    return inv;
   }
 
   async findByIdAndOrg(id: string, organizationId: string) {
-    return prisma.invitation.findFirst({
-      where: {
-        id,
-        organizationId,
-        deletedAt: null,
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const inv = await prisma.invitation.findFirst({
+      where: { id, organizationId },
     });
+    if (inv?.deletedAt) return null;
+    return inv;
   }
 
   async listByOrganization(organizationId: string) {
-    return prisma.invitation.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const invitations = await prisma.invitation.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: "desc" },
     });
+    return invitations.filter((i) => !i.deletedAt);
   }
 
   async softDelete(id: string, organizationId: string) {

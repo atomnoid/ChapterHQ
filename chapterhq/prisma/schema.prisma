@@ -108,6 +108,7 @@ model Organization {
 
   name String
   slug String @unique
+  description String?
 
   status OrganizationStatus @default(ACTIVE)
 
