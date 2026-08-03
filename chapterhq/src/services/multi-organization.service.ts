@@ -1,10 +1,6 @@
 import { MemberRepository } from "@/repositories/member.repository";
 import { OrganizationContextNotFoundError } from "@/services/session/organization-context.service";
 
-export class OrganizationContextServiceEx extends OrganizationContextService {
-  // Extending context to allow listing and verification
-}
-
 export class MultiOrganizationService {
   constructor(
     private readonly memberRepository = new MemberRepository()
