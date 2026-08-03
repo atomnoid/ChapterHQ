@@ -40,14 +40,14 @@ export function Navbar() {
             size="sm"
             className="hidden rounded-full border-border/80 bg-card px-4 text-sm text-foreground shadow-none hover:bg-muted sm:inline-flex"
           >
-            <Link href="#">Login</Link>
+            <Link href="/login">Login</Link>
           </Button>
           <Button
             asChild
             size="sm"
             className="rounded-full bg-primary px-4 text-sm text-primary-foreground shadow-[0_14px_30px_rgba(92,64,51,0.16)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#4a3228]"
           >
-            <Link href="#pricing">Get Started</Link>
+            <Link href="/signup">Get Started</Link>
           </Button>
         </div>
       </div>
