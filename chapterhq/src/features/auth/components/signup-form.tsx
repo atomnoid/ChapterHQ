@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +17,8 @@ export function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -89,17 +92,31 @@ export function SignupForm() {
         <label htmlFor="password" className="text-sm font-medium text-foreground">
           Password
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          autoComplete="new-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-[#b08968]"
-          placeholder="At least 8 characters"
-        />
+        <div className="relative mt-2">
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="h-11 w-full rounded-xl border border-border bg-background pl-3 pr-10 text-sm text-foreground outline-none transition-colors focus:border-[#b08968]"
+            placeholder="At least 8 characters"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5" />
+            ) : (
+              <Eye className="h-5 w-5" />
+            )}
+          </button>
+        </div>
       </div>
 
       <div>
@@ -109,17 +126,31 @@ export function SignupForm() {
         >
           Confirm password
         </label>
-        <input
-          id="confirmPassword"
-          name="confirmPassword"
-          type="password"
-          required
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-[#b08968]"
-          placeholder="Repeat your password"
-        />
+        <div className="relative mt-2">
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type={showConfirmPassword ? "text" : "password"}
+            required
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            className="h-11 w-full rounded-xl border border-border bg-background pl-3 pr-10 text-sm text-foreground outline-none transition-colors focus:border-[#b08968]"
+            placeholder="Repeat your password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+          >
+            {showConfirmPassword ? (
+              <EyeOff className="h-5 w-5" />
+            ) : (
+              <Eye className="h-5 w-5" />
+            )}
+          </button>
+        </div>
       </div>
 
       {errorMessage ? (
