@@ -18,7 +18,8 @@ import {
   Calendar,
   Layers,
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DASHBOARD_WIDGETS } from "@/config/dashboard-widgets";
@@ -109,7 +110,7 @@ export function DashboardContent() {
   // Statistics & lists fetched conditionally based on permissions
   const [membersCount, setMembersCount] = useState<number>(0);
   const [rolesCount, setRolesCount] = useState<number>(0);
-  const [financeSummary, setFinanceSummary] = useState<{ totalIncome: number; totalExpense: number; balance: number } | null>(null);
+  const [financeSummary, setFinanceSummary] = useState<{ totalIncome: number; totalExpense: number; netBalance?: number; balance?: number } | null>(null);
   const [inventoryCount, setInventoryCount] = useState<number>(0);
   const [eventsList, setEventsList] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -331,7 +332,7 @@ export function DashboardContent() {
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Ledger Balance</p>
               <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">
-                ${financeSummary.balance.toLocaleString()}
+                ${Number(financeSummary.netBalance ?? financeSummary.balance ?? 0).toLocaleString()}
               </p>
             </div>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-emerald-600 bg-emerald-50 border-emerald-100">
