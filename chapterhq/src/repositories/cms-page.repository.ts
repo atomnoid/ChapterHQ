@@ -52,32 +52,36 @@ export class CMSPageRepository {
   }
 
   async findById(id: string, organizationId: string): Promise<Page | null> {
-    return prisma.page.findFirst({
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const page = await prisma.page.findFirst({
       where: {
         id,
         organizationId,
-        deletedAt: null,
       },
     });
+    if (page?.deletedAt) return null;
+    return page;
   }
 
   async findBySlug(slug: string, organizationId: string): Promise<Page | null> {
-    return prisma.page.findFirst({
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const page = await prisma.page.findFirst({
       where: {
         slug,
         organizationId,
-        deletedAt: null,
       },
     });
+    if (page?.deletedAt) return null;
+    return page;
   }
 
   async list(organizationId: string, query: ListPagesQuery = {}) {
     const { search, status, page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
 
+    // MongoDB Prisma bug: deletedAt: null removed from where; JS post-filter applied below.
     const where: Prisma.PageWhereInput = {
       organizationId,
-      deletedAt: null,
       ...(status ? { status } : {}),
       ...(search
         ? {
@@ -90,15 +94,14 @@ export class CMSPageRepository {
         : {}),
     };
 
-    const [items, total] = await Promise.all([
-      prisma.page.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.page.count({ where }),
-    ]);
+    const allItems = await prisma.page.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const notDeleted = allItems.filter((p) => !p.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(skip, skip + limit);
 
     return {
       items,
