@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +16,8 @@ export function OnboardingForm() {
   const [superAdminEmail, setSuperAdminEmail] = useState("");
   const [superAdminPassword, setSuperAdminPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showSuperAdminPassword, setShowSuperAdminPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -153,32 +156,60 @@ export function OnboardingForm() {
           <label htmlFor="superAdminPassword" className="text-sm font-medium text-foreground">
             Password
           </label>
-          <input
-            id="superAdminPassword"
-            name="superAdminPassword"
-            type="password"
-            required
-            value={superAdminPassword}
-            onChange={(event) => setSuperAdminPassword(event.target.value)}
-            className="mt-2 h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors focus:border-[#b08968]"
-            placeholder="At least 8 characters"
-          />
+          <div className="relative mt-2">
+            <input
+              id="superAdminPassword"
+              name="superAdminPassword"
+              type={showSuperAdminPassword ? "text" : "password"}
+              required
+              value={superAdminPassword}
+              onChange={(event) => setSuperAdminPassword(event.target.value)}
+              className="h-11 w-full rounded-xl border border-border bg-card pl-3 pr-10 text-sm text-foreground outline-none transition-colors focus:border-[#b08968]"
+              placeholder="At least 8 characters"
+            />
+            <button
+              type="button"
+              onClick={() => setShowSuperAdminPassword(!showSuperAdminPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+              aria-label={showSuperAdminPassword ? "Hide password" : "Show password"}
+            >
+              {showSuperAdminPassword ? (
+                <EyeOff className="h-5 w-5" />
+              ) : (
+                <Eye className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div>
           <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
             Confirm password
           </label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            required
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            className="mt-2 h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors focus:border-[#b08968]"
-            placeholder="Repeat your password"
-          />
+          <div className="relative mt-2">
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              required
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              className="h-11 w-full rounded-xl border border-border bg-card pl-3 pr-10 text-sm text-foreground outline-none transition-colors focus:border-[#b08968]"
+              placeholder="Repeat your password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+            >
+              {showConfirmPassword ? (
+                <EyeOff className="h-5 w-5" />
+              ) : (
+                <Eye className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </div>
       </section>
 
