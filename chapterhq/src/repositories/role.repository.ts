@@ -87,7 +87,7 @@ export class RoleRepository {
       include: {
         _count: {
           select: {
-            permissions: true,
+            rolePermissions: true,
             userRoles: true,
           },
         },
