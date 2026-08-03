@@ -6,13 +6,15 @@ export class CommitteeMemberRepository {
    * Find an active (non-soft-deleted) assignment for a given committee + member pair.
    */
   async findAssignment(committeeId: string, memberId: string) {
-    return prisma.committeeMember.findFirst({
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    const assignment = await prisma.committeeMember.findFirst({
       where: {
         committeeId,
         memberId,
-        deletedAt: null,
       },
     });
+    if (assignment?.deletedAt) return null;
+    return assignment;
   }
 
   /**
@@ -41,11 +43,12 @@ export class CommitteeMemberRepository {
    * Soft-delete a committee–member assignment.
    */
   async remove(committeeId: string, memberId: string) {
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    // Removing the filter is safe since updating already-deleted records is idempotent.
     return prisma.committeeMember.updateMany({
       where: {
         committeeId,
         memberId,
-        deletedAt: null,
       },
       data: { deletedAt: new Date() },
     });
@@ -58,15 +61,13 @@ export class CommitteeMemberRepository {
     committeeId: string,
     params: PaginationParams
   ) {
+    // MongoDB Prisma bug: deletedAt: null and nested relation deletedAt filters return no results.
     const whereClause: any = {
       committeeId,
-      deletedAt: null,
-      member: { deletedAt: null },
     };
 
     if (params.search) {
       whereClause.member = {
-        ...whereClause.member,
         user: {
           OR: [
             { name: { contains: params.search, mode: "insensitive" } },
@@ -78,29 +79,28 @@ export class CommitteeMemberRepository {
 
     const orderBy = buildOrderBy(params.sortBy, params.order, "assignedAt");
 
-    const [total, items] = await Promise.all([
-      prisma.committeeMember.count({ where: whereClause }),
-      prisma.committeeMember.findMany({
-        where: whereClause,
-        skip: params.skip,
-        take: params.take,
-        orderBy,
-        include: {
-          member: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                },
+    const allItems = await prisma.committeeMember.findMany({
+      where: whereClause,
+      orderBy,
+      include: {
+        member: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
               },
             },
           },
         },
-      }),
-    ]);
+      },
+    });
+
+    const notDeleted = allItems.filter((cm) => !cm.deletedAt && !cm.member.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(params.skip, params.skip + params.take);
 
     return { total, items };
   }
@@ -109,13 +109,12 @@ export class CommitteeMemberRepository {
    * List all committees a member belongs to (active assignments only).
    */
   async listByMember(memberId: string, organizationId: string) {
-    return prisma.committeeMember.findMany({
+    // MongoDB Prisma bug: deletedAt: null and nested relation deletedAt filters return no results.
+    const allAssignments = await prisma.committeeMember.findMany({
       where: {
         memberId,
-        deletedAt: null,
         committee: {
           organizationId,
-          deletedAt: null,
         },
       },
       include: {
@@ -123,5 +122,7 @@ export class CommitteeMemberRepository {
       },
       orderBy: { assignedAt: "desc" },
     });
+
+    return allAssignments.filter((cm) => !cm.deletedAt && !cm.committee.deletedAt);
   }
 }
