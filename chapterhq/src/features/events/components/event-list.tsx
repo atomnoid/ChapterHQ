@@ -311,7 +311,7 @@ export function EventList({
                       canDelete={canDelete}
                       onEdit={() => setDialog({ type: "edit", event })}
                       onDelete={() => setDialog({ type: "delete", event })}
-                      onView={() => window.location.assign(`/dashboard/events/${event.id}`)}
+                      onView={() => window.location.assign(`/events/${event.id}`)}
                     />
                   </div>
                   <p className="text-xs text-secondary-foreground line-clamp-2 mt-1.5 min-h-[2rem]">
@@ -339,7 +339,7 @@ export function EventList({
                   >
                     {STATUS_LABELS[event.status]}
                   </span>
-                  <Link href={`/dashboard/events/${event.id}`}>
+                  <Link href={`/events/${event.id}`}>
                     <Button variant="ghost" size="sm" className="rounded-full text-xs gap-1.5 h-8">
                       Manage <Eye className="h-3 w-3" />
                     </Button>

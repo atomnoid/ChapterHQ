@@ -332,7 +332,7 @@ export function DashboardContent() {
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Ledger Balance</p>
               <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">
-                ${Number(financeSummary.netBalance ?? financeSummary.balance ?? 0).toLocaleString()}
+                ₹{Number(financeSummary.netBalance ?? financeSummary.balance ?? 0).toLocaleString()}
               </p>
             </div>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-emerald-600 bg-emerald-50 border-emerald-100">

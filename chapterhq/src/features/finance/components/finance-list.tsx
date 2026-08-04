@@ -117,7 +117,7 @@ export function FinanceList() {
             </span>
             <div>
               <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Total Income</p>
-              <p className="text-2xl font-bold text-foreground">${summary.totalIncome.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-foreground">₹{summary.totalIncome.toFixed(2)}</p>
             </div>
           </div>
 
@@ -127,7 +127,7 @@ export function FinanceList() {
             </span>
             <div>
               <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Total Expenses</p>
-              <p className="text-2xl font-bold text-foreground">${summary.totalExpense.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-foreground">₹{summary.totalExpense.toFixed(2)}</p>
             </div>
           </div>
 
@@ -138,7 +138,7 @@ export function FinanceList() {
             <div>
               <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Net Balance</p>
               <p className={`text-2xl font-bold ${summary.netBalance >= 0 ? "text-foreground" : "text-destructive"}`}>
-                ${summary.netBalance.toFixed(2)}
+                ₹{summary.netBalance.toFixed(2)}
               </p>
             </div>
           </div>
@@ -273,7 +273,7 @@ export function FinanceList() {
                 </div>
 
                 <div className={`text-sm font-semibold ${record.type === "INCOME" ? "text-emerald-700" : "text-destructive"}`}>
-                  {record.type === "INCOME" ? "+" : "-"}${record.amount.toFixed(2)}
+                  {record.type === "INCOME" ? "+" : "-"}₹{record.amount.toFixed(2)}
                 </div>
 
                 <div className="flex justify-end">

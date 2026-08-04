@@ -45,7 +45,7 @@ export function DashboardPreview() {
                 {[
                   ["Members", "1,248", "+12 this week"],
                   ["Attendance", "96%", "+2.1%"],
-                  ["Finance", "$24.8k", "+$3.4k"],
+                  ["Finance", "₹24.8k", "+₹3.4k"],
                 ].map(([label, value, delta]) => (
                   <div
                     key={label}

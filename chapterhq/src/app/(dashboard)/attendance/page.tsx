@@ -26,7 +26,7 @@ export default function AttendancePage() {
           <p className="text-sm text-secondary-foreground">
             Attendance logs are managed directly within the context of specific events. Please select an event from the calendar to mark attendee presence.
           </p>
-          <a href="/dashboard/events" className="inline-block">
+          <a href="/events" className="inline-block">
             <button className="h-10 rounded-full bg-primary text-primary-foreground px-5 text-sm font-medium hover:bg-primary/95 transition-colors">
               Go to Events
             </button>

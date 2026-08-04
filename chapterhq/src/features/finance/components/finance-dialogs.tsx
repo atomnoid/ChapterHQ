@@ -143,7 +143,7 @@ export function CreateFinanceRecordDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="fin-amount">Amount ($)</Label>
+              <Label htmlFor="fin-amount">Amount (₹)</Label>
               <Input id="fin-amount" type="number" step="0.01" placeholder="0.00" {...register("amount")} />
               {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
             </div>
@@ -278,7 +278,7 @@ export function EditFinanceRecordDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="edit-fin-amount">Amount ($)</Label>
+              <Label htmlFor="edit-fin-amount">Amount (₹)</Label>
               <Input id="edit-fin-amount" type="number" step="0.01" {...register("amount")} />
               {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
             </div>

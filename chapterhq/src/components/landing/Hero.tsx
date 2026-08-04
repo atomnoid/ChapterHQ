@@ -118,7 +118,7 @@ export function Hero() {
                       Finance
                     </div>
                     <div className="mt-3 text-2xl font-semibold text-foreground">
-                      $24.8k
+                      ₹24.8k
                     </div>
                     <div className="mt-2 text-sm text-secondary-foreground">
                       Total balance
