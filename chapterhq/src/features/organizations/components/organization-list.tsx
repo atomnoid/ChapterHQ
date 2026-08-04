@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Building2, Edit2, MoreHorizontal, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateOrganizationDialog } from "./create-organization-dialog";
@@ -29,12 +31,16 @@ const statusColors: Record<Organization["status"], string> = {
 
 function OrganizationCard({
   org,
+  isActive,
   onEdit,
   onDelete,
+  onSwitch,
 }: {
   org: Organization;
+  isActive: boolean;
   onEdit: (o: Organization) => void;
   onDelete: (o: Organization) => void;
+  onSwitch: (organizationId: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -98,12 +104,24 @@ function OrganizationCard({
         <span className="text-xs text-secondary-foreground">
           Created {new Date(org.createdAt).toLocaleDateString()}
         </span>
+        {!isActive && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto rounded-full"
+            onClick={() => onSwitch(org.id)}
+          >
+            Switch
+          </Button>
+        )}
       </div>
     </article>
   );
 }
 
 export function OrganizationList() {
+  const router = useRouter();
+  const { data: session, update } = useSession();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +148,27 @@ export function OrganizationList() {
   }, [fetchOrganizations]);
 
   const closeDialog = () => setDialog({ type: "none" });
+
+  const switchOrganization = async (organizationId: string) => {
+    setError(null);
+    try {
+      const response = await fetch("/api/organizations/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message ?? "Unable to switch organizations.");
+      }
+
+      await update({ activeOrganizationId: organizationId });
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unable to switch organizations.");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -219,8 +258,10 @@ export function OrganizationList() {
             <OrganizationCard
               key={org.id}
               org={org}
+              isActive={session?.activeOrganizationId === org.id}
               onEdit={(o) => setDialog({ type: "edit", org: o })}
               onDelete={(o) => setDialog({ type: "delete", org: o })}
+              onSwitch={switchOrganization}
             />
           ))}
         </div>

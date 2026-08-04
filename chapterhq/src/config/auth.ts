@@ -111,7 +111,7 @@ export const authConfig = {
 
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (account?.provider && token.email && !token.id) {
         const existingUser = await authService.getUserByEmail(token.email);
 
@@ -132,6 +132,17 @@ export const authConfig = {
 
       if (account?.provider) {
         token.provider = account.provider;
+      }
+
+      if (trigger === "update" && token.id && session?.activeOrganizationId) {
+        const membership = await memberRepository.findActiveByUserId(
+          token.id,
+          session.activeOrganizationId
+        );
+
+        if (membership) {
+          token.activeOrganizationId = membership.organizationId;
+        }
       }
 
       if (token.id && !token.activeOrganizationId) {
