@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DocumentsList } from "@/features/documents/components/documents-list";
 
 export const metadata: Metadata = {
   title: "Documents — ChapterHQ",
@@ -17,6 +18,7 @@ export default function DocumentsPage() {
             Documents
           </h2>
         </div>
+        <DocumentsList />
       </section>
     </div>
   );
