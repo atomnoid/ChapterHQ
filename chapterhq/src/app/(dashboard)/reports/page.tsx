@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ReportsDashboard } from "@/features/reports/components/reports-dashboard";
 
 export const metadata: Metadata = {
   title: "Reports — ChapterHQ",
@@ -17,6 +18,7 @@ export default function ReportsPage() {
             Reports
           </h2>
         </div>
+        <ReportsDashboard />
       </section>
     </div>
   );
