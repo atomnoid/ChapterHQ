@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     }
 
     // Resolve organization context — no special permission needed beyond membership
+    await requirePermission(session.user.id, "settings:read");
     const context = await contextService.resolve(session.user.id);
     const organization = await organizationService.getOrganizationById(context.organizationId);
 
@@ -33,6 +34,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(organization, { status: 200 });
   } catch (error: any) {
+    if (error.name === "PermissionDeniedError") {
+      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+    }
     if (error.name === "OrganizationContextNotFoundError") {
       return NextResponse.json({ message: "No active organization found." }, { status: 404 });
     }
