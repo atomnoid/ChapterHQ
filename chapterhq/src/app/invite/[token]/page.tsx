@@ -33,6 +33,15 @@ export default function InviteTokenPage() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // 1. Redirect to login if unauthenticated (run in useEffect, not in render)
+  useEffect(() => {
+    if (sessionStatus === "unauthenticated") {
+      const callbackUrl = encodeURIComponent(window.location.pathname);
+      router.replace(`/login?callbackUrl=${callbackUrl}`);
+    }
+  }, [sessionStatus, router]);
+
+  // 2. Fetch invitation details
   useEffect(() => {
     if (!token) return;
 
@@ -54,6 +63,13 @@ export default function InviteTokenPage() {
         setLoading(false);
       });
   }, [token]);
+
+  // 3. Redirect to dashboard if invitation is already accepted
+  useEffect(() => {
+    if (invitation && invitation.status === "ACCEPTED") {
+      router.replace("/dashboard");
+    }
+  }, [invitation, router]);
 
   const handleAction = (action: "accept" | "reject") => {
     setError(null);
@@ -86,6 +102,7 @@ export default function InviteTokenPage() {
     });
   };
 
+  // Show loading while session or invitation is loading
   if (sessionStatus === "loading" || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -97,10 +114,13 @@ export default function InviteTokenPage() {
     );
   }
 
+  // Prevent rendering if user is not authenticated (the redirect useEffect will handle navigation)
   if (!session) {
-    // If not logged in, redirect to login or signup with callbackUrl pointing back here
-    const callbackUrl = encodeURIComponent(window.location.pathname);
-    router.replace(`/login?callbackUrl=${callbackUrl}`);
+    return null;
+  }
+
+  // If already accepted, return null (the redirect useEffect will send the user to the dashboard)
+  if (invitation && invitation.status === "ACCEPTED") {
     return null;
   }
 
@@ -126,7 +146,7 @@ export default function InviteTokenPage() {
   if (!invitation) return null;
 
   const isExpired = new Date() > new Date(invitation.expiresAt) || invitation.status === "EXPIRED";
-  const loggedInEmail = session?.user?.email?.toLowerCase();
+  const loggedInEmail = session.user.email?.toLowerCase();
   const invitedEmail = invitation.email.toLowerCase();
 
   // Email mismatch check
@@ -176,12 +196,6 @@ export default function InviteTokenPage() {
         </section>
       </main>
     );
-  }
-
-  // Already accepted page
-  if (invitation.status === "ACCEPTED") {
-    router.replace("/dashboard");
-    return null;
   }
 
   return (
