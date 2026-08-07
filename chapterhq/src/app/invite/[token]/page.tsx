@@ -12,6 +12,7 @@ interface InvitationDetail {
   email: string;
   expiresAt: string;
   status: "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
+  organizationId: string;
   organization: {
     name: string;
   };
@@ -24,7 +25,7 @@ interface RoleDetail {
 export default function InviteTokenPage() {
   const params = useParams();
   const router = useRouter();
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus, update } = useSession();
   const token = params?.token as string;
 
   const [loading, setLoading] = useState(true);
@@ -33,7 +34,7 @@ export default function InviteTokenPage() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // 1. Redirect to login if unauthenticated (run in useEffect, not in render)
+  // 1. Redirect to login if unauthenticated
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
       const callbackUrl = encodeURIComponent(window.location.pathname);
@@ -91,6 +92,10 @@ export default function InviteTokenPage() {
         }
 
         if (action === "accept") {
+          // Update the session active organization to the joined organization
+          if (invitation?.organizationId) {
+            await update({ activeOrganizationId: invitation.organizationId });
+          }
           router.push("/dashboard");
           router.refresh();
         } else {
@@ -114,7 +119,7 @@ export default function InviteTokenPage() {
     );
   }
 
-  // Prevent rendering if user is not authenticated (the redirect useEffect will handle navigation)
+  // Prevent rendering if user is not authenticated
   if (!session) {
     return null;
   }
