@@ -4,11 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/audit-logger";
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ token: string }> }
+  request: Request
 ) {
   try {
-    const { token } = await params;
+    const { searchParams } = new URL(request.url);
+    const token = searchParams.get("token");
+
+    if (!token) {
+      return NextResponse.json({ message: "Token is required." }, { status: 400 });
+    }
 
     const invitation = await prisma.invitation.findUnique({
       where: { token },
@@ -39,8 +43,7 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ token: string }> }
+  request: Request
 ) {
   try {
     const session = await auth();
@@ -48,7 +51,12 @@ export async function POST(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { token } = await params;
+    const { searchParams } = new URL(request.url);
+    const token = searchParams.get("token");
+
+    if (!token) {
+      return NextResponse.json({ message: "Token is required." }, { status: 400 });
+    }
 
     const invitation = await prisma.invitation.findUnique({
       where: { token },
