@@ -25,7 +25,7 @@ export class OrganizationContextService {
 
   async resolve(userId: string): Promise<OrganizationContext> {
     const session = await auth();
-    let activeOrgId = session?.activeOrganizationId;
+    const activeOrgId = session?.activeOrganizationId;
 
     console.log("[OrgContext] resolve userId:", userId, "session.activeOrganizationId:", activeOrgId);
 
