@@ -22,7 +22,7 @@ export async function GET(
     const { context: authContext } = await requirePermission(session.user.id, "inventory:read");
 
     const { id } = await params;
-    const item = await inventoryService.getItem(id, authContext.organizationId);
+    const item = await inventoryService.getItem(id, authContext.organizationId, authContext.activeCommitteeId);
 
     return apiResponse.success(item);
   } catch (error: unknown) {
@@ -57,7 +57,8 @@ export async function PATCH(
       id,
       authContext.organizationId,
       validatedData,
-      session.user.id
+      session.user.id,
+      authContext.activeCommitteeId
     );
 
     return apiResponse.success(updated, "Inventory item updated successfully.");
@@ -89,7 +90,7 @@ export async function DELETE(
     const { context: authContext } = await requirePermission(session.user.id, "inventory:delete");
 
     const { id } = await params;
-    await inventoryService.deleteItem(id, authContext.organizationId, session.user.id);
+    await inventoryService.deleteItem(id, authContext.organizationId, session.user.id, authContext.activeCommitteeId);
 
     return apiResponse.success(null, "Inventory item deleted successfully.");
   } catch (error: unknown) {

@@ -9,6 +9,7 @@ export interface CreateInventoryItemInput {
   unit?: string;
   location?: string;
   status?: InventoryStatus;
+  committeeId?: string | null;
 }
 
 export interface UpdateInventoryItemInput {
@@ -26,6 +27,7 @@ export interface ListInventoryQuery {
   status?: InventoryStatus;
   page?: number;
   limit?: number;
+  committeeId?: string | null;
 }
 
 export class InventoryRepository {
@@ -39,6 +41,7 @@ export class InventoryRepository {
         unit: data.unit,
         location: data.location,
         status: data.status ?? InventoryStatus.IN_STOCK,
+        committeeId: data.committeeId,
       },
     });
   }
@@ -60,7 +63,7 @@ export class InventoryRepository {
   }
 
   async list(organizationId: string, query: ListInventoryQuery = {}) {
-    const { search, category, status, page = 1, limit = 10 } = query;
+    const { search, category, status, page = 1, limit = 10, committeeId } = query;
     const skip = (page - 1) * limit;
 
     // MongoDB Prisma bug: deletedAt: null removed from where; JS post-filter applied below.
@@ -68,6 +71,7 @@ export class InventoryRepository {
       organizationId,
       ...(category ? { category } : {}),
       ...(status ? { status } : {}),
+      ...(committeeId ? { committeeId } : {}),
       ...(search
         ? {
             OR: [
