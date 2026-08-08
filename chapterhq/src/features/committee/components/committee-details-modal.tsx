@@ -58,6 +58,7 @@ export function CommitteeDetailsModal({
 
   const fetchCommitteeMembers = useCallback(async () => {
     if (!committee) return;
+    await Promise.resolve();
     setLoadingMembers(true);
     try {
       const res = await fetch(`/api/committees/${committee.id}/members`);
@@ -74,6 +75,7 @@ export function CommitteeDetailsModal({
 
   const fetchAppointments = useCallback(async () => {
     if (!committee) return;
+    await Promise.resolve();
     setLoadingAppointments(true);
     try {
       const res = await fetch(`/api/appointments?committeeId=${committee.id}`);

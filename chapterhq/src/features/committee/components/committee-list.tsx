@@ -62,6 +62,7 @@ export function CommitteeList() {
   }, [search]);
 
   const fetchCommittees = useCallback(async () => {
+    await Promise.resolve();
     setLoading(true);
     setError(null);
     try {

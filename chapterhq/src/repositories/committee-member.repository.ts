@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
 
 export class CommitteeMemberRepository {
@@ -62,7 +63,7 @@ export class CommitteeMemberRepository {
     params: PaginationParams
   ) {
     // MongoDB Prisma bug: deletedAt: null and nested relation deletedAt filters return no results.
-    const whereClause: any = {
+    const whereClause: Prisma.CommitteeMemberWhereInput = {
       committeeId,
     };
 

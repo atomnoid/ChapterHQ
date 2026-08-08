@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
 
 interface CreateCommitteeData {
@@ -43,7 +44,7 @@ export class CommitteeRepository {
   }
 
   async list(params: PaginationParams & { organizationId: string }) {
-    const whereClause: any = {
+    const whereClause: Prisma.CommitteeWhereInput = {
       organizationId: params.organizationId,
       // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };

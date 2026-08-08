@@ -312,8 +312,10 @@ export function AssignMemberDialog({
 
   useEffect(() => {
     if (open) {
-      setSelectedMemberId("");
-      setServerError(null);
+      Promise.resolve().then(() => {
+        setSelectedMemberId("");
+        setServerError(null);
+      });
       fetch("/api/members?limit=100")
         .then((res) => res.json())
         .then((data) => {
