@@ -18,7 +18,7 @@ export async function PATCH(
     const { context: authContext } = await requirePermission(session.user.id, "notifications:read");
 
     const { id } = await context.params;
-    const notification = await notificationService.markAsRead(id, authContext.organizationId);
+    const notification = await notificationService.markAsRead(id, authContext.organizationId, authContext.activeCommitteeId);
 
     return apiResponse.success(notification, "Notification marked as read successfully.");
   } catch (error: any) {

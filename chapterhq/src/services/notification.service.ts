@@ -1,5 +1,6 @@
 import { NotificationRepository } from "@/repositories/notification.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
+import { prisma } from "@/lib/prisma";
 
 export class NotificationNotFoundError extends Error {
   constructor() {
@@ -20,8 +21,19 @@ export class NotificationService {
       message: string;
       type: string;
       targetScope: string;
+      targetCommitteeId?: string | null;
     }
   ) {
+    if (data.targetCommitteeId) {
+      // Verify committee belongs to organization and is not deleted
+      const committee = await prisma.committee.findFirst({
+        where: { id: data.targetCommitteeId, organizationId, deletedAt: null },
+      });
+      if (!committee) {
+        throw new Error("Invalid committee or access denied.");
+      }
+    }
+
     return this.repository.create({
       organizationId,
       ...data,
@@ -30,7 +42,8 @@ export class NotificationService {
 
   async getNotifications(
     organizationId: string,
-    params: PaginationQuery & { isRead?: boolean; type?: string; targetScope?: string }
+    params: PaginationQuery & { isRead?: boolean; type?: string; targetScope?: string },
+    activeCommitteeId?: string | null
   ) {
     const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.repository.list({
@@ -39,24 +52,35 @@ export class NotificationService {
       isRead: params.isRead,
       type: params.type,
       targetScope: params.targetScope,
+      committeeId: activeCommitteeId,
     });
 
     return buildPaginatedResult(items, total, params);
   }
 
-  async getNotification(id: string, organizationId: string) {
+  async getNotification(id: string, organizationId: string, activeCommitteeId?: string | null) {
     const notification = await this.repository.findById(id, organizationId);
     if (!notification) {
       throw new NotificationNotFoundError();
     }
+
+    if (activeCommitteeId && notification.targetCommitteeId !== null && notification.targetCommitteeId !== activeCommitteeId) {
+      throw new NotificationNotFoundError();
+    }
+
     return notification;
   }
 
-  async markAsRead(id: string, organizationId: string) {
+  async markAsRead(id: string, organizationId: string, activeCommitteeId?: string | null) {
     const notification = await this.repository.findById(id, organizationId);
     if (!notification) {
       throw new NotificationNotFoundError();
     }
+
+    if (activeCommitteeId && notification.targetCommitteeId !== null && notification.targetCommitteeId !== activeCommitteeId) {
+      throw new NotificationNotFoundError();
+    }
+
     return this.repository.markAsRead(id, organizationId);
   }
 }

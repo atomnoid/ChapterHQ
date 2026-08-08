@@ -7,6 +7,7 @@ export interface CreateNotificationData {
   message: string;
   type: string;
   targetScope: string;
+  targetCommitteeId?: string | null;
 }
 
 export class NotificationRepository {
@@ -18,6 +19,7 @@ export class NotificationRepository {
         message: data.message,
         type: data.type,
         targetScope: data.targetScope,
+        targetCommitteeId: data.targetCommitteeId,
         isRead: false,
       },
     });
@@ -44,30 +46,42 @@ export class NotificationRepository {
     });
   }
 
-  async list(params: PaginationParams & { organizationId: string; isRead?: boolean; type?: string; targetScope?: string }) {
-    const whereClause: any = {
-      organizationId: params.organizationId,
-    };
+  async list(params: PaginationParams & { organizationId: string; isRead?: boolean; type?: string; targetScope?: string; committeeId?: string | null }) {
+    const andClauses: any[] = [
+      { organizationId: params.organizationId }
+    ];
 
     if (params.isRead !== undefined) {
-      whereClause.isRead = params.isRead;
+      andClauses.push({ isRead: params.isRead });
     }
 
     if (params.type) {
-      whereClause.type = params.type;
+      andClauses.push({ type: params.type });
     }
 
     if (params.targetScope) {
-      whereClause.targetScope = params.targetScope;
+      andClauses.push({ targetScope: params.targetScope });
+    }
+
+    if (params.committeeId !== undefined && params.committeeId !== null) {
+      andClauses.push({
+        OR: [
+          { targetCommitteeId: params.committeeId },
+          { targetCommitteeId: null }
+        ]
+      });
     }
 
     if (params.search) {
-      whereClause.OR = [
-        { title: { contains: params.search, mode: "insensitive" } },
-        { message: { contains: params.search, mode: "insensitive" } },
-      ];
+      andClauses.push({
+        OR: [
+          { title: { contains: params.search, mode: "insensitive" } },
+          { message: { contains: params.search, mode: "insensitive" } },
+        ]
+      });
     }
 
+    const whereClause = { AND: andClauses };
     const orderBy = buildOrderBy(params.sortBy, params.order, "createdAt");
 
     const [total, items] = await Promise.all([

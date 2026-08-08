@@ -19,7 +19,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const parsedQuery = notificationQuerySchema.parse(Object.fromEntries(searchParams.entries()));
 
-    const result = await notificationService.getNotifications(context.organizationId, parsedQuery);
+    const result = await notificationService.getNotifications(
+      context.organizationId,
+      parsedQuery,
+      context.activeCommitteeId ?? null
+    );
 
     return apiResponse.success(result);
   } catch (error: any) {
@@ -44,7 +48,10 @@ export async function POST(request: NextRequest) {
 
     const notification = await notificationService.createNotification(
       context.organizationId,
-      validatedData
+      {
+        ...validatedData,
+        targetCommitteeId: context.activeCommitteeId ?? null,
+      }
     );
 
     return apiResponse.created(notification, "Notification created successfully.");
