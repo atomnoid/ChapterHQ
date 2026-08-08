@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { InvitationRepository } from "@/repositories/invitation.repository";
 import { RoleRepository } from "@/repositories/role.repository";
+import { CommitteeRepository } from "@/repositories/committee.repository";
 
 export class DuplicatePendingInvitationError extends Error {
   constructor() {
@@ -19,7 +20,8 @@ export class InvitationNotFoundError extends Error {
 export class InvitationService {
   constructor(
     private readonly invitationRepository = new InvitationRepository(),
-    private readonly roleRepository = new RoleRepository()
+    private readonly roleRepository = new RoleRepository(),
+    private readonly committeeRepository = new CommitteeRepository()
   ) {}
 
   private generateToken(): string {
@@ -30,6 +32,7 @@ export class InvitationService {
     organizationId: string;
     email: string;
     roleId?: string;
+    committeeId?: string;
     expiresInDays: number;
   }) {
     // Duplicate pending check
@@ -50,6 +53,14 @@ export class InvitationService {
       }
     }
 
+    // Validate committeeId belongs to the same org
+    if (params.committeeId) {
+      const committee = await this.committeeRepository.findById(params.committeeId, params.organizationId);
+      if (!committee) {
+        throw new Error("Committee not found or does not belong to this organization.");
+      }
+    }
+
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + params.expiresInDays);
 
@@ -57,6 +68,7 @@ export class InvitationService {
       organizationId: params.organizationId,
       email: params.email,
       roleId: params.roleId,
+      committeeId: params.committeeId,
       token: this.generateToken(),
       expiresAt,
     });

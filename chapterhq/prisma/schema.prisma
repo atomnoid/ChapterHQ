@@ -154,6 +154,7 @@ model Committee {
 
   committeeMembers CommitteeMember[]
   appointments     Appointment[]
+  invitations      Invitation[]
 
   @@unique([organizationId, name])
 
@@ -392,8 +393,10 @@ model Invitation {
 
   organizationId String @db.ObjectId
   roleId         String? @db.ObjectId
+  committeeId    String? @db.ObjectId
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  committee    Committee? @relation(fields: [committeeId], references: [id])
 
   email  String
   token  String @unique

@@ -94,7 +94,10 @@ export default function InviteTokenPage() {
         if (action === "accept") {
           // Update the session active organization to the joined organization
           if (invitation?.organizationId) {
-            await update({ activeOrganizationId: invitation.organizationId });
+            await update({
+              activeOrganizationId: invitation.organizationId,
+              activeCommitteeId: data.activeCommitteeId || null
+            });
           }
           router.push("/dashboard");
           router.refresh();
