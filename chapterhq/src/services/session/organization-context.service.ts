@@ -16,6 +16,7 @@ export interface OrganizationContext {
   member: NonNullable<
     Awaited<ReturnType<MemberRepository["findActiveByUserId"]>>
   >;
+  activeCommitteeId?: string | null;
 }
 
 export class OrganizationContextService {
@@ -26,8 +27,9 @@ export class OrganizationContextService {
   async resolve(userId: string): Promise<OrganizationContext> {
     const session = await auth();
     const activeOrgId = session?.activeOrganizationId;
+    const activeCommitteeId = session?.activeCommitteeId;
 
-    console.log("[OrgContext] resolve userId:", userId, "session.activeOrganizationId:", activeOrgId);
+    console.log("[OrgContext] resolve userId:", userId, "session.activeOrganizationId:", activeOrgId, "session.activeCommitteeId:", activeCommitteeId);
 
     let member = await this.memberRepository.findActiveByUserId(userId, activeOrgId);
 
@@ -48,6 +50,7 @@ export class OrganizationContextService {
       organizationId: member.organizationId,
       organization: member.organization,
       member,
+      activeCommitteeId: activeCommitteeId ?? null,
     };
   }
 }

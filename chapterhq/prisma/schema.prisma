@@ -155,6 +155,11 @@ model Committee {
   committeeMembers CommitteeMember[]
   appointments     Appointment[]
   invitations      Invitation[]
+  events           Event[]
+  financeRecords   FinanceRecord[]
+  documents        Document[]
+  inventoryItems   InventoryItem[]
+  notifications    Notification[]
 
   @@unique([organizationId, name])
 
@@ -420,9 +425,11 @@ model Invitation {
 model Event {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  organizationId String @db.ObjectId
+  organizationId String  @db.ObjectId
+  committeeId    String? @db.ObjectId
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  committee    Committee?   @relation(fields: [committeeId], references: [id])
 
   title                String
   description          String?
@@ -556,9 +563,11 @@ model Certificate {
 model Notification {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  organizationId String @db.ObjectId
+  organizationId    String  @db.ObjectId
+  targetCommitteeId String? @db.ObjectId
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  targetCommittee Committee?   @relation(fields: [targetCommitteeId], references: [id])
 
   title       String
   message     String
@@ -579,9 +588,11 @@ model Notification {
 model Document {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  organizationId String @db.ObjectId
+  organizationId String  @db.ObjectId
+  committeeId    String? @db.ObjectId
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  committee    Committee?   @relation(fields: [committeeId], references: [id])
 
   title       String
   description String?
@@ -603,9 +614,11 @@ model Document {
 model FinanceRecord {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  organizationId String @db.ObjectId
+  organizationId String  @db.ObjectId
+  committeeId    String? @db.ObjectId
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  committee    Committee?   @relation(fields: [committeeId], references: [id])
 
   type        TransactionType
   category    String
@@ -628,9 +641,11 @@ model FinanceRecord {
 model InventoryItem {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  organizationId String @db.ObjectId
+  organizationId String  @db.ObjectId
+  committeeId    String? @db.ObjectId
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  committee    Committee?   @relation(fields: [committeeId], references: [id])
 
   name        String
   category    String?
