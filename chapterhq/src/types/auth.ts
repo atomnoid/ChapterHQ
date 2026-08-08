@@ -6,6 +6,7 @@ declare module "next-auth" {
 			id: string;
 		};
 		activeOrganizationId?: string;
+		activeCommitteeId?: string | null;
 	}
 
 	interface User {
@@ -18,6 +19,7 @@ declare module "next-auth/jwt" {
 		id?: string;
 		provider?: string;
 		activeOrganizationId?: string;
+		activeCommitteeId?: string | null;
 	}
 }
 

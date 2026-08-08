@@ -161,6 +161,39 @@ export async function POST(
       }
     }
 
+    // Assign member to committee if invited to one
+    if (invitation.committeeId) {
+      const committee = await prisma.committee.findFirst({
+        where: {
+          id: invitation.committeeId,
+          organizationId: invitation.organizationId,
+        },
+      });
+      if (committee && !committee.deletedAt) {
+        const existingCM = await prisma.committeeMember.findFirst({
+          where: {
+            committeeId: invitation.committeeId,
+            memberId: member.id,
+          },
+        });
+        if (existingCM) {
+          if (existingCM.deletedAt) {
+            await prisma.committeeMember.update({
+              where: { id: existingCM.id },
+              data: { deletedAt: null, assignedAt: new Date() },
+            });
+          }
+        } else {
+          await prisma.committeeMember.create({
+            data: {
+              committeeId: invitation.committeeId,
+              memberId: member.id,
+            },
+          });
+        }
+      }
+    }
+
     // Mark invitation accepted
     await prisma.invitation.update({
       where: { id: invitation.id },
@@ -187,7 +220,11 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ message: "Invitation accepted successfully." });
+    return NextResponse.json({
+      message: "Invitation accepted successfully.",
+      activeOrganizationId: invitation.organizationId,
+      activeCommitteeId: invitation.committeeId || null,
+    });
   } catch (error) {
     return NextResponse.json({ message: "Internal server error." }, { status: 500 });
   }

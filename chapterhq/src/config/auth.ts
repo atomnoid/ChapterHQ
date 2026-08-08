@@ -134,14 +134,34 @@ export const authConfig = {
         token.provider = account.provider;
       }
 
-      if (trigger === "update" && token.id && session?.activeOrganizationId) {
-        const membership = await memberRepository.findActiveByUserId(
-          token.id,
-          session.activeOrganizationId
-        );
+      if (trigger === "update" && token.id) {
+        if (session?.activeOrganizationId) {
+          const membership = await memberRepository.findActiveByUserId(
+            token.id,
+            session.activeOrganizationId
+          );
 
-        if (membership) {
-          token.activeOrganizationId = membership.organizationId;
+          if (membership) {
+            if (token.activeOrganizationId !== membership.organizationId) {
+              token.activeOrganizationId = membership.organizationId;
+              token.activeCommitteeId = null;
+            }
+          }
+        }
+
+        if (session && typeof session === "object" && "activeCommitteeId" in session) {
+          const targetCommitteeId = session.activeCommitteeId;
+          if (targetCommitteeId) {
+            const orgId = token.activeOrganizationId;
+            if (orgId) {
+              const isValid = await validateCommitteeAccess(token.id, orgId, targetCommitteeId);
+              if (isValid) {
+                token.activeCommitteeId = targetCommitteeId;
+              }
+            }
+          } else {
+            token.activeCommitteeId = null;
+          }
         }
       }
 
@@ -185,9 +205,63 @@ export const authConfig = {
         session.user.image = token.picture ?? session.user.image;
       }
       session.activeOrganizationId = token.activeOrganizationId;
-      console.log("[auth/session] userId:", session.user?.id, "activeOrganizationId:", session.activeOrganizationId);
+      session.activeCommitteeId = token.activeCommitteeId;
+      console.log("[auth/session] userId:", session.user?.id, "activeOrganizationId:", session.activeOrganizationId, "activeCommitteeId:", session.activeCommitteeId);
 
       return session;
     },
   },
 } satisfies AuthOptions;
+
+async function validateCommitteeAccess(userId: string, organizationId: string, committeeId: string): Promise<boolean> {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+
+    const member = await prisma.member.findFirst({
+      where: {
+        userId,
+        organizationId,
+        status: "ACTIVE",
+      },
+    });
+    if (!member || member.deletedAt) return false;
+
+    const committee = await prisma.committee.findFirst({
+      where: {
+        id: committeeId,
+        organizationId,
+      },
+    });
+    if (!committee || committee.deletedAt) return false;
+
+    const committeeMember = await prisma.committeeMember.findFirst({
+      where: {
+        committeeId,
+        memberId: member.id,
+      },
+    });
+    if (committeeMember && !committeeMember.deletedAt) {
+      return true;
+    }
+
+    const userRoles = await prisma.userRole.findMany({
+      where: {
+        memberId: member.id,
+      },
+      include: {
+        role: true,
+      },
+    });
+
+    const activeUserRoles = userRoles.filter((ur) => !ur.role.deletedAt);
+    const isPresident = activeUserRoles.some((ur) => ur.role.name === "President");
+    if (isPresident) {
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("[validateCommitteeAccess] Error:", err);
+    return false;
+  }
+}

@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       organizationId: context.organizationId,
       email: validatedData.email,
       roleId: validatedData.roleId,
+      committeeId: validatedData.committeeId,
       expiresInDays: validatedData.expiresInDays,
     });
 
