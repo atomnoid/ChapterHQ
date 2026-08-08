@@ -18,7 +18,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const parsedQuery = eventQuerySchema.parse(Object.fromEntries(searchParams.entries()));
 
-    const result = await eventService.getEvents(context.organizationId, parsedQuery);
+    const result = await eventService.getEvents(context.organizationId, {
+      ...parsedQuery,
+      committeeId: context.activeCommitteeId ?? null,
+    });
 
     return apiResponse.success(result);
   } catch (error: any) {
@@ -43,7 +46,10 @@ export async function POST(request: Request) {
 
     const event = await eventService.createEvent(
       context.organizationId,
-      validatedData,
+      {
+        ...validatedData,
+        committeeId: context.activeCommitteeId ?? null,
+      },
       session.user.id
     );
 

@@ -4,6 +4,7 @@ import { EventStatus } from "@prisma/client";
 
 interface CreateEventData {
   organizationId: string;
+  committeeId?: string;
   title: string;
   description?: string;
   venue?: string;
@@ -23,6 +24,7 @@ interface UpdateEventData {
   capacity?: number;
   registrationRequired?: boolean;
   status?: EventStatus;
+  committeeId?: string | null;
 }
 
 export class EventRepository {
@@ -30,6 +32,7 @@ export class EventRepository {
     return prisma.event.create({
       data: {
         organizationId: data.organizationId,
+        committeeId: data.committeeId,
         title: data.title,
         description: data.description,
         venue: data.venue,
@@ -62,6 +65,7 @@ export class EventRepository {
     params: PaginationParams & {
       organizationId: string;
       status?: EventStatus;
+      committeeId?: string | null;
     }
   ) {
     const whereClause: any = {
@@ -70,6 +74,11 @@ export class EventRepository {
     };
 
     if (params.status) whereClause.status = params.status;
+
+    // Filter by committeeId only if a non-null/non-undefined value is provided
+    if (params.committeeId !== undefined && params.committeeId !== null) {
+      whereClause.committeeId = params.committeeId;
+    }
 
     if (params.search) {
       whereClause.OR = [

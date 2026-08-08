@@ -22,7 +22,8 @@ export async function GET(
     const { id: eventId } = await context.params;
     const result = await registrationService.getAttendanceList(
       authContext.organizationId,
-      eventId
+      eventId,
+      authContext.activeCommitteeId
     );
 
     return apiResponse.success(result);
@@ -54,7 +55,8 @@ export async function PATCH(
         authContext.organizationId,
         eventId,
         items,
-        session.user.id
+        session.user.id,
+        authContext.activeCommitteeId
       );
       return apiResponse.success(result, "Attendance updated successfully.");
     } else {
@@ -63,7 +65,8 @@ export async function PATCH(
         authContext.organizationId,
         eventId,
         validatedData,
-        session.user.id
+        session.user.id,
+        authContext.activeCommitteeId
       );
       return apiResponse.success(result, "Attendance marked successfully.");
     }

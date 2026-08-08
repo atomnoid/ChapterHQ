@@ -26,7 +26,8 @@ export async function GET(
     const result = await registrationService.getRegistrations(
       authContext.organizationId,
       eventId,
-      parsedQuery
+      parsedQuery,
+      authContext.activeCommitteeId
     );
 
     return apiResponse.success(result);
@@ -62,7 +63,8 @@ export async function POST(
       authContext.organizationId,
       eventId,
       memberId,
-      session.user.id
+      session.user.id,
+      authContext.activeCommitteeId
     );
 
     return apiResponse.created(registration, "Member registered to event successfully.");

@@ -47,10 +47,14 @@ export class EventRegistrationService {
     organizationId: string,
     eventId: string,
     memberId: string,
-    actorUserId?: string
+    actorUserId?: string,
+    activeCommitteeId?: string | null
   ) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) {
+      throw new EventNotFoundError();
+    }
+    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -97,10 +101,14 @@ export class EventRegistrationService {
     organizationId: string,
     eventId: string,
     memberId: string,
-    actorUserId?: string
+    actorUserId?: string,
+    activeCommitteeId?: string | null
   ) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) {
+      throw new EventNotFoundError();
+    }
+    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -126,10 +134,14 @@ export class EventRegistrationService {
   async getRegistrations(
     organizationId: string,
     eventId: string,
-    params: PaginationQuery
+    params: PaginationQuery,
+    activeCommitteeId?: string | null
   ) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) {
+      throw new EventNotFoundError();
+    }
+    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -143,10 +155,14 @@ export class EventRegistrationService {
     organizationId: string,
     eventId: string,
     data: { memberId: string; status: AttendanceStatus; notes?: string },
-    actorUserId?: string
+    actorUserId?: string,
+    activeCommitteeId?: string | null
   ) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) {
+      throw new EventNotFoundError();
+    }
+    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -180,10 +196,14 @@ export class EventRegistrationService {
     organizationId: string,
     eventId: string,
     items: { memberId: string; status: AttendanceStatus; notes?: string }[],
-    actorUserId?: string
+    actorUserId?: string,
+    activeCommitteeId?: string | null
   ) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) {
+      throw new EventNotFoundError();
+    }
+    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -211,9 +231,12 @@ export class EventRegistrationService {
     return results;
   }
 
-  async getAttendanceList(organizationId: string, eventId: string) {
+  async getAttendanceList(organizationId: string, eventId: string, activeCommitteeId?: string | null) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) {
+      throw new EventNotFoundError();
+    }
+    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 

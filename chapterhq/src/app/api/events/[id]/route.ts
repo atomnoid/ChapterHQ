@@ -20,7 +20,7 @@ export async function GET(
     const { context: authContext } = await requirePermission(session.user.id, "events:read");
 
     const { id } = await context.params;
-    const event = await eventService.getEvent(id, authContext.organizationId);
+    const event = await eventService.getEvent(id, authContext.organizationId, authContext.activeCommitteeId);
 
     return apiResponse.success(event);
   } catch (error: any) {
@@ -49,7 +49,8 @@ export async function PATCH(
       id,
       authContext.organizationId,
       validatedData,
-      session.user.id
+      session.user.id,
+      authContext.activeCommitteeId
     );
 
     return apiResponse.success(updated, "Event updated successfully.");
@@ -75,7 +76,7 @@ export async function DELETE(
     const { context: authContext } = await requirePermission(session.user.id, "events:delete");
 
     const { id } = await context.params;
-    await eventService.deleteEvent(id, authContext.organizationId, session.user.id);
+    await eventService.deleteEvent(id, authContext.organizationId, session.user.id, authContext.activeCommitteeId);
 
     return apiResponse.success(null, "Event deleted successfully.");
   } catch (error: any) {
