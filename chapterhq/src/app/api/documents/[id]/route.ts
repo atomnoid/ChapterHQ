@@ -20,7 +20,7 @@ export async function GET(
     const { context: authContext } = await requirePermission(session.user.id, "documents:read");
 
     const { id } = await params;
-    const document = await documentService.getDocument(id, authContext.organizationId);
+    const document = await documentService.getDocument(id, authContext.organizationId, authContext.activeCommitteeId);
 
     return apiResponse.success(document);
   } catch (error: unknown) {
@@ -48,7 +48,7 @@ export async function DELETE(
     const { context: authContext } = await requirePermission(session.user.id, "documents:delete");
 
     const { id } = await params;
-    await documentService.deleteDocument(id, authContext.organizationId, session.user.id);
+    await documentService.deleteDocument(id, authContext.organizationId, session.user.id, authContext.activeCommitteeId);
 
     return apiResponse.success(null, "Document deleted successfully.");
   } catch (error: unknown) {

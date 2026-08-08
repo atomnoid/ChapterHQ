@@ -1,6 +1,7 @@
 import { DocumentRepository, ListDocumentsQuery } from "@/repositories/document.repository";
-import { CreateDocumentInput } from "@/validators/document.validator";
+import { CreateDocumentInput as ZodCreateInput } from "@/validators/document.validator";
 import { logActivity } from "@/lib/audit-logger";
+import { prisma } from "@/lib/prisma";
 
 export class DocumentNotFoundError extends Error {
   constructor(message = "Document not found.") {
@@ -8,6 +9,8 @@ export class DocumentNotFoundError extends Error {
     this.name = "DocumentNotFoundError";
   }
 }
+
+type CreateDocumentInput = ZodCreateInput & { committeeId?: string | null };
 
 export class DocumentService {
   private documentRepo: DocumentRepository;
@@ -21,6 +24,41 @@ export class DocumentService {
     input: CreateDocumentInput,
     actorId?: string
   ) {
+    if (input.committeeId) {
+      // 1. Verify committee belongs to organization and is not deleted
+      const committee = await prisma.committee.findFirst({
+        where: { id: input.committeeId, organizationId, deletedAt: null },
+      });
+      if (!committee) {
+        throw new Error("Invalid committee or access denied.");
+      }
+
+      // 2. Check if user has access to that committee using existing rules
+      if (actorId) {
+        const member = await prisma.member.findFirst({
+          where: { userId: actorId, organizationId, status: "ACTIVE", deletedAt: null },
+        });
+        if (!member) {
+          throw new Error("Access denied.");
+        }
+
+        const userRoles = await prisma.userRole.findMany({
+          where: { memberId: member.id },
+          include: { role: true },
+        });
+        const isPresident = userRoles.some(ur => ur.role.name === "President" && !ur.role.deletedAt);
+
+        if (!isPresident) {
+          const isCM = await prisma.committeeMember.findFirst({
+            where: { committeeId: input.committeeId, memberId: member.id, deletedAt: null },
+          });
+          if (!isCM) {
+            throw new Error("Access denied to this committee.");
+          }
+        }
+      }
+    }
+
     const document = await this.documentRepo.create({
       organizationId,
       ...input,
@@ -41,11 +79,16 @@ export class DocumentService {
     return document;
   }
 
-  async getDocument(id: string, organizationId: string) {
+  async getDocument(id: string, organizationId: string, activeCommitteeId?: string | null) {
     const document = await this.documentRepo.findById(id, organizationId);
     if (!document) {
       throw new DocumentNotFoundError();
     }
+
+    if (activeCommitteeId && document.committeeId !== activeCommitteeId) {
+      throw new DocumentNotFoundError();
+    }
+
     return document;
   }
 
@@ -53,8 +96,8 @@ export class DocumentService {
     return this.documentRepo.list(organizationId, query);
   }
 
-  async deleteDocument(id: string, organizationId: string, actorId?: string) {
-    const document = await this.getDocument(id, organizationId);
+  async deleteDocument(id: string, organizationId: string, actorId?: string, activeCommitteeId?: string | null) {
+    const document = await this.getDocument(id, organizationId, activeCommitteeId);
 
     const deleted = await this.documentRepo.softDelete(id, organizationId);
 

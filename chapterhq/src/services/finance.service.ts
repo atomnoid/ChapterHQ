@@ -1,6 +1,7 @@
 import { FinanceRepository, ListFinanceQuery } from "@/repositories/finance.repository";
-import { CreateFinanceInput, UpdateFinanceInput } from "@/validators/finance.validator";
+import { CreateFinanceInput as ZodCreateInput, UpdateFinanceInput } from "@/validators/finance.validator";
 import { logActivity } from "@/lib/audit-logger";
+import { prisma } from "@/lib/prisma";
 
 export class FinanceRecordNotFoundError extends Error {
   constructor(message = "Finance record not found.") {
@@ -8,6 +9,8 @@ export class FinanceRecordNotFoundError extends Error {
     this.name = "FinanceRecordNotFoundError";
   }
 }
+
+type CreateFinanceInput = ZodCreateInput & { committeeId?: string | null };
 
 export class FinanceService {
   private financeRepo: FinanceRepository;
@@ -21,6 +24,41 @@ export class FinanceService {
     input: CreateFinanceInput,
     actorId?: string
   ) {
+    if (input.committeeId) {
+      // 1. Verify committee belongs to organization and is not deleted
+      const committee = await prisma.committee.findFirst({
+        where: { id: input.committeeId, organizationId, deletedAt: null },
+      });
+      if (!committee) {
+        throw new Error("Invalid committee or access denied.");
+      }
+
+      // 2. Check if user has access to that committee using existing rules
+      if (actorId) {
+        const member = await prisma.member.findFirst({
+          where: { userId: actorId, organizationId, status: "ACTIVE", deletedAt: null },
+        });
+        if (!member) {
+          throw new Error("Access denied.");
+        }
+
+        const userRoles = await prisma.userRole.findMany({
+          where: { memberId: member.id },
+          include: { role: true },
+        });
+        const isPresident = userRoles.some(ur => ur.role.name === "President" && !ur.role.deletedAt);
+
+        if (!isPresident) {
+          const isCM = await prisma.committeeMember.findFirst({
+            where: { committeeId: input.committeeId, memberId: member.id, deletedAt: null },
+          });
+          if (!isCM) {
+            throw new Error("Access denied to this committee.");
+          }
+        }
+      }
+    }
+
     const record = await this.financeRepo.create({
       organizationId,
       ...input,
@@ -45,11 +83,15 @@ export class FinanceService {
     id: string,
     organizationId: string,
     input: UpdateFinanceInput,
-    actorId?: string
+    actorId?: string,
+    activeCommitteeId?: string | null
   ) {
-    const record = await this.getRecord(id, organizationId);
+    const record = await this.getRecord(id, organizationId, activeCommitteeId);
 
-    const updated = await this.financeRepo.update(id, organizationId, input);
+    // Remove committeeId from input if present to prevent reassignment
+    const { committeeId, ...updateInput } = input as any;
+
+    const updated = await this.financeRepo.update(id, organizationId, updateInput);
 
     if (actorId) {
       await logActivity({
@@ -65,11 +107,16 @@ export class FinanceService {
     return updated;
   }
 
-  async getRecord(id: string, organizationId: string) {
+  async getRecord(id: string, organizationId: string, activeCommitteeId?: string | null) {
     const record = await this.financeRepo.findById(id, organizationId);
     if (!record) {
       throw new FinanceRecordNotFoundError();
     }
+
+    if (activeCommitteeId && record.committeeId !== activeCommitteeId) {
+      throw new FinanceRecordNotFoundError();
+    }
+
     return record;
   }
 
@@ -77,12 +124,12 @@ export class FinanceService {
     return this.financeRepo.list(organizationId, query);
   }
 
-  async getSummary(organizationId: string) {
-    return this.financeRepo.getSummary(organizationId);
+  async getSummary(organizationId: string, committeeId?: string | null) {
+    return this.financeRepo.getSummary(organizationId, committeeId);
   }
 
-  async deleteRecord(id: string, organizationId: string, actorId?: string) {
-    const record = await this.getRecord(id, organizationId);
+  async deleteRecord(id: string, organizationId: string, actorId?: string, activeCommitteeId?: string | null) {
+    const record = await this.getRecord(id, organizationId, activeCommitteeId);
 
     const deleted = await this.financeRepo.softDelete(id, organizationId);
 

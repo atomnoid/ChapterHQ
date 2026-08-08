@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get("limit") ?? undefined,
     });
 
-    const result = await financeService.listRecords(authContext.organizationId, queryInput);
+    const result = await financeService.listRecords(authContext.organizationId, {
+      ...queryInput,
+      committeeId: authContext.activeCommitteeId ?? null,
+    });
 
     return apiResponse.success(result);
   } catch (error: unknown) {
@@ -58,7 +61,10 @@ export async function POST(request: NextRequest) {
 
     const record = await financeService.createRecord(
       authContext.organizationId,
-      validatedData,
+      {
+        ...validatedData,
+        committeeId: authContext.activeCommitteeId ?? null,
+      },
       session.user.id
     );
 

@@ -22,7 +22,7 @@ export async function GET(
     const { context: authContext } = await requirePermission(session.user.id, "finance:read");
 
     const { id } = await params;
-    const record = await financeService.getRecord(id, authContext.organizationId);
+    const record = await financeService.getRecord(id, authContext.organizationId, authContext.activeCommitteeId);
 
     return apiResponse.success(record);
   } catch (error: unknown) {
@@ -57,7 +57,8 @@ export async function PATCH(
       id,
       authContext.organizationId,
       validatedData,
-      session.user.id
+      session.user.id,
+      authContext.activeCommitteeId
     );
 
     return apiResponse.success(updated, "Finance record updated successfully.");
@@ -89,7 +90,7 @@ export async function DELETE(
     const { context: authContext } = await requirePermission(session.user.id, "finance:delete");
 
     const { id } = await params;
-    await financeService.deleteRecord(id, authContext.organizationId, session.user.id);
+    await financeService.deleteRecord(id, authContext.organizationId, session.user.id, authContext.activeCommitteeId);
 
     return apiResponse.success(null, "Finance record deleted successfully.");
   } catch (error: unknown) {

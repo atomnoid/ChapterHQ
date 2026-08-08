@@ -8,6 +8,7 @@ export interface CreateDocumentInput {
   fileUrl: string;
   category?: string;
   uploadedBy?: string;
+  committeeId?: string | null;
 }
 
 export interface ListDocumentsQuery {
@@ -15,6 +16,7 @@ export interface ListDocumentsQuery {
   category?: string;
   page?: number;
   limit?: number;
+  committeeId?: string | null;
 }
 
 export class DocumentRepository {
@@ -27,6 +29,7 @@ export class DocumentRepository {
         fileUrl: data.fileUrl,
         category: data.category,
         uploadedBy: data.uploadedBy,
+        committeeId: data.committeeId,
       },
     });
   }
@@ -41,13 +44,14 @@ export class DocumentRepository {
   }
 
   async list(organizationId: string, query: ListDocumentsQuery = {}) {
-    const { search, category, page = 1, limit = 10 } = query;
+    const { search, category, page = 1, limit = 10, committeeId } = query;
     const skip = (page - 1) * limit;
 
     // MongoDB Prisma bug: deletedAt: null removed from where; JS post-filter applied below.
     const where: Prisma.DocumentWhereInput = {
       organizationId,
       ...(category ? { category } : {}),
+      ...(committeeId ? { committeeId } : {}),
       ...(search
         ? {
             OR: [

@@ -278,13 +278,16 @@ export class ReportRepository {
     };
   }
 
-  async getFinanceReport(organizationId: string): Promise<FinanceReport> {
+  async getFinanceReport(organizationId: string, committeeId?: string | null): Promise<FinanceReport> {
     const months = getRecentMonthStarts(MONTH_WINDOW);
     const firstMonthStart = months[0];
 
     // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
     const allRecords = await db.financeRecord.findMany({
-      where: { organizationId },
+      where: {
+        organizationId,
+        ...(committeeId ? { committeeId } : {}),
+      },
       select: { type: true, amount: true, date: true, deletedAt: true },
     });
 

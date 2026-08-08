@@ -26,7 +26,10 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get("limit") ?? undefined,
     });
 
-    const result = await documentService.listDocuments(authContext.organizationId, queryInput);
+    const result = await documentService.listDocuments(authContext.organizationId, {
+      ...queryInput,
+      committeeId: authContext.activeCommitteeId ?? null,
+    });
 
     return apiResponse.success(result);
   } catch (error: unknown) {
@@ -55,7 +58,10 @@ export async function POST(request: NextRequest) {
 
     const document = await documentService.createDocument(
       authContext.organizationId,
-      validatedData,
+      {
+        ...validatedData,
+        committeeId: authContext.activeCommitteeId ?? null,
+      },
       session.user.id
     );
 

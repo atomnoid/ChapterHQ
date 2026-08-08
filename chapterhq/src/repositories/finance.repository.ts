@@ -9,6 +9,7 @@ export interface CreateFinanceInput {
   date: Date;
   description?: string;
   createdBy?: string;
+  committeeId?: string | null;
 }
 
 export interface UpdateFinanceInput {
@@ -27,6 +28,7 @@ export interface ListFinanceQuery {
   endDate?: Date;
   page?: number;
   limit?: number;
+  committeeId?: string | null;
 }
 
 export class FinanceRepository {
@@ -40,6 +42,7 @@ export class FinanceRepository {
         date: data.date,
         description: data.description,
         createdBy: data.createdBy,
+        committeeId: data.committeeId,
       },
     });
   }
@@ -61,7 +64,7 @@ export class FinanceRepository {
   }
 
   async list(organizationId: string, query: ListFinanceQuery = {}) {
-    const { search, type, category, startDate, endDate, page = 1, limit = 10 } = query;
+    const { search, type, category, startDate, endDate, page = 1, limit = 10, committeeId } = query;
     const skip = (page - 1) * limit;
 
     // MongoDB Prisma bug: deletedAt: null removed from where; JS post-filter applied below.
@@ -69,6 +72,7 @@ export class FinanceRepository {
       organizationId,
       ...(type ? { type } : {}),
       ...(category ? { category } : {}),
+      ...(committeeId ? { committeeId } : {}),
       ...((startDate || endDate)
         ? {
             date: {
@@ -105,10 +109,13 @@ export class FinanceRepository {
     };
   }
 
-  async getSummary(organizationId: string) {
+  async getSummary(organizationId: string, committeeId?: string | null) {
     // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
     const allRecords = await prisma.financeRecord.findMany({
-      where: { organizationId },
+      where: {
+        organizationId,
+        ...(committeeId ? { committeeId } : {}),
+      },
       select: { type: true, amount: true, deletedAt: true },
     });
 
