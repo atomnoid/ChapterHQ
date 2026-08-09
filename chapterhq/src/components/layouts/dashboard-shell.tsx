@@ -22,6 +22,7 @@ import { filterNavItems } from "@/lib/filter-nav-items";
 import { SIDEBAR_NAV_ITEMS } from "@/config/sidebar-nav";
 import type { SidebarNavItem } from "@/config/sidebar-nav";
 import { CommitteeSwitcher } from "@/features/committee/components/committee-switcher";
+import { CommitteeContextBadge } from "@/features/committee/components/committee-context-badge";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -334,6 +335,9 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
               <div className="hidden min-w-[18rem] max-w-md flex-1 lg:block">
                 <GlobalSearchInput />
               </div>
+
+              {/* Active committee context indicator */}
+              <CommitteeContextBadge />
 
               <div className="ml-auto flex items-center gap-2">
                 <Link href="/notifications" aria-label="Notifications">

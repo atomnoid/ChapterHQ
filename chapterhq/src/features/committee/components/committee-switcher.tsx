@@ -6,55 +6,11 @@ import { useSession } from "next-auth/react";
 import { Check, ChevronDown, Layers, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { useMyCommittees } from "@/features/committee/hooks/use-my-committees";
+import type { Committee } from "@/features/committee/hooks/use-my-committees";
 
-interface Committee {
-  id: string;
-  name: string;
-  description: string | null;
-}
-
-// ---------------------------------------------------------------------------
-// Hook — fetch user-accessible committees from the trusted server endpoint.
-// Re-fetches whenever the active organization changes.
-// ---------------------------------------------------------------------------
-
-function useMyCommittees(activeOrganizationId: string | null | undefined) {
-  const [committees, setCommittees] = useState<Committee[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!activeOrganizationId) {
-      setCommittees([]);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-
-    fetch("/api/me/committees")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (cancelled) return;
-        const items: Committee[] = json?.data ?? json ?? [];
-        setCommittees(Array.isArray(items) ? items : []);
-      })
-      .catch(() => {
-        if (!cancelled) setCommittees([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeOrganizationId]);
-
-  return { committees, loading };
-}
+// Re-export for consumers that import the type from this file (backwards compat).
+export type { Committee };
 
 // ---------------------------------------------------------------------------
 // CommitteeSwitcher
