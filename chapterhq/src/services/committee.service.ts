@@ -2,6 +2,8 @@ import { CommitteeRepository } from "@/repositories/committee.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 import { logActivity } from "@/lib/audit-logger";
 
+import { prisma } from "@/lib/prisma";
+
 export class CommitteeNotFoundError extends Error {
   constructor() {
     super("Committee not found.");
@@ -109,6 +111,29 @@ export class CommitteeService {
     }
 
     const deleted = await this.repository.softDelete(id, organizationId);
+
+    // Cascade: soft-delete all active memberships in this committee
+    await prisma.committeeMember.updateMany({
+      where: {
+        committeeId: id,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    // Cascade: revoke all active appointments in this committee
+    await prisma.appointment.updateMany({
+      where: {
+        committeeId: id,
+        status: "ACTIVE",
+        deletedAt: null,
+      },
+      data: {
+        status: "REVOKED",
+      },
+    });
 
     if (actorUserId) {
       await logActivity(
