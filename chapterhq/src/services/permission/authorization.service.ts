@@ -30,12 +30,34 @@ export class AuthorizationService {
 
   // Load Permissions resolved for current user
   async resolveCurrentPermissions(userId: string) {
+    const context = await this.resolveContext(userId);
     const roles = await this.resolveCurrentRoles(userId);
     const roleIds = roles.map(r => r.id);
-    if (roleIds.length === 0) return [];
+    let permissions: any[] = [];
     
-    const rolePermissions = await this.permissionRepository.findRolePermissionsByRoleIds(roleIds);
-    return rolePermissions.map(rp => rp.permission);
+    if (roleIds.length > 0) {
+      const rolePermissions = await this.permissionRepository.findRolePermissionsByRoleIds(roleIds);
+      permissions = rolePermissions.map(rp => rp.permission);
+    }
+
+    if (context.activeCommitteeId) {
+      const { isCommitteeHead } = await import("@/lib/committee-auth");
+      const isHead = await isCommitteeHead(userId, context.organizationId, context.activeCommitteeId);
+      if (isHead) {
+        const allowedResources = ["events", "finance", "documents", "inventory", "announcements"];
+        const actions = ["create", "read", "update", "delete"];
+        allowedResources.forEach(res => {
+          actions.forEach(act => {
+            const exists = permissions.some(p => p.resource === res && p.action === act);
+            if (!exists) {
+              permissions.push({ resource: res, action: act });
+            }
+          });
+        });
+      }
+    }
+
+    return permissions;
   }
 
   // Enforce permission checks and throw PermissionDeniedError if not allowed
@@ -43,12 +65,26 @@ export class AuthorizationService {
     const context = await this.resolveContext(userId);
     const userRoles = await this.userRoleRepository.findUserRoles(context.member.id);
     const roleIds = userRoles.map(ur => ur.roleId);
-    if (roleIds.length === 0) throw new PermissionDeniedError();
+    
+    let hasPerm = false;
+    if (roleIds.length > 0) {
+      const rolePermissions = await this.permissionRepository.findRolePermissionsByRoleIds(roleIds);
+      hasPerm = rolePermissions.some(
+        rp => `${rp.permission.resource}:${rp.permission.action}` === permission
+      );
+    }
 
-    const rolePermissions = await this.permissionRepository.findRolePermissionsByRoleIds(roleIds);
-    const hasPerm = rolePermissions.some(
-      rp => `${rp.permission.resource}:${rp.permission.action}` === permission
-    );
+    if (!hasPerm && context.activeCommitteeId) {
+      const [resource] = permission.split(":");
+      const allowedResources = ["events", "finance", "documents", "inventory", "announcements"];
+      if (allowedResources.includes(resource)) {
+        const { isCommitteeHead } = await import("@/lib/committee-auth");
+        const isHead = await isCommitteeHead(userId, context.organizationId, context.activeCommitteeId);
+        if (isHead) {
+          hasPerm = true;
+        }
+      }
+    }
 
     if (!hasPerm) {
       throw new PermissionDeniedError();
@@ -66,12 +102,26 @@ export class AuthorizationService {
     const context = await this.resolveContext(userId);
     const userRoles = await this.userRoleRepository.findUserRoles(context.member.id);
     const roleIds = userRoles.map(ur => ur.roleId);
-    if (roleIds.length === 0) throw new PermissionDeniedError();
+    
+    let hasPerm = false;
+    if (roleIds.length > 0) {
+      const rolePermissions = await this.permissionRepository.findRolePermissionsByRoleIds(roleIds);
+      hasPerm = rolePermissions.some(
+        rp => permissions.includes(`${rp.permission.resource}:${rp.permission.action}`)
+      );
+    }
 
-    const rolePermissions = await this.permissionRepository.findRolePermissionsByRoleIds(roleIds);
-    const hasPerm = rolePermissions.some(
-      rp => permissions.includes(`${rp.permission.resource}:${rp.permission.action}`)
-    );
+    if (!hasPerm && context.activeCommitteeId) {
+      const { isCommitteeHead } = await import("@/lib/committee-auth");
+      const isHead = await isCommitteeHead(userId, context.organizationId, context.activeCommitteeId);
+      if (isHead) {
+        const allowedResources = ["events", "finance", "documents", "inventory", "announcements"];
+        hasPerm = permissions.some(p => {
+          const [resource] = p.split(":");
+          return allowedResources.includes(resource);
+        });
+      }
+    }
 
     if (!hasPerm) {
       throw new PermissionDeniedError();
