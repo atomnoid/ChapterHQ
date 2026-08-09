@@ -214,7 +214,7 @@ export function CommitteeSwitcher({ onNavigate }: { onNavigate?: () => void }) {
             className={cn(
               "flex w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left text-xs font-medium transition-colors",
               activeCommitteeId === null
-                ? "bg-primary/8 text-primary"
+                ? "bg-primary/10 text-primary"
                 : "text-secondary-foreground hover:bg-secondary hover:text-foreground"
             )}
           >
@@ -246,7 +246,7 @@ export function CommitteeSwitcher({ onNavigate }: { onNavigate?: () => void }) {
                   className={cn(
                     "flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors",
                     isActive
-                      ? "bg-primary/8 text-primary"
+                      ? "bg-primary/10 text-primary"
                       : "text-foreground hover:bg-secondary"
                   )}
                 >
