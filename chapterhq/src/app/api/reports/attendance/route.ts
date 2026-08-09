@@ -14,7 +14,7 @@ export async function GET() {
     }
 
     const { context } = await requirePermission(session.user.id, "reports:read");
-    const report = await reportService.getAttendanceReport(context.organizationId);
+    const report = await reportService.getAttendanceReport(context.organizationId, context.activeCommitteeId);
 
     return apiResponse.success(report);
   } catch (error: unknown) {
