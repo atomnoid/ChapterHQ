@@ -9,6 +9,7 @@ import {
   DuplicateCommitteeNameError,
 } from "@/services/committee.service";
 import { updateCommitteeSchema } from "@/validators/committee.validator";
+import { isPresident, isCommitteeHead } from "@/lib/committee-auth";
 
 const committeeService = new CommitteeService();
 
@@ -54,12 +55,19 @@ export async function PATCH(
       return apiResponse.unauthorized();
     }
 
-    const { context: authContext } = await requirePermission(session.user.id, "committees:update");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:read");
+
+    const { id } = await context.params;
+    const isPres = await isPresident(session.user.id, authContext.organizationId);
+    const isHead = await isCommitteeHead(session.user.id, authContext.organizationId, id);
+
+    if (!isPres && !isHead) {
+      return apiResponse.forbidden("You do not have access to manage this committee.");
+    }
 
     const body = await request.json();
     const validatedData = updateCommitteeSchema.parse(body);
 
-    const { id } = await context.params;
     const updated = await committeeService.updateCommittee(
       id,
       authContext.organizationId,
@@ -96,9 +104,16 @@ export async function DELETE(
       return apiResponse.unauthorized();
     }
 
-    const { context: authContext } = await requirePermission(session.user.id, "committees:delete");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:read");
 
     const { id } = await context.params;
+    const isPres = await isPresident(session.user.id, authContext.organizationId);
+    const isHead = await isCommitteeHead(session.user.id, authContext.organizationId, id);
+
+    if (!isPres && !isHead) {
+      return apiResponse.forbidden("You do not have access to manage this committee.");
+    }
+
     await committeeService.deleteCommittee(
       id,
       authContext.organizationId,

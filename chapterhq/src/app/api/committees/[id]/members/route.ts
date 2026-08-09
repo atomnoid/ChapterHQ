@@ -14,6 +14,8 @@ import {
   committeeMemberQuerySchema,
 } from "@/validators/committee-member.validator";
 
+import { isPresident, isCommitteeHead, isCommitteeMember } from "@/lib/committee-auth";
+
 const committeeMemberService = new CommitteeMemberService();
 
 // GET /api/committees/[id]/members
@@ -29,12 +31,19 @@ export async function GET(
 
     const { context: authContext } = await requirePermission(session.user.id, "committees:read");
 
+    const { id } = await context.params;
+    const isPres = await isPresident(session.user.id, authContext.organizationId);
+    const isCM = await isCommitteeMember(session.user.id, authContext.organizationId, id);
+
+    if (!isPres && !isCM) {
+      return apiResponse.forbidden("You do not have access to this committee's member list.");
+    }
+
     const { searchParams } = new URL(request.url);
     const parsedQuery = committeeMemberQuerySchema.parse(
       Object.fromEntries(searchParams.entries())
     );
 
-    const { id } = await context.params;
     const result = await committeeMemberService.listCommitteeMembers(
       id,
       authContext.organizationId,
@@ -67,12 +76,19 @@ export async function POST(
       return apiResponse.unauthorized();
     }
 
-    const { context: authContext } = await requirePermission(session.user.id, "committees:assign");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:read");
+
+    const { id } = await context.params;
+    const isPres = await isPresident(session.user.id, authContext.organizationId);
+    const isHead = await isCommitteeHead(session.user.id, authContext.organizationId, id);
+
+    if (!isPres && !isHead) {
+      return apiResponse.forbidden("You do not have access to manage this committee's members.");
+    }
 
     const body = await request.json();
     const { memberId } = assignCommitteeMemberSchema.parse(body);
 
-    const { id } = await context.params;
     const assignment = await committeeMemberService.assignMemberToCommittee(
       id,
       memberId,

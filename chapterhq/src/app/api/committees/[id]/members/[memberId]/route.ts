@@ -9,6 +9,8 @@ import {
   MemberNotInCommitteeError,
 } from "@/services/committee-member.service";
 
+import { isPresident, isCommitteeHead } from "@/lib/committee-auth";
+
 const committeeMemberService = new CommitteeMemberService();
 
 // DELETE /api/committees/[id]/members/[memberId]
@@ -22,9 +24,15 @@ export async function DELETE(
       return apiResponse.unauthorized();
     }
 
-    const { context: authContext } = await requirePermission(session.user.id, "committees:remove");
+    const { context: authContext } = await requirePermission(session.user.id, "committees:read");
 
     const { id: committeeId, memberId } = await context.params;
+    const isPres = await isPresident(session.user.id, authContext.organizationId);
+    const isHead = await isCommitteeHead(session.user.id, authContext.organizationId, committeeId);
+
+    if (!isPres && !isHead) {
+      return apiResponse.forbidden("You do not have access to manage this committee's members.");
+    }
 
     await committeeMemberService.removeMemberFromCommittee(
       committeeId,
