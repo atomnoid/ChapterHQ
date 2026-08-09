@@ -21,6 +21,7 @@ import { GlobalSearchInput } from "@/features/dashboard/components/global-search
 import { filterNavItems } from "@/lib/filter-nav-items";
 import { SIDEBAR_NAV_ITEMS } from "@/config/sidebar-nav";
 import type { SidebarNavItem } from "@/config/sidebar-nav";
+import { CommitteeSwitcher } from "@/features/committee/components/committee-switcher";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -278,9 +279,14 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
             loading={meLoading}
           />
 
+          {/* Committee context switcher */}
+          <div className="mt-4">
+            <CommitteeSwitcher />
+          </div>
+
           {/* Navigation */}
           {meLoading ? (
-            <div className="mt-10 space-y-1.5">
+            <div className="mt-6 space-y-1.5">
               {[1, 2, 3, 4, 5].map((i) => (
                 <div
                   key={i}
@@ -457,8 +463,15 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
             </Button>
           </div>
 
+          {/* Committee context switcher — mobile */}
+          <div className="mt-4">
+            <CommitteeSwitcher
+              onNavigate={() => setIsMobileSidebarOpen(false)}
+            />
+          </div>
+
           {/* Signed-in card */}
-          <div className="mt-6 rounded-[1.5rem] border border-border bg-[#fcf8f1] p-4">
+          <div className="mt-4 rounded-[1.5rem] border border-border bg-[#fcf8f1] p-4">
             <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">
               Signed in as
             </p>
