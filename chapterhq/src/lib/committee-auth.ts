@@ -19,6 +19,12 @@ export async function isPresident(userId: string, organizationId: string): Promi
 
 export async function isCommitteeHead(userId: string, organizationId: string, committeeId: string): Promise<boolean> {
   try {
+    // Verify the committee belongs to this organization first — prevents cross-org bypass.
+    const committee = await prisma.committee.findFirst({
+      where: { id: committeeId, organizationId },
+    });
+    if (!committee || committee.deletedAt) return false;
+
     const member = await prisma.member.findFirst({
       where: { userId, organizationId, status: "ACTIVE" },
     });
