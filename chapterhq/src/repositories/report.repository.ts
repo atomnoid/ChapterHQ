@@ -197,22 +197,35 @@ export class ReportRepository {
     };
   }
 
-  async getEventsReport(organizationId: string): Promise<EventsReport> {
+  async getEventsReport(organizationId: string, committeeId?: string | null): Promise<EventsReport> {
     const months = getRecentMonthStarts(MONTH_WINDOW);
     const firstMonthStart = months[0];
 
     // MongoDB Prisma bug: deletedAt: null (including nested relation filters) returns no results.
     const [allEvents, allRegistrations, allAttendanceRows] = await Promise.all([
       db.event.findMany({
-        where: { organizationId },
+        where: {
+          organizationId,
+          ...(committeeId ? { committeeId } : {}),
+        },
         select: { status: true, createdAt: true, deletedAt: true },
       }),
       db.eventRegistration.findMany({
-        where: { event: { organizationId } },
+        where: {
+          event: {
+            organizationId,
+            ...(committeeId ? { committeeId } : {}),
+          },
+        },
         select: { registeredAt: true, deletedAt: true },
       }),
       db.attendance.findMany({
-        where: { event: { organizationId } },
+        where: {
+          event: {
+            organizationId,
+            ...(committeeId ? { committeeId } : {}),
+          },
+        },
         select: { id: true, event: { select: { deletedAt: true } } },
       }),
     ]);

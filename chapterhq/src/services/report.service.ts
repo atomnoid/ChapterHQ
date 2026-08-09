@@ -13,8 +13,8 @@ export class ReportService {
     return this.repository.getMembersReport(organizationId);
   }
 
-  async getEventsReport(organizationId: string): Promise<EventsReport> {
-    return this.repository.getEventsReport(organizationId);
+  async getEventsReport(organizationId: string, committeeId?: string | null): Promise<EventsReport> {
+    return this.repository.getEventsReport(organizationId, committeeId);
   }
 
   async getFinanceReport(organizationId: string, committeeId?: string | null): Promise<FinanceReport> {

@@ -24,7 +24,12 @@ export async function GET(
     const { context: authContext } = await requirePermission(session.user.id, "appointments:read");
 
     const { id } = await context.params;
-    const appointment = await appointmentService.getAppointment(id, authContext.organizationId);
+    // ── V-03 fix: pass activeCommitteeId for committee ownership check ──
+    const appointment = await appointmentService.getAppointment(
+      id,
+      authContext.organizationId,
+      authContext.activeCommitteeId,
+    );
 
     return apiResponse.success(appointment);
   } catch (error: any) {
@@ -49,11 +54,13 @@ export async function PATCH(
     const validatedData = updateAppointmentSchema.parse(body);
 
     const { id } = await context.params;
+    // ── V-03 fix: pass activeCommitteeId for committee ownership check ──
     const updated = await appointmentService.updateAppointment(
       id,
       authContext.organizationId,
       validatedData,
-      session.user.id
+      session.user.id,
+      authContext.activeCommitteeId,
     );
 
     return apiResponse.success(updated, "Appointment updated successfully.");
@@ -80,7 +87,13 @@ export async function DELETE(
     const { context: authContext } = await requirePermission(session.user.id, "appointments:delete");
 
     const { id } = await context.params;
-    await appointmentService.deleteAppointment(id, authContext.organizationId, session.user.id);
+    // ── V-03 fix: pass activeCommitteeId for committee ownership check ──
+    await appointmentService.deleteAppointment(
+      id,
+      authContext.organizationId,
+      session.user.id,
+      authContext.activeCommitteeId,
+    );
 
     return apiResponse.success(null, "Appointment deleted successfully.");
   } catch (error: any) {
