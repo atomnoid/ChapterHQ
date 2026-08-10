@@ -3,9 +3,9 @@ import { prisma } from "@/lib/prisma";
 export async function isPresident(userId: string, organizationId: string): Promise<boolean> {
   try {
     const member = await prisma.member.findFirst({
-      where: { userId, organizationId, status: "ACTIVE" },
+      where: { userId, organizationId, status: "ACTIVE", deletedAt: null },
     });
-    if (!member || member.deletedAt) return false;
+    if (!member) return false;
 
     const userRoles = await prisma.userRole.findMany({
       where: { memberId: member.id },
@@ -21,26 +21,27 @@ export async function isCommitteeHead(userId: string, organizationId: string, co
   try {
     // Verify the committee belongs to this organization first — prevents cross-org bypass.
     const committee = await prisma.committee.findFirst({
-      where: { id: committeeId, organizationId },
+      where: { id: committeeId, organizationId, deletedAt: null },
     });
-    if (!committee || committee.deletedAt) return false;
+    if (!committee) return false;
 
     const member = await prisma.member.findFirst({
-      where: { userId, organizationId, status: "ACTIVE" },
+      where: { userId, organizationId, status: "ACTIVE", deletedAt: null },
     });
-    if (!member || member.deletedAt) return false;
+    if (!member) return false;
 
     const appointment = await prisma.appointment.findFirst({
       where: {
         committeeId,
         memberId: member.id,
         status: "ACTIVE",
+        deletedAt: null,
         designation: {
           in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
         },
       },
     });
-    return !!appointment && !appointment.deletedAt;
+    return !!appointment;
   } catch {
     return false;
   }
@@ -49,17 +50,18 @@ export async function isCommitteeHead(userId: string, organizationId: string, co
 export async function isCommitteeMember(userId: string, organizationId: string, committeeId: string): Promise<boolean> {
   try {
     const member = await prisma.member.findFirst({
-      where: { userId, organizationId, status: "ACTIVE" },
+      where: { userId, organizationId, status: "ACTIVE", deletedAt: null },
     });
-    if (!member || member.deletedAt) return false;
+    if (!member) return false;
 
     const committeeMember = await prisma.committeeMember.findFirst({
       where: {
         committeeId,
         memberId: member.id,
+        deletedAt: null,
       },
     });
-    return !!committeeMember && !committeeMember.deletedAt;
+    return !!committeeMember;
   } catch {
     return false;
   }
