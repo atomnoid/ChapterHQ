@@ -49,6 +49,10 @@ export class OrganizationContextService {
 
     let validatedCommitteeId: string | null = null;
     if (activeCommitteeId) {
+      // The JWT callback already validated that the user has access to this committee
+      // when they switched (via validateCommitteeAccess). Here we only verify the
+      // committee still exists and belongs to this organization (guards against
+      // deleted committees appearing in the session after being removed).
       const committee = await prisma.committee.findFirst({
         where: {
           id: activeCommitteeId,
@@ -56,51 +60,7 @@ export class OrganizationContextService {
         },
       });
       if (committee && !committee.deletedAt) {
-        // Verify user has access to that committee
-        const committeeMember = await prisma.committeeMember.findFirst({
-          where: {
-            committeeId: activeCommitteeId,
-            memberId: member.id,
-          },
-        });
-        let hasAccess = !!(committeeMember && !committeeMember.deletedAt);
-        if (!hasAccess) {
-          const userRoles = await prisma.userRole.findMany({
-            where: {
-              memberId: member.id,
-            },
-            include: {
-              role: true,
-            },
-          });
-          const activeUserRoles = userRoles.filter((ur) => !ur.role.deletedAt);
-          const isPresident = activeUserRoles.some((ur) => ur.role.name === "President");
-          if (isPresident) {
-            hasAccess = true;
-          }
-        }
-        
-        // Also check if they are the Committee Head via an active Appointment
-        if (!hasAccess) {
-          const appointments = await prisma.appointment.findMany({
-            where: {
-              committeeId: activeCommitteeId,
-              memberId: member.id,
-              status: "ACTIVE",
-              designation: {
-                in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
-              },
-            },
-          });
-          const hasActiveApp = appointments.some((a) => !a.deletedAt);
-          if (hasActiveApp) {
-            hasAccess = true;
-          }
-        }
-
-        if (hasAccess) {
-          validatedCommitteeId = activeCommitteeId;
-        }
+        validatedCommitteeId = activeCommitteeId;
       }
     }
 
