@@ -54,18 +54,18 @@ export class EventService {
     if (data.committeeId) {
       // 1. Verify committee belongs to organization and is not deleted
       const committee = await prisma.committee.findFirst({
-        where: { id: data.committeeId, organizationId, deletedAt: null },
+        where: { id: data.committeeId, organizationId },
       });
-      if (!committee) {
+      if (!committee || committee.deletedAt) {
         throw new PermissionDeniedError();
       }
 
       // 2. Check if user has access to that committee using existing rules
       if (actorUserId) {
         const member = await prisma.member.findFirst({
-          where: { userId: actorUserId, organizationId, status: "ACTIVE", deletedAt: null },
+          where: { userId: actorUserId, organizationId, status: "ACTIVE" },
         });
-        if (!member) {
+        if (!member || member.deletedAt) {
           throw new PermissionDeniedError();
         }
 
@@ -77,22 +77,20 @@ export class EventService {
 
         if (!isPresident) {
           // Check CommitteeMember row
-          const isCM = await prisma.committeeMember.findFirst({
-            where: { committeeId: data.committeeId, memberId: member.id, deletedAt: null },
+          const committeeMembers = await prisma.committeeMember.findMany({
+            where: { committeeId: data.committeeId, memberId: member.id },
           });
+          const isCM = committeeMembers.some(cm => !cm.deletedAt);
 
           // Also check Committee Head appointment (covers heads not explicitly added as members)
-          const isHead = !isCM && await prisma.appointment.findFirst({
+          const appointments = await prisma.appointment.findMany({
             where: {
               committeeId: data.committeeId,
               memberId: member.id,
               status: "ACTIVE",
-              deletedAt: null,
-              designation: {
-                in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
-              },
             },
           });
+          const isHead = !isCM && appointments.some(a => !a.deletedAt && ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"].includes(a.designation));
 
           if (!isCM && !isHead) {
             throw new PermissionDeniedError();
