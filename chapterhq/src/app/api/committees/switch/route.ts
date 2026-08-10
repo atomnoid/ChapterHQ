@@ -73,6 +73,23 @@ export async function POST(request: Request) {
     }
 
     if (!hasAccess) {
+      const appointment = await prisma.appointment.findFirst({
+        where: {
+          committeeId,
+          memberId: member.id,
+          status: "ACTIVE",
+          deletedAt: null,
+          designation: {
+            in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
+          },
+        },
+      });
+      if (appointment) {
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess) {
       return apiResponse.forbidden("You do not have access to this committee.");
     }
 

@@ -259,6 +259,21 @@ async function validateCommitteeAccess(userId: string, organizationId: string, c
       return true;
     }
 
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        committeeId,
+        memberId: member.id,
+        status: "ACTIVE",
+        deletedAt: null,
+        designation: {
+          in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
+        },
+      },
+    });
+    if (appointment) {
+      return true;
+    }
+
     return false;
   } catch (err) {
     console.error("[validateCommitteeAccess] Error:", err);
