@@ -68,6 +68,8 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
     currentNotes?: string;
   }>({ type: "none" });
 
+  const [isPending, setIsPending] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -133,12 +135,14 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
   };
 
   const handleSelectMember = (memberId: string) => {
+    if (isPending) return;
     setSelectedMemberIds((prev) =>
       prev.includes(memberId) ? prev.filter((id) => id !== memberId) : [...prev, memberId]
     );
   };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isPending) return;
     if (e.target.checked) {
       setSelectedMemberIds(filteredMembers.map((m) => m.id));
     } else {
@@ -194,6 +198,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
               aria-label="Search attendees"
+              disabled={isPending}
             />
           </div>
 
@@ -204,6 +209,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="h-10 rounded-2xl border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               aria-label="Filter attendance status"
+              disabled={isPending}
             >
               <option value="ALL">All Statuses</option>
               <option value="PRESENT">Present</option>
@@ -218,17 +224,19 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             className="rounded-full border-border shrink-0"
             aria-label="Refresh"
             onClick={fetchData}
-            disabled={loading}
+            disabled={loading || isPending}
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${loading || isPending ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
         {selectedMemberIds.length > 0 && (
           <Button
             className="rounded-full shrink-0"
+            disabled={isPending}
             onClick={() => setDialogState({ type: "bulk" })}
           >
+            {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Mark Selected ({selectedMemberIds.length})
           </Button>
         )}
@@ -238,7 +246,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
       {!loading && error && (
         <div className="rounded-2xl bg-destructive/5 border border-border px-5 py-4">
           <p className="text-sm font-medium text-destructive">{error}</p>
-          <Button variant="outline" size="sm" className="mt-3 rounded-full" onClick={fetchData}>
+          <Button variant="outline" size="sm" className="mt-3 rounded-full" onClick={fetchData} disabled={isPending}>
             Try again
           </Button>
         </div>
@@ -279,8 +287,9 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             <input
               type="checkbox"
               onChange={handleSelectAll}
+              disabled={isPending}
               checked={selectedMemberIds.length === filteredMembers.length}
-              className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-ring cursor-pointer"
+              className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Select all members"
             />
             <span>Member</span>
@@ -304,7 +313,8 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
                   type="checkbox"
                   checked={selectedMemberIds.includes(member.id)}
                   onChange={() => handleSelectMember(member.id)}
-                  className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-ring cursor-pointer"
+                  disabled={isPending}
+                  className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label={`Select ${name}`}
                 />
                 <div className="flex items-center gap-3 min-w-0">
@@ -332,6 +342,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
                     variant="ghost"
                     size="sm"
                     className="rounded-full text-xs h-8"
+                    disabled={isPending}
                     onClick={() =>
                       setDialogState({
                         type: "single",
@@ -355,7 +366,11 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
         <MarkAttendanceDialog
           open={dialogState.type === "single"}
           onOpenChange={(open) => !open && setDialogState({ type: "none" })}
-          onSuccess={fetchData}
+          onSuccess={async () => {
+            setIsPending(true);
+            await fetchData();
+            setIsPending(false);
+          }}
           eventId={eventId}
           memberId={dialogState.memberId!}
           memberName={dialogState.memberName!}
@@ -368,7 +383,11 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
         <BulkMarkAttendanceDialog
           open={dialogState.type === "bulk"}
           onOpenChange={(open) => !open && setDialogState({ type: "none" })}
-          onSuccess={fetchData}
+          onSuccess={async () => {
+            setIsPending(true);
+            await fetchData();
+            setIsPending(false);
+          }}
           eventId={eventId}
           memberIds={selectedMemberIds}
           memberNames={`${selectedMemberIds.length} selected members`}
