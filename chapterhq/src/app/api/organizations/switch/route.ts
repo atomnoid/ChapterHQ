@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     // Return the response containing switch confirmation.
     // Client-side NextAuth update/refresh or session update will receive the switch.
     return apiResponse.success(
-      { activeOrganizationId: organizationId },
+      { activeOrganizationId: organizationId, activeCommitteeId: null },
       "Active organization switched successfully."
     );
   } catch (error) {
