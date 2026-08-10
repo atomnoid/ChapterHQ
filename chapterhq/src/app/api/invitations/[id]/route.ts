@@ -19,7 +19,7 @@ export async function DELETE(
     const { context: authContext } = await requirePermission(session.user.id, "members:create");
 
     const { id } = await params;
-    await invitationService.cancelInvitation(id, authContext.organizationId);
+    await invitationService.cancelInvitation(id, authContext.organizationId, session.user.id);
 
     return NextResponse.json({ message: "Invitation cancelled successfully." }, { status: 200 });
   } catch (error: unknown) {

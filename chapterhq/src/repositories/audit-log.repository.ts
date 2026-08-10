@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { PaginationParams } from "@/lib/pagination";
+import { Prisma } from "@prisma/client";
 
 export interface CreateAuditLogData {
   organizationId: string;
@@ -30,10 +31,31 @@ export class AuditLogRepository {
     });
   }
 
-  async list(params: PaginationParams & { organizationId: string }) {
-    const whereClause = {
+  async list(params: PaginationParams & {
+    organizationId: string;
+    action?: string;
+    resource?: string;
+  }) {
+    const whereClause: Prisma.AuditLogWhereInput = {
       organizationId: params.organizationId,
     };
+
+    if (params.action) {
+      whereClause.action = params.action;
+    }
+
+    if (params.resource) {
+      whereClause.resource = params.resource;
+    }
+
+    // search filters on actor name or actor email (case-insensitive contains)
+    if (params.search) {
+      whereClause.OR = [
+        { actorName: { contains: params.search, mode: "insensitive" } },
+        { actorEmail: { contains: params.search, mode: "insensitive" } },
+        { targetName: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
 
     const [total, items] = await Promise.all([
       prisma.auditLog.count({ where: whereClause }),

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { InvitationRepository } from "@/repositories/invitation.repository";
 import { RoleRepository } from "@/repositories/role.repository";
 import { CommitteeRepository } from "@/repositories/committee.repository";
+import { logActivity } from "@/lib/audit-logger";
 
 export class DuplicatePendingInvitationError extends Error {
   constructor() {
@@ -76,7 +77,7 @@ export class InvitationService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + params.expiresInDays);
 
-    return this.invitationRepository.create({
+    const invitation = await this.invitationRepository.create({
       organizationId: params.organizationId,
       email: params.email,
       roleId: params.roleId,
@@ -84,17 +85,44 @@ export class InvitationService {
       token: this.generateToken(),
       expiresAt,
     });
+
+    await logActivity(
+      { userId: params.actorId, organizationId: params.organizationId },
+      "create",
+      "invitation",
+      invitation.id,
+      params.email,
+      {
+        roleId: params.roleId ?? null,
+        committeeId: finalCommitteeId ?? null,
+        expiresAt: expiresAt.toISOString(),
+      }
+    );
+
+    return invitation;
   }
 
   async getInvitations(organizationId: string) {
     return this.invitationRepository.listByOrganization(organizationId);
   }
 
-  async cancelInvitation(id: string, organizationId: string) {
+  async cancelInvitation(id: string, organizationId: string, actorId?: string) {
     const invitation = await this.invitationRepository.findByIdAndOrg(id, organizationId);
     if (!invitation) {
       throw new InvitationNotFoundError();
     }
-    return this.invitationRepository.softDelete(id, organizationId);
+    const result = await this.invitationRepository.softDelete(id, organizationId);
+
+    if (actorId) {
+      await logActivity(
+        { userId: actorId, organizationId },
+        "cancel",
+        "invitation",
+        id,
+        invitation.email
+      );
+    }
+
+    return result;
   }
 }

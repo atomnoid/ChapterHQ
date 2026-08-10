@@ -10,11 +10,17 @@ export class AuditLogService {
     return this.repository.create(data);
   }
 
-  async getLogs(params: PaginationQuery & { organizationId: string }) {
+  async getLogs(params: PaginationQuery & {
+    organizationId: string;
+    action?: string;
+    resource?: string;
+  }) {
     const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.repository.list({
       ...paginationParams,
       organizationId: params.organizationId,
+      action: params.action,
+      resource: params.resource,
     });
 
     // Map output to match requirements: actor, action, resource, target, timestamp
@@ -22,16 +28,16 @@ export class AuditLogService {
       id: log.id,
       actor: {
         id: log.actorId,
-        name: log.actorName,
-        email: log.actorEmail,
+        name: log.actorName ?? null,
+        email: log.actorEmail ?? null,
       },
       action: log.action,
       resource: log.resource,
       target: {
-        id: log.targetId,
-        name: log.targetName,
+        id: log.targetId ?? null,
+        name: log.targetName ?? null,
       },
-      metadata: log.metadata,
+      metadata: log.metadata ?? null,
       timestamp: log.timestamp,
     }));
 
