@@ -135,6 +135,19 @@ export class CommitteeService {
       },
     });
 
+    // Cascade: soft-delete all pending invitations for this committee
+    await prisma.invitation.updateMany({
+      where: {
+        committeeId: id,
+        status: "PENDING",
+        deletedAt: null,
+      },
+      data: {
+        status: "CANCELLED",
+        deletedAt: new Date(),
+      },
+    });
+
     if (actorUserId) {
       await logActivity(
         { userId: actorUserId, organizationId },

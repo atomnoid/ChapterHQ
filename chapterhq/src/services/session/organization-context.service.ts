@@ -1,5 +1,6 @@
 import { MemberRepository } from "@/repositories/member.repository";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export class OrganizationContextNotFoundError extends Error {
   constructor() {
@@ -46,11 +47,49 @@ export class OrganizationContextService {
       throw new OrganizationContextNotFoundError();
     }
 
+    let validatedCommitteeId: string | null = null;
+    if (activeCommitteeId) {
+      const committee = await prisma.committee.findFirst({
+        where: {
+          id: activeCommitteeId,
+          organizationId: member.organizationId,
+        },
+      });
+      if (committee && !committee.deletedAt) {
+        // Verify user has access to that committee
+        const committeeMember = await prisma.committeeMember.findFirst({
+          where: {
+            committeeId: activeCommitteeId,
+            memberId: member.id,
+          },
+        });
+        let hasAccess = !!(committeeMember && !committeeMember.deletedAt);
+        if (!hasAccess) {
+          const userRoles = await prisma.userRole.findMany({
+            where: {
+              memberId: member.id,
+            },
+            include: {
+              role: true,
+            },
+          });
+          const activeUserRoles = userRoles.filter((ur) => !ur.role.deletedAt);
+          const isPresident = activeUserRoles.some((ur) => ur.role.name === "President");
+          if (isPresident) {
+            hasAccess = true;
+          }
+        }
+        if (hasAccess) {
+          validatedCommitteeId = activeCommitteeId;
+        }
+      }
+    }
+
     return {
       organizationId: member.organizationId,
       organization: member.organization,
       member,
-      activeCommitteeId: activeCommitteeId ?? null,
+      activeCommitteeId: validatedCommitteeId,
     };
   }
 }
