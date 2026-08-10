@@ -63,6 +63,7 @@ interface EventDetailsProps {
 export function EventDetails({ eventId }: EventDetailsProps) {
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [attendance, setAttendance] = useState<any[]>([]);
   const [allMembers, setAllMembers] = useState<OrgMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,22 +79,25 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     setLoading(true);
     setError(null);
     try {
-      const [eventRes, regRes, membersRes] = await Promise.all([
+      const [eventRes, regRes, attRes, membersRes] = await Promise.all([
         fetch(`/api/events/${eventId}`),
         fetch(`/api/events/${eventId}/registrations?limit=200`),
+        fetch(`/api/events/${eventId}/attendance`),
         fetch("/api/members?limit=200"),
       ]);
 
-      if (!eventRes.ok || !regRes.ok || !membersRes.ok) {
+      if (!eventRes.ok || !regRes.ok || !attRes.ok || !membersRes.ok) {
         throw new Error("Failed to load event details.");
       }
 
       const eventJson = await eventRes.json();
       const regJson = await regRes.json();
+      const attJson = await attRes.json();
       const membersJson = await membersRes.json();
 
       setEvent(eventJson?.data ?? eventJson);
       setRegistrations(regJson?.data?.items ?? regJson?.items ?? []);
+      setAttendance(attJson?.data ?? attJson ?? []);
       setAllMembers(membersJson?.items ?? membersJson?.data?.items ?? []);
     } catch (e: any) {
       setError(e.message ?? "Failed to fetch details.");
@@ -174,6 +178,12 @@ export function EventDetails({ eventId }: EventDetailsProps) {
   const totalRegistered = registrations.length;
   const capVal = event.capacity ?? 0;
   const capacityPct = capVal > 0 ? Math.round((totalRegistered / capVal) * 100) : 0;
+
+  // Attendance metrics
+  const totalPresent = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
+  const totalAbsent = attendance.filter((a) => a.status === "ABSENT").length;
+  const totalLogged = attendance.length;
+  const attendanceRate = totalLogged > 0 ? Math.round((totalPresent / totalLogged) * 100) : 0;
 
   // Filter list of members available to add (not yet registered)
   const availableMembers = allMembers.filter(
@@ -412,38 +422,66 @@ export function EventDetails({ eventId }: EventDetailsProps) {
       )}
 
       {activeTab === "statistics" && (
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="bg-card border border-border rounded-3xl p-6 flex flex-col justify-between">
-            <div>
-              <p className="text-xs font-bold text-secondary-foreground uppercase tracking-wider">Attendance Rate</p>
-              <h4 className="text-3xl font-extrabold text-foreground mt-2">
-                {registrations.length > 0 ? "85%" : "0%"}
-              </h4>
+        <div className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="bg-card border border-border rounded-3xl p-6 flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-bold text-secondary-foreground uppercase tracking-wider">Attendance Rate</p>
+                <h4 className="text-3xl font-extrabold text-foreground mt-2">
+                  {attendanceRate}%
+                </h4>
+              </div>
+              <div className="pt-4 border-t border-border mt-6">
+                <span className="text-xs text-secondary-foreground">Ratio of marked present/late to total logged check-ins.</span>
+              </div>
             </div>
-            <div className="pt-4 border-t border-border mt-6">
-              <span className="text-xs text-secondary-foreground">Based on current registration logs.</span>
+
+            <div className="bg-card border border-border rounded-3xl p-6 flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-bold text-secondary-foreground uppercase tracking-wider">Registrations vs Capacity</p>
+                <h4 className="text-3xl font-extrabold text-foreground mt-2">
+                  {capacityPct}%
+                </h4>
+              </div>
+              <div className="pt-4 border-t border-border mt-6">
+                <span className="text-xs text-secondary-foreground">Limit status: {event.capacity ? `${event.capacity} total slots` : "No limit"}</span>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-3xl p-6 flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-bold text-secondary-foreground uppercase tracking-wider">Attendee Breakdown</p>
+                <h4 className="text-3xl font-extrabold text-foreground mt-2">
+                  {totalPresent} <span className="text-sm font-semibold text-secondary-foreground">Present</span>
+                </h4>
+              </div>
+              <div className="pt-4 border-t border-border mt-6">
+                <span className="text-xs text-secondary-foreground">{totalAbsent} absent · {totalRegistered} registered total</span>
+              </div>
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-3xl p-6 flex flex-col justify-between">
-            <div>
-              <p className="text-xs font-bold text-secondary-foreground uppercase tracking-wider">Registrations vs Capacity</p>
-              <h4 className="text-3xl font-extrabold text-foreground mt-2">
-                {capacityPct}%
-              </h4>
-            </div>
-            <div className="pt-4 border-t border-border mt-6">
-              <span className="text-xs text-secondary-foreground">Limit status: {event.capacity ? `${event.capacity} total slots` : "No limit"}</span>
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-3xl p-6 flex flex-col justify-between">
-            <div>
-              <p className="text-xs font-bold text-secondary-foreground uppercase tracking-wider">Check-in Status</p>
-              <h4 className="text-3xl font-extrabold text-foreground mt-2">Active</h4>
-            </div>
-            <div className="pt-4 border-t border-border mt-6">
-              <span className="text-xs text-secondary-foreground">Log checks are live for marking.</span>
+          <div className="rounded-3xl border border-border bg-card p-6">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-secondary-foreground mb-4">Detailed Metrics</h3>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+              <div className="p-4 rounded-2xl bg-secondary/30">
+                <p className="text-xs font-semibold text-secondary-foreground">Total Registrations</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{totalRegistered}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-secondary/30">
+                <p className="text-xs font-semibold text-secondary-foreground">Marked Present/Late</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{totalPresent}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-secondary/30">
+                <p className="text-xs font-semibold text-secondary-foreground">Marked Absent</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{totalAbsent}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-secondary/30">
+                <p className="text-xs font-semibold text-secondary-foreground">Presence/Absence Ratio</p>
+                <p className="text-2xl font-bold text-foreground mt-1">
+                  {totalAbsent > 0 ? (totalPresent / totalAbsent).toFixed(1) : totalPresent}x
+                </p>
+              </div>
             </div>
           </div>
         </div>
