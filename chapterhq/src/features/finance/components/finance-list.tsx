@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -58,6 +59,8 @@ export function FinanceList() {
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { data: session } = useSession();
+  const activeCommitteeId = session?.activeCommitteeId ?? null;
   const LIMIT = 10;
 
   useEffect(() => {
@@ -98,7 +101,10 @@ export function FinanceList() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, typeFilter]);
+    // activeCommitteeId is intentionally included: the server reads it from the session
+    // cookie, but including it here ensures the client refetches when the context changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, typeFilter, activeCommitteeId]);
 
   useEffect(() => {
     fetchFinanceData();

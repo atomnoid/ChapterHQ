@@ -76,10 +76,16 @@ export function CommitteeSwitcher({ onNavigate }: { onNavigate?: () => void }) {
           throw new Error(payload?.message ?? "Failed to switch committee.");
         }
 
-        // 2. Update the NextAuth JWT session so activeCommitteeId is propagated.
+        // 2. Update the NextAuth JWT so activeCommitteeId is written to the cookie.
+        //    await ensures the new session object is returned before we proceed.
         await update({ activeCommitteeId: committeeId });
 
-        // 3. Revalidate the page so all committee-scoped data refreshes.
+        // 3. Yield one animation frame so NextAuth's useSession re-renders with the
+        //    new session value before router.refresh() fires server-component revalidation.
+        //    This eliminates the race where server-components see the old session cookie.
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+        // 4. Revalidate server components (layouts, pages) with the updated session.
         router.refresh();
 
         setOpen(false);

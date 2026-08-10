@@ -100,6 +100,10 @@ interface MePermissionsResponse {
 
 export function DashboardContent() {
   const { data: session } = useSession();
+
+  // Stable primitive keys — changes here must trigger a full data re-fetch.
+  const activeOrganizationId = session?.activeOrganizationId ?? null;
+  const activeCommitteeId = session?.activeCommitteeId ?? null;
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -209,9 +213,11 @@ export function DashboardContent() {
     }
   };
 
+  // Re-fetch whenever the active organization or committee changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [activeOrganizationId, activeCommitteeId]);
 
   // Filter allowed widgets
   const allowedWidgets = useMemo(() => {

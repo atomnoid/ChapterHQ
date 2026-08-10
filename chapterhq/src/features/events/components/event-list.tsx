@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   Calendar,
@@ -155,6 +156,8 @@ export function EventList({
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { data: session } = useSession();
+  const activeCommitteeId = session?.activeCommitteeId ?? null;
   const LIMIT = 10;
 
   useEffect(() => {
@@ -188,7 +191,7 @@ export function EventList({
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter]);
+  }, [page, debouncedSearch, statusFilter, activeCommitteeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchEvents();

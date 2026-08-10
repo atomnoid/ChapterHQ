@@ -1,6 +1,7 @@
 import { FinanceRepository, ListFinanceQuery } from "@/repositories/finance.repository";
 import { CreateFinanceInput as ZodCreateInput, UpdateFinanceInput } from "@/validators/finance.validator";
 import { logActivity } from "@/lib/audit-logger";
+import { PermissionDeniedError } from "@/types/errors";
 import { prisma } from "@/lib/prisma";
 
 export class FinanceRecordNotFoundError extends Error {
@@ -30,16 +31,19 @@ export class FinanceService {
         where: { id: input.committeeId, organizationId, deletedAt: null },
       });
       if (!committee) {
-        throw new Error("Invalid committee or access denied.");
+        throw new PermissionDeniedError();
       }
 
-      // 2. Check if user has access to that committee using existing rules
+      // 2. Check if user has access to that committee using existing rules:
+      //    President → always allowed
+      //    CommitteeMember → allowed
+      //    Committee Head (active appointment) → allowed
       if (actorId) {
         const member = await prisma.member.findFirst({
           where: { userId: actorId, organizationId, status: "ACTIVE", deletedAt: null },
         });
         if (!member) {
-          throw new Error("Access denied.");
+          throw new PermissionDeniedError();
         }
 
         const userRoles = await prisma.userRole.findMany({
@@ -49,15 +53,31 @@ export class FinanceService {
         const isPresident = userRoles.some(ur => ur.role.name === "President" && !ur.role.deletedAt);
 
         if (!isPresident) {
+          // Check CommitteeMember row
           const isCM = await prisma.committeeMember.findFirst({
             where: { committeeId: input.committeeId, memberId: member.id, deletedAt: null },
           });
-          if (!isCM) {
-            throw new Error("Access denied to this committee.");
+
+          // Also check Committee Head appointment (covers heads not explicitly added as members)
+          const isHead = !isCM && await prisma.appointment.findFirst({
+            where: {
+              committeeId: input.committeeId,
+              memberId: member.id,
+              status: "ACTIVE",
+              deletedAt: null,
+              designation: {
+                in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
+              },
+            },
+          });
+
+          if (!isCM && !isHead) {
+            throw new PermissionDeniedError();
           }
         }
       }
     }
+
 
     const record = await this.financeRepo.create({
       organizationId,

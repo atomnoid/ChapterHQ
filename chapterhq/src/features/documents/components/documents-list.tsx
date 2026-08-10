@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, ExternalLink, FileText, Filter, Loader2, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,8 @@ export function DocumentsList() {
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteDocument, setDeleteDocument] = useState<DocumentItem | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { data: session } = useSession();
+  const activeCommitteeId = session?.activeCommitteeId ?? null;
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
@@ -54,7 +57,7 @@ export function DocumentsList() {
     } finally {
       setLoading(false);
     }
-  }, [category, debouncedSearch, page]);
+  }, [category, debouncedSearch, page, activeCommitteeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     void fetchDocuments();

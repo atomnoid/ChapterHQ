@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Bell, BellOff, Check, CheckCheck, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -47,6 +48,8 @@ export function NotificationList() {
   const [filter, setFilter] = useState<"ALL" | "UNREAD" | "READ">("ALL");
   const [page, setPage] = useState(1);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const { data: session } = useSession();
+  const activeCommitteeId = session?.activeCommitteeId ?? null;
   const LIMIT = 15;
 
   const fetchData = useCallback(async () => {
@@ -63,7 +66,7 @@ export function NotificationList() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally { setLoading(false); }
-  }, [page, filter]);
+  }, [page, filter, activeCommitteeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

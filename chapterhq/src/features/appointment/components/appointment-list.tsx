@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   CalendarDays,
   ChevronLeft,
@@ -148,6 +149,8 @@ export function AppointmentList({
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { data: session } = useSession();
+  const activeCommitteeId = session?.activeCommitteeId ?? null;
   const LIMIT = 10;
 
   // Debounce search input
@@ -181,7 +184,7 @@ export function AppointmentList({
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter]);
+  }, [page, debouncedSearch, statusFilter, activeCommitteeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchAppointments();
