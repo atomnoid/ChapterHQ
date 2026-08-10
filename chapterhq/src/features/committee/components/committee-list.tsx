@@ -267,6 +267,17 @@ function CommitteeCard({
               <p className="mt-1 text-xs text-secondary-foreground leading-normal line-clamp-2 min-h-[2rem]">
                 {committee.description ?? "No description provided."}
               </p>
+              <p className="mt-2 text-xs font-medium text-foreground">
+                {committee.appointments && committee.appointments.length > 0 ? (
+                  <span className="inline-flex items-center gap-1 text-primary">
+                    <span className="font-semibold">Head:</span>{" "}
+                    {committee.appointments[0].member.user.name ||
+                      committee.appointments[0].member.user.email}
+                  </span>
+                ) : (
+                  <span className="text-secondary-foreground italic">No Head assigned</span>
+                )}
+              </p>
             </div>
           </div>
 

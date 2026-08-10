@@ -32,7 +32,7 @@ export function CommitteeContextBadge() {
     return (
       <div
         aria-hidden="true"
-        className="hidden items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 sm:flex"
+        className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5"
       >
         <span className="h-3 w-20 animate-pulse rounded-full bg-secondary/50" />
       </div>
@@ -48,7 +48,7 @@ export function CommitteeContextBadge() {
     <div
       aria-label={`Active committee context: ${label}`}
       className={cn(
-        "hidden items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold sm:flex",
+        "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold",
         isScoped
           ? "border-primary/25 bg-primary/10 text-primary"
           : "border-border/70 bg-card text-secondary-foreground"

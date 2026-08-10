@@ -31,6 +31,17 @@ export interface Committee {
   name: string;
   description: string | null;
   createdAt: string;
+  appointments?: Array<{
+    id: string;
+    designation: string;
+    member: {
+      id: string;
+      user: {
+        name: string | null;
+        email: string | null;
+      };
+    };
+  }>;
 }
 
 export interface MemberOption {

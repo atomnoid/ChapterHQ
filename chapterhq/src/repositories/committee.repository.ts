@@ -60,6 +60,29 @@ export class CommitteeRepository {
 
     const allItems = await prisma.committee.findMany({
       where: whereClause,
+      include: {
+        appointments: {
+          where: {
+            status: "ACTIVE",
+            deletedAt: null,
+            designation: {
+              in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
+            },
+          },
+          include: {
+            member: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       orderBy,
     });
 
