@@ -82,18 +82,18 @@ export class OrganizationContextService {
         
         // Also check if they are the Committee Head via an active Appointment
         if (!hasAccess) {
-          const appointment = await prisma.appointment.findFirst({
+          const appointments = await prisma.appointment.findMany({
             where: {
               committeeId: activeCommitteeId,
               memberId: member.id,
               status: "ACTIVE",
-              deletedAt: null,
               designation: {
                 in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
               },
             },
           });
-          if (appointment) {
+          const hasActiveApp = appointments.some((a) => !a.deletedAt);
+          if (hasActiveApp) {
             hasAccess = true;
           }
         }
