@@ -2,6 +2,7 @@ import { EventRepository } from "@/repositories/event.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 import { logActivity } from "@/lib/audit-logger";
 import { EventStatus } from "@prisma/client";
+import { PermissionDeniedError } from "@/types/errors";
 import { prisma } from "@/lib/prisma";
 
 // ─── Domain Errors ────────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ export class EventService {
         where: { id: data.committeeId, organizationId, deletedAt: null },
       });
       if (!committee) {
-        throw new Error("Invalid committee or access denied.");
+        throw new PermissionDeniedError();
       }
 
       // 2. Check if user has access to that committee using existing rules
@@ -65,7 +66,7 @@ export class EventService {
           where: { userId: actorUserId, organizationId, status: "ACTIVE", deletedAt: null },
         });
         if (!member) {
-          throw new Error("Access denied.");
+          throw new PermissionDeniedError();
         }
 
         const userRoles = await prisma.userRole.findMany({
@@ -75,11 +76,26 @@ export class EventService {
         const isPresident = userRoles.some(ur => ur.role.name === "President" && !ur.role.deletedAt);
 
         if (!isPresident) {
+          // Check CommitteeMember row
           const isCM = await prisma.committeeMember.findFirst({
             where: { committeeId: data.committeeId, memberId: member.id, deletedAt: null },
           });
-          if (!isCM) {
-            throw new Error("Access denied to this committee.");
+
+          // Also check Committee Head appointment (covers heads not explicitly added as members)
+          const isHead = !isCM && await prisma.appointment.findFirst({
+            where: {
+              committeeId: data.committeeId,
+              memberId: member.id,
+              status: "ACTIVE",
+              deletedAt: null,
+              designation: {
+                in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
+              },
+            },
+          });
+
+          if (!isCM && !isHead) {
+            throw new PermissionDeniedError();
           }
         }
       }

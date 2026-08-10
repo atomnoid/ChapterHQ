@@ -1,5 +1,6 @@
 import { NotificationRepository } from "@/repositories/notification.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
+import { PermissionDeniedError } from "@/types/errors";
 import { prisma } from "@/lib/prisma";
 
 export class NotificationNotFoundError extends Error {
@@ -30,7 +31,7 @@ export class NotificationService {
         where: { id: data.targetCommitteeId, organizationId, deletedAt: null },
       });
       if (!committee) {
-        throw new Error("Invalid committee or access denied.");
+        throw new PermissionDeniedError();
       }
     }
 

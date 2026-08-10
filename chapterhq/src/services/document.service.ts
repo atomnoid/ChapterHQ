@@ -1,6 +1,7 @@
 import { DocumentRepository, ListDocumentsQuery } from "@/repositories/document.repository";
 import { CreateDocumentInput as ZodCreateInput } from "@/validators/document.validator";
 import { logActivity } from "@/lib/audit-logger";
+import { PermissionDeniedError } from "@/types/errors";
 import { prisma } from "@/lib/prisma";
 
 export class DocumentNotFoundError extends Error {
@@ -30,7 +31,7 @@ export class DocumentService {
         where: { id: input.committeeId, organizationId, deletedAt: null },
       });
       if (!committee) {
-        throw new Error("Invalid committee or access denied.");
+        throw new PermissionDeniedError();
       }
 
       // 2. Check if user has access to that committee using existing rules
@@ -39,7 +40,7 @@ export class DocumentService {
           where: { userId: actorId, organizationId, status: "ACTIVE", deletedAt: null },
         });
         if (!member) {
-          throw new Error("Access denied.");
+          throw new PermissionDeniedError();
         }
 
         const userRoles = await prisma.userRole.findMany({
@@ -49,11 +50,26 @@ export class DocumentService {
         const isPresident = userRoles.some(ur => ur.role.name === "President" && !ur.role.deletedAt);
 
         if (!isPresident) {
+          // Check CommitteeMember row
           const isCM = await prisma.committeeMember.findFirst({
             where: { committeeId: input.committeeId, memberId: member.id, deletedAt: null },
           });
-          if (!isCM) {
-            throw new Error("Access denied to this committee.");
+
+          // Also check Committee Head appointment (covers heads not explicitly added as members)
+          const isHead = !isCM && await prisma.appointment.findFirst({
+            where: {
+              committeeId: input.committeeId,
+              memberId: member.id,
+              status: "ACTIVE",
+              deletedAt: null,
+              designation: {
+                in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
+              },
+            },
+          });
+
+          if (!isCM && !isHead) {
+            throw new PermissionDeniedError();
           }
         }
       }
