@@ -5,8 +5,8 @@ export class DashboardService {
     private readonly repository = new DashboardRepository()
   ) {}
 
-  async getSummary(organizationId: string, memberId: string) {
-    return this.repository.getSummary(organizationId, memberId);
+  async getSummary(organizationId: string, memberId: string, activeCommitteeId: string | null = null) {
+    return this.repository.getSummary(organizationId, memberId, activeCommitteeId);
   }
 
   async getActivity(organizationId: string) {

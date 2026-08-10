@@ -16,7 +16,10 @@ export async function GET(_request: NextRequest) {
 
     const { context: authContext } = await requirePermission(session.user.id, "finance:read");
 
-    const summary = await financeService.getSummary(authContext.organizationId);
+    const summary = await financeService.getSummary(
+      authContext.organizationId,
+      authContext.activeCommitteeId
+    );
 
     return apiResponse.success(summary);
   } catch (error: unknown) {

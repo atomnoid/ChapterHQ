@@ -18,7 +18,8 @@ export async function GET(request: Request) {
 
     const summary = await dashboardService.getSummary(
       context.organizationId,
-      context.member.id
+      context.member.id,
+      context.activeCommitteeId ?? null
     );
 
     return NextResponse.json(summary, { status: 200 });

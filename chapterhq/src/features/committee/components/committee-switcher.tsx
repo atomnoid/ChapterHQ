@@ -85,8 +85,8 @@ export function CommitteeSwitcher({ onNavigate }: { onNavigate?: () => void }) {
         //    This eliminates the race where server-components see the old session cookie.
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-        // 4. Revalidate server components (layouts, pages) with the updated session.
-        router.refresh();
+        // 4. Force a complete page reload to invalidate all client-side caches and fully re-fetch.
+        window.location.reload();
 
         setOpen(false);
         onNavigate?.();

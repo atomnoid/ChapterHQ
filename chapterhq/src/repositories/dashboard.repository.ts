@@ -1,7 +1,39 @@
 import { prisma } from "@/lib/prisma";
 
 export class DashboardRepository {
-  async getSummary(organizationId: string, memberId: string) {
+  async getSummary(organizationId: string, memberId: string, activeCommitteeId: string | null = null) {
+    // If a committee is active, restrict summary to the committee's scope.
+    if (activeCommitteeId) {
+      const [committeeMemberRows, roleRows, userRoleRows] = await Promise.all([
+        prisma.committeeMember.findMany({
+          where: { committeeId: activeCommitteeId },
+          select: { id: true, deletedAt: true },
+        }),
+        prisma.role.findMany({
+          where: { organizationId },
+          select: { id: true, deletedAt: true },
+        }),
+        prisma.userRole.findMany({
+          where: { memberId },
+          include: { role: { select: { id: true, deletedAt: true, organizationId: true } } },
+        }),
+      ]);
+
+      const totalMembers = committeeMemberRows.filter((m) => !m.deletedAt).length;
+      const totalRoles = roleRows.filter((r) => !r.deletedAt).length;
+      const totalPermissions = await prisma.permission.count();
+      const currentUserRoleCount = userRoleRows.filter(
+        (ur) => !ur.role.deletedAt && ur.role.organizationId === organizationId
+      ).length;
+
+      return {
+        totalMembers,
+        totalRoles,
+        totalPermissions,
+        currentUserRoleCount,
+      };
+    }
+
     // MongoDB Prisma bug: deletedAt: null in where clause (including nested relation filters)
     // returns no results. Using findMany + JS filter instead of count().
     const [memberRows, roleRows, userRoleRows] = await Promise.all([
