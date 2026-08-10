@@ -162,6 +162,7 @@ export async function POST(
     }
 
     // Assign member to committee if invited to one
+    let finalActiveCommitteeId: string | null = null;
     if (invitation.committeeId) {
       const committee = await prisma.committee.findFirst({
         where: {
@@ -170,6 +171,7 @@ export async function POST(
         },
       });
       if (committee && !committee.deletedAt) {
+        finalActiveCommitteeId = invitation.committeeId;
         const existingCM = await prisma.committeeMember.findFirst({
           where: {
             committeeId: invitation.committeeId,
@@ -223,7 +225,7 @@ export async function POST(
     return NextResponse.json({
       message: "Invitation accepted successfully.",
       activeOrganizationId: invitation.organizationId,
-      activeCommitteeId: invitation.committeeId || null,
+      activeCommitteeId: finalActiveCommitteeId,
     });
   } catch (error) {
     return NextResponse.json({ message: "Internal server error." }, { status: 500 });

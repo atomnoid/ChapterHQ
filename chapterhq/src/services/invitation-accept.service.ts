@@ -62,6 +62,7 @@ export class InvitationAcceptService {
     }
 
     // 3–5. Create member, assign role, mark invitation accepted — atomically
+    let finalActiveCommitteeId: string | null = null;
     const member = await prisma.$transaction(async (tx) => {
       const newMember = await tx.member.create({
         data: { organizationId, userId },
@@ -73,6 +74,39 @@ export class InvitationAcceptService {
         });
       }
 
+      if (invitation.committeeId) {
+        const committee = await tx.committee.findFirst({
+          where: {
+            id: invitation.committeeId,
+            organizationId,
+          },
+        });
+        if (committee && !committee.deletedAt) {
+          finalActiveCommitteeId = invitation.committeeId;
+          const existingCM = await tx.committeeMember.findFirst({
+            where: {
+              committeeId: invitation.committeeId,
+              memberId: newMember.id,
+            },
+          });
+          if (existingCM) {
+            if (existingCM.deletedAt) {
+              await tx.committeeMember.update({
+                where: { id: existingCM.id },
+                data: { deletedAt: null, assignedAt: new Date() },
+              });
+            }
+          } else {
+            await tx.committeeMember.create({
+              data: {
+                committeeId: invitation.committeeId,
+                memberId: newMember.id,
+              },
+            });
+          }
+        }
+      }
+
       await tx.invitation.update({
         where: { id: invitationId },
         data: { status: "ACCEPTED" },
@@ -81,6 +115,6 @@ export class InvitationAcceptService {
       return newMember;
     });
 
-    return { member, organizationId };
+    return { member, organizationId, activeCommitteeId: finalActiveCommitteeId };
   }
 }

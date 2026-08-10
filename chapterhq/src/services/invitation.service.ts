@@ -34,6 +34,7 @@ export class InvitationService {
     roleId?: string;
     committeeId?: string;
     expiresInDays: number;
+    actorId: string;
   }) {
     // Duplicate pending check
     const existing = await this.invitationRepository.findPendingByEmailAndOrg(
@@ -54,10 +55,21 @@ export class InvitationService {
     }
 
     // Validate committeeId belongs to the same org
-    if (params.committeeId) {
-      const committee = await this.committeeRepository.findById(params.committeeId, params.organizationId);
+    let finalCommitteeId: string | undefined = params.committeeId;
+    if (finalCommitteeId) {
+      const committee = await this.committeeRepository.findById(finalCommitteeId, params.organizationId);
       if (!committee) {
-        throw new Error("Committee not found or does not belong to this organization.");
+        // Ignore any invalid/cross-organization committeeId
+        finalCommitteeId = undefined;
+      } else {
+        // Verify actor can manage that committee
+        const { isPresident, isCommitteeHead } = require("@/lib/committee-auth");
+        const isPres = await isPresident(params.actorId, params.organizationId);
+        const isHead = await isCommitteeHead(params.actorId, params.organizationId, finalCommitteeId);
+        if (!isPres && !isHead) {
+          const { PermissionDeniedError } = require("@/types/errors");
+          throw new PermissionDeniedError();
+        }
       }
     }
 
@@ -68,7 +80,7 @@ export class InvitationService {
       organizationId: params.organizationId,
       email: params.email,
       roleId: params.roleId,
-      committeeId: params.committeeId,
+      committeeId: finalCommitteeId,
       token: this.generateToken(),
       expiresAt,
     });

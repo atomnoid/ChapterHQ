@@ -51,6 +51,7 @@ export async function POST(request: Request) {
       roleId: validatedData.roleId,
       committeeId: validatedData.committeeId,
       expiresInDays: validatedData.expiresInDays,
+      actorId: session.user.id,
     });
 
     return NextResponse.json(
