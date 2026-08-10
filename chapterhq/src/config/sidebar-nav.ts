@@ -8,6 +8,7 @@ import {
   FileText,
   LayoutDashboard,
   Package,
+  ScrollText,
   Settings,
   Shield,
   Users,
@@ -108,6 +109,12 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
     route: "/reports",
     icon: ClipboardList,
     requiredPermission: "reports:read",
+  },
+  {
+    title: "Audit Logs",
+    route: "/audit-logs",
+    icon: ScrollText,
+    requiredPermission: "audit-logs:read",
   },
   {
     title: "Settings",
