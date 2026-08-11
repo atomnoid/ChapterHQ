@@ -130,11 +130,19 @@ export async function POST(
 
     // Resolve or assign role
     let roleIdToAssign = invitation.roleId;
-    if (!roleIdToAssign) {
+    if (roleIdToAssign) {
+      const roleExists = await prisma.role.findFirst({
+        where: { id: roleIdToAssign, organizationId: invitation.organizationId, deletedAt: null }
+      });
+      if (!roleExists) {
+        return NextResponse.json({ message: "The invited role is no longer available." }, { status: 400 });
+      }
+    } else {
       const defaultRole = await prisma.role.findFirst({
         where: {
           organizationId: invitation.organizationId,
           name: "Volunteer",
+          deletedAt: null
         },
       });
       if (defaultRole) {
