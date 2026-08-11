@@ -51,17 +51,15 @@ export function CreateMemberDialog({ open, onOpenChange, onSuccess }: CreateMemb
     if (open) {
       reset({ email: "", roleId: "" });
       fetch("/api/roles")
-        ? fetch("/api/roles")
-            .then((res) => res.json())
-            .then((data) => {
-              if (Array.isArray(data)) {
-                setRoles(data);
-              } else if (data && Array.isArray(data.items)) {
-                setRoles(data.items);
-              }
-            })
-            .catch(() => setRoles([]))
-        : setRoles([]);
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setRoles(data);
+          } else if (data && Array.isArray(data.items)) {
+            setRoles(data.items);
+          }
+        })
+        .catch(() => setRoles([]));
     }
   }, [open, reset]);
 

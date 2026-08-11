@@ -47,7 +47,7 @@ export class DocumentService {
           where: { memberId: member.id },
           include: { role: true },
         });
-        const isPresident = userRoles.some(ur => ur.role.name === "President" && !ur.role.deletedAt);
+        const isPresident = userRoles.some(ur => (ur.role.name === "Admin" || ur.role.name === "President") && !ur.role.deletedAt);
 
         if (!isPresident) {
           // Check CommitteeMember row

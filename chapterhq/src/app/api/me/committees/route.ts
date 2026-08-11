@@ -34,7 +34,7 @@ export async function GET() {
       include: { role: { select: { name: true, deletedAt: true } } },
     });
     const isPresident = userRoles.some(
-      (ur) => !ur.role.deletedAt && ur.role.name === "President"
+      (ur) => !ur.role.deletedAt && (ur.role.name === "Admin" || ur.role.name === "President")
     );
 
     let committees;

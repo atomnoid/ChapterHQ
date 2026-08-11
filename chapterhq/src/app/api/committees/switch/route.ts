@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         },
       });
       const activeUserRoles = userRoles.filter((ur) => !ur.role.deletedAt);
-      const isPresident = activeUserRoles.some((ur) => ur.role.name === "President");
+      const isPresident = activeUserRoles.some((ur) => ur.role.name === "Admin" || ur.role.name === "President");
       if (isPresident) {
         hasAccess = true;
       }

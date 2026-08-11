@@ -123,7 +123,7 @@ export function CoreMemberList() {
             <tbody className="divide-y divide-border/60">
               {records.map((record) => {
                 const userName = record.member.user.name ?? record.member.user.email ?? "Unknown Name";
-                const isPresident = record.member.userRoles.some((ur) => ur.role.name === "President");
+                const isPresident = record.member.userRoles.some((ur) => ur.role.name === "Admin" || ur.role.name === "President");
                 const activeAppointments = record.member.appointments;
                 const hasAppointments = activeAppointments.length > 0;
 
