@@ -264,6 +264,7 @@ model Member {
   attendances      Attendance[]
   certificates     Certificate[]
   coreMemberRecords CoreMember[]
+  notificationRecipients NotificationRecipient[]
 
   @@unique([organizationId, userId])
 
@@ -597,6 +598,7 @@ model Notification {
 
   organization    Organization @relation(fields: [organizationId], references: [id])
   targetCommittee Committee?   @relation(fields: [targetCommitteeId], references: [id])
+  recipients      NotificationRecipient[]
 
   title       String
   message     String
@@ -608,6 +610,21 @@ model Notification {
   updatedAt DateTime @updatedAt
 
   @@map("notifications")
+}
+
+model NotificationRecipient {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  notificationId String @db.ObjectId
+  memberId       String @db.ObjectId
+
+  notification Notification @relation(fields: [notificationId], references: [id])
+  member       Member       @relation(fields: [memberId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([notificationId, memberId])
+  @@map("notification_recipients")
 }
 
 //////////////////////////////////////////////////////

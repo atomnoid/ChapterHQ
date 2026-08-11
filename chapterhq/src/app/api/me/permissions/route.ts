@@ -45,6 +45,10 @@ export async function GET() {
         },
         roles: roleNames,
         permissions: permissionStrings,
+        notificationAudience: {
+          isOrganizationAdministrator: roles.some((role) => role.scope === "ORGANIZATION"),
+          activeCommitteeId: context.activeCommitteeId ?? null,
+        },
       },
       { status: 200 }
     );

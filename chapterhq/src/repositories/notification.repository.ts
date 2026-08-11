@@ -8,6 +8,7 @@ export interface CreateNotificationData {
   type: string;
   targetScope: string;
   targetCommitteeId?: string | null;
+  memberIds?: string[];
 }
 
 export class NotificationRepository {
@@ -21,6 +22,7 @@ export class NotificationRepository {
         targetScope: data.targetScope,
         targetCommitteeId: data.targetCommitteeId,
         isRead: false,
+        recipients: data.memberIds?.length ? { create: data.memberIds.map((memberId) => ({ memberId })) } : undefined,
       },
     });
   }

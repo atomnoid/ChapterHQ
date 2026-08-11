@@ -41,16 +41,17 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) return apiResponse.unauthorized();
 
-    const { context } = await requirePermission(session.user.id, "notifications:create");
+    const { context, roles } = await requirePermission(session.user.id, "notifications:create");
 
     const body = await request.json();
     const validatedData = createNotificationSchema.parse(body);
 
     const notification = await notificationService.createNotification(
-      context.organizationId,
+      context.organizationId, validatedData,
       {
-        ...validatedData,
-        targetCommitteeId: context.activeCommitteeId ?? null,
+        activeCommitteeId: context.activeCommitteeId ?? null,
+        // Role scope is protected RBAC identity; never infer authority from a display name.
+        isOrganizationAdministrator: roles.some((role) => role.scope === "ORGANIZATION"),
       }
     );
 

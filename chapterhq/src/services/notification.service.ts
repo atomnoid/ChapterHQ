@@ -23,21 +23,62 @@ export class NotificationService {
       type: string;
       targetScope: string;
       targetCommitteeId?: string | null;
-    }
+      memberIds?: string[];
+    },
+    actor: { activeCommitteeId?: string | null; isOrganizationAdministrator: boolean }
   ) {
-    if (data.targetCommitteeId) {
+    const isCommitteeScopedActor = !actor.isOrganizationAdministrator;
+    if (isCommitteeScopedActor && !actor.activeCommitteeId) throw new PermissionDeniedError();
+    if (isCommitteeScopedActor && data.targetScope === "ORGANIZATION") throw new PermissionDeniedError();
+
+    const targetCommitteeId = data.targetScope === "COMMITTEE"
+      ? (isCommitteeScopedActor ? actor.activeCommitteeId! : data.targetCommitteeId)
+      : null;
+
+    if (data.targetScope === "COMMITTEE" && isCommitteeScopedActor && data.targetCommitteeId && data.targetCommitteeId !== actor.activeCommitteeId) {
+      throw new PermissionDeniedError();
+    }
+
+    if (targetCommitteeId) {
       // Verify committee belongs to organization and is not deleted
       const committee = await prisma.committee.findFirst({
-        where: { id: data.targetCommitteeId, organizationId, deletedAt: null },
+        where: { id: targetCommitteeId, organizationId },
       });
-      if (!committee) {
+      if (!committee || committee.deletedAt) {
         throw new PermissionDeniedError();
       }
+    }
+
+    let memberIds = [...new Set(data.memberIds ?? [])];
+    if (data.targetScope === "MEMBERS") {
+      const members = await prisma.member.findMany({ where: { id: { in: memberIds }, organizationId } });
+      if (members.length !== memberIds.length || members.some((member) => member.status !== "ACTIVE" || member.deletedAt)) {
+        throw new PermissionDeniedError();
+      }
+      if (isCommitteeScopedActor) {
+        const assignments = await prisma.committeeMember.findMany({ where: { committeeId: actor.activeCommitteeId!, memberId: { in: memberIds } } });
+        const activeMemberIds = new Set(assignments.filter((assignment) => !assignment.deletedAt).map((assignment) => assignment.memberId));
+        if (activeMemberIds.size !== memberIds.length) throw new PermissionDeniedError();
+      }
+    }
+
+    // Resolve recipients only after the audience has passed authorization. This keeps
+    // every NotificationRecipient within the actor's trusted organization/committee scope.
+    if (data.targetScope === "ORGANIZATION") {
+      const members = await prisma.member.findMany({ where: { organizationId } });
+      memberIds = members.filter((member) => member.status === "ACTIVE" && !member.deletedAt).map((member) => member.id);
+    } else if (data.targetScope === "COMMITTEE") {
+      const assignments = await prisma.committeeMember.findMany({ where: { committeeId: targetCommitteeId! } });
+      const assignedIds = assignments.filter((assignment) => !assignment.deletedAt).map((assignment) => assignment.memberId);
+      const members = await prisma.member.findMany({ where: { id: { in: assignedIds }, organizationId } });
+      memberIds = members.filter((member) => member.status === "ACTIVE" && !member.deletedAt).map((member) => member.id);
     }
 
     return this.repository.create({
       organizationId,
       ...data,
+      targetCommitteeId,
+      memberIds,
     });
   }
 

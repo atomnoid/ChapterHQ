@@ -81,12 +81,20 @@ interface CreateNotificationDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
+interface RecipientMember { id: string; user: { name: string | null; email: string }; }
 
 function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotificationDialogProps) {
+  const { data: session } = useSession();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [type, setType] = useState<NotificationType>("INFO");
-  const [targetScope, setTargetScope] = useState<"ORGANIZATION" | "COMMITTEE">("ORGANIZATION");
+  const [targetScope, setTargetScope] = useState<"ORGANIZATION" | "COMMITTEE" | "MEMBERS">("ORGANIZATION");
+  const [canTargetOrganization, setCanTargetOrganization] = useState<boolean | null>(null);
+  const [members, setMembers] = useState<RecipientMember[]>([]);
+  const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,15 +103,46 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
       setTitle("");
       setMessage("");
       setType("INFO");
-      setTargetScope("ORGANIZATION");
+      setMemberIds([]);
+      setMemberSearch("");
       setError(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/me/permissions").then(async (res) => {
+      const payload = await res.json();
+      const isAdmin = Boolean(payload?.notificationAudience?.isOrganizationAdministrator);
+      setCanTargetOrganization(isAdmin);
+      setTargetScope(isAdmin ? "ORGANIZATION" : "COMMITTEE");
+    }).catch(() => setCanTargetOrganization(false));
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || targetScope !== "MEMBERS") return;
+    const controller = new AbortController();
+    setMembersLoading(true); setMembersError(null);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/notifications/members?search=${encodeURIComponent(memberSearch)}`, { signal: controller.signal });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message ?? "Failed to load members.");
+        setMembers(json?.data?.items ?? json?.items ?? []);
+      } catch (e) { if (!controller.signal.aborted) setMembersError(e instanceof Error ? e.message : "Failed to load members."); }
+      finally { if (!controller.signal.aborted) setMembersLoading(false); }
+    }, 200);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [open, targetScope, memberSearch]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !message.trim()) {
       setError("Title and message are required.");
+      return;
+    }
+    if (targetScope === "MEMBERS" && memberIds.length === 0) {
+      setError("Select at least one member.");
       return;
     }
     setSubmitting(true);
@@ -112,7 +151,7 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
       const res = await fetch("/api/notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), message: message.trim(), type, targetScope }),
+        body: JSON.stringify({ title: title.trim(), message: message.trim(), type, targetScope, ...(targetScope === "COMMITTEE" ? { targetCommitteeId: session?.activeCommitteeId } : {}), ...(targetScope === "MEMBERS" ? { memberIds } : {}) }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -192,19 +231,20 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
 
           {/* Scope */}
           <div className="space-y-1.5">
-            <Label>Target Scope</Label>
+            <Label>Target Audience</Label>
             <div className="flex gap-2">
-              {(["ORGANIZATION", "COMMITTEE"] as const).map((scope) => (
+              {(canTargetOrganization ? ["ORGANIZATION", "COMMITTEE", "MEMBERS"] : ["COMMITTEE", "MEMBERS"]).map((scope) => (
                 <button
                   key={scope}
                   type="button"
-                  onClick={() => setTargetScope(scope)}
+                  onClick={() => setTargetScope(scope as typeof targetScope)}
                   className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
                     targetScope === scope
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border text-secondary-foreground hover:border-primary/50 hover:text-foreground"
                   }`}
                 >
+                  {targetScope === scope ? "● " : "○ "}{scope === "MEMBERS" ? "Selected Members" : ""}
                   {scope === "ORGANIZATION" ? "🏢 Organization" : "👥 Committee"}
                 </button>
               ))}
@@ -215,6 +255,14 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
                 : "Sent to all members of this organization."}
             </p>
           </div>
+
+          {targetScope === "MEMBERS" && <div className="space-y-2 rounded-xl border border-border p-3">
+            <input className="flex h-9 w-full rounded-lg border border-border bg-background px-3 text-sm" placeholder="Search members..." value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
+            <div className="flex gap-2 text-xs"><button type="button" className="underline" onClick={() => setMemberIds(members.map((member) => member.id))}>Select All</button><button type="button" className="underline" onClick={() => setMemberIds([])}>Clear All</button><span>{memberIds.length} selected</span></div>
+            {membersLoading && <p className="text-sm text-secondary-foreground">Loading members…</p>}{membersError && <p className="text-sm text-destructive">{membersError}</p>}
+            {!membersLoading && !membersError && members.length === 0 && <p className="text-sm text-secondary-foreground">No matching active members.</p>}
+            <div className="max-h-44 space-y-1 overflow-y-auto">{members.map((member) => <label key={member.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-secondary"><input type="checkbox" checked={memberIds.includes(member.id)} onChange={() => setMemberIds((current) => current.includes(member.id) ? current.filter((id) => id !== member.id) : [...current, member.id])} />{member.user.name ?? member.user.email}</label>)}</div>
+          </div>}
 
           {error && (
             <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3">
