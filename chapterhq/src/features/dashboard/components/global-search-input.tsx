@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Building2, Search, Shield, User, X, Loader2 } from "lucide-react";
+import { Building2, Search, Shield, User, X, Loader2, Calendar, DollarSign, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface SearchResult {
   id: string;
-  type: "member" | "role" | "organization";
+  type: "member" | "role" | "organization" | "event" | "finance" | "inventory";
   title: string;
   subtitle: string;
   href: string;
@@ -44,7 +44,7 @@ export function GlobalSearchInput() {
       setSearching(true);
       try {
         const searchVal = encodeURIComponent(debouncedQuery);
-        const [membersRes, rolesRes, orgsRes] = await Promise.all([
+        const [membersRes, rolesRes, orgsRes, eventsRes, financeRes, inventoryRes] = await Promise.all([
           fetch(`/api/members?limit=5&search=${searchVal}`).then((r) =>
             r.ok ? r.json() : { items: [] }
           ),
@@ -53,6 +53,15 @@ export function GlobalSearchInput() {
           ),
           fetch(`/api/organizations`).then((r) =>
             r.ok ? r.json() : []
+          ),
+          fetch(`/api/events?limit=5&search=${searchVal}`).then((r) =>
+            r.ok ? r.json() : { items: [] }
+          ),
+          fetch(`/api/finance?limit=5&search=${searchVal}`).then((r) =>
+            r.ok ? r.json() : { items: [] }
+          ),
+          fetch(`/api/inventory?limit=5&search=${searchVal}`).then((r) =>
+            r.ok ? r.json() : { items: [] }
           ),
         ]);
 
@@ -82,7 +91,7 @@ export function GlobalSearchInput() {
           });
         });
 
-        // 3. Process organizations (filter client-side since API returns all user memberships)
+        // 3. Process organizations
         const orgsList = Array.isArray(orgsRes) ? orgsRes : (orgsRes.items ?? orgsRes.data ?? []);
         orgsList.forEach((o: any) => {
           if (
@@ -97,6 +106,42 @@ export function GlobalSearchInput() {
               href: "/organizations",
             });
           }
+        });
+
+        // 4. Process events
+        const eventsList = eventsRes.items ?? eventsRes.data?.items ?? [];
+        eventsList.forEach((e: any) => {
+          formattedResults.push({
+            id: e.id,
+            type: "event",
+            title: e.title,
+            subtitle: e.venue ?? "No venue scheduled.",
+            href: `/events/${e.id}`,
+          });
+        });
+
+        // 5. Process finance records
+        const financeList = financeRes.items ?? financeRes.data?.items ?? [];
+        financeList.forEach((f: any) => {
+          formattedResults.push({
+            id: f.id,
+            type: "finance",
+            title: `${f.type}: ${f.category}`,
+            subtitle: `Amount: ₹${f.amount}`,
+            href: "/finance",
+          });
+        });
+
+        // 6. Process inventory items
+        const inventoryList = inventoryRes.items ?? inventoryRes.data?.items ?? [];
+        inventoryList.forEach((i: any) => {
+          formattedResults.push({
+            id: i.id,
+            type: "inventory",
+            title: i.name,
+            subtitle: `Quantity: ${i.quantity} (${i.status})`,
+            href: "/inventory",
+          });
         });
 
         setResults(formattedResults);
@@ -114,6 +159,9 @@ export function GlobalSearchInput() {
     member: User,
     role: Shield,
     organization: Building2,
+    event: Calendar,
+    finance: DollarSign,
+    inventory: Package,
   };
 
   return (
