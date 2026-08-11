@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    // Ping DB to check connection status
-    await prisma.$queryRaw`SELECT 1`;
+    // Prisma's MongoDB connector does not support SQL $queryRaw. A minimal
+    // model query verifies the active database connection without relying on
+    // a relational-only health check.
+    await prisma.organization.count();
 
     return NextResponse.json(
       {
