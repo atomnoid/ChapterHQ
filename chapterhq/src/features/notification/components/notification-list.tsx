@@ -82,6 +82,7 @@ interface CreateNotificationDialogProps {
   onSuccess: () => void;
 }
 interface RecipientMember { id: string; user: { name: string | null; email: string }; }
+interface AudienceCommittee { id: string; name: string; }
 
 function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotificationDialogProps) {
   const { data: session } = useSession();
@@ -95,6 +96,8 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
   const [memberSearch, setMemberSearch] = useState("");
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
+  const [committees, setCommittees] = useState<AudienceCommittee[]>([]);
+  const [selectedCommitteeId, setSelectedCommitteeId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,6 +119,16 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
       const isAdmin = Boolean(payload?.notificationAudience?.isOrganizationAdministrator);
       setCanTargetOrganization(isAdmin);
       setTargetScope(isAdmin ? "ORGANIZATION" : "COMMITTEE");
+      const activeCommitteeId = payload?.notificationAudience?.activeCommitteeId ?? null;
+      setSelectedCommitteeId(activeCommitteeId);
+      if (isAdmin) {
+        const committeesRes = await fetch("/api/committees?page=1&limit=100&order=asc");
+        const committeesPayload = await committeesRes.json();
+        if (!committeesRes.ok) throw new Error(committeesPayload.message ?? "Failed to load committees.");
+        const items = committeesPayload?.data?.items ?? committeesPayload?.items ?? [];
+        setCommittees(items);
+        setSelectedCommitteeId((current: string | null) => current ?? items[0]?.id ?? null);
+      }
     }).catch(() => setCanTargetOrganization(false));
   }, [open]);
 
@@ -125,7 +138,8 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
     setMembersLoading(true); setMembersError(null);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/notifications/members?search=${encodeURIComponent(memberSearch)}`, { signal: controller.signal });
+        if (!selectedCommitteeId) throw new Error("Select a committee first.");
+        const res = await fetch(`/api/notifications/members?committeeId=${encodeURIComponent(selectedCommitteeId)}&search=${encodeURIComponent(memberSearch)}`, { signal: controller.signal });
         const json = await res.json();
         if (!res.ok) throw new Error(json.message ?? "Failed to load members.");
         setMembers(json?.data?.items ?? json?.items ?? []);
@@ -133,7 +147,7 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
       finally { if (!controller.signal.aborted) setMembersLoading(false); }
     }, 200);
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [open, targetScope, memberSearch]);
+  }, [open, targetScope, memberSearch, selectedCommitteeId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -151,7 +165,7 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
       const res = await fetch("/api/notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), message: message.trim(), type, targetScope, ...(targetScope === "COMMITTEE" ? { targetCommitteeId: session?.activeCommitteeId } : {}), ...(targetScope === "MEMBERS" ? { memberIds } : {}) }),
+        body: JSON.stringify({ title: title.trim(), message: message.trim(), type, targetType: targetScope === "ORGANIZATION" ? "ORGANIZATION" : "COMMITTEE", ...(targetScope !== "ORGANIZATION" ? { committeeId: selectedCommitteeId } : {}), recipientMode: targetScope === "MEMBERS" ? "SPECIFIC_MEMBERS" : "ALL", ...(targetScope === "MEMBERS" ? { recipientIds: memberIds } : {}) }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -256,6 +270,20 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
             </p>
           </div>
 
+          {targetScope !== "ORGANIZATION" && (
+            <div className="space-y-1.5">
+              <Label>Select Committee</Label>
+              {canTargetOrganization ? (
+                <select className="flex h-10 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" value={selectedCommitteeId ?? ""} onChange={(e) => { setSelectedCommitteeId(e.target.value || null); setMemberIds([]); }}>
+                  <option value="">Select a committee</option>
+                  {committees.map((committee) => <option key={committee.id} value={committee.id}>{committee.name}</option>)}
+                </select>
+              ) : (
+                <div className="flex h-10 items-center rounded-xl border border-border bg-secondary/40 px-3 text-sm">My active committee 🔒</div>
+              )}
+            </div>
+          )}
+
           {targetScope === "MEMBERS" && <div className="space-y-2 rounded-xl border border-border p-3">
             <input className="flex h-9 w-full rounded-lg border border-border bg-background px-3 text-sm" placeholder="Search members..." value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
             <div className="flex gap-2 text-xs"><button type="button" className="underline" onClick={() => setMemberIds(members.map((member) => member.id))}>Select All</button><button type="button" className="underline" onClick={() => setMemberIds([])}>Clear All</button><span>{memberIds.length} selected</span></div>
@@ -283,7 +311,7 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
             <Button
               type="submit"
               className="flex-1 rounded-xl gap-2"
-              disabled={submitting || !title.trim() || !message.trim()}
+              disabled={submitting || !title.trim() || !message.trim() || canTargetOrganization === null || (targetScope !== "ORGANIZATION" && !selectedCommitteeId) || (targetScope === "MEMBERS" && memberIds.length === 0)}
             >
               {submitting ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />

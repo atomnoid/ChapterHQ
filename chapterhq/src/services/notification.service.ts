@@ -24,6 +24,7 @@ export class NotificationService {
       targetScope: string;
       targetCommitteeId?: string | null;
       memberIds?: string[];
+      recipientMode?: "ALL" | "SPECIFIC_MEMBERS";
     },
     actor: { activeCommitteeId?: string | null; isOrganizationAdministrator: boolean }
   ) {
@@ -50,7 +51,7 @@ export class NotificationService {
     }
 
     let memberIds = [...new Set(data.memberIds ?? [])];
-    if (data.targetScope === "MEMBERS") {
+    if (data.targetScope === "COMMITTEE" && data.recipientMode === "SPECIFIC_MEMBERS") {
       const members = await prisma.member.findMany({ where: { id: { in: memberIds }, organizationId } });
       if (members.length !== memberIds.length || members.some((member) => member.status !== "ACTIVE" || member.deletedAt)) {
         throw new PermissionDeniedError();

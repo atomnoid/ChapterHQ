@@ -18,19 +18,31 @@ export const createNotificationSchema = z.object({
   type: z
     .enum(NOTIFICATION_TYPES, { error: "Invalid notification type." })
     .default("INFO"),
-  targetScope: z
-    .enum(["ORGANIZATION", "COMMITTEE", "MEMBERS"], { error: "targetScope must be ORGANIZATION, COMMITTEE, or MEMBERS." })
-    .default("ORGANIZATION"),
+  // targetScope/memberIds are retained as backwards-compatible aliases for the
+  // original UI. The API's canonical audience contract is targetType + recipientMode.
+  targetType: z.enum(["ORGANIZATION", "COMMITTEE"]).optional(),
+  committeeId: z.string().min(1).optional(),
+  recipientMode: z.enum(["ALL", "SPECIFIC_MEMBERS"]).optional(),
+  recipientIds: z.array(z.string().min(1)).min(1, "Select at least one member.").optional(),
+  targetScope: z.enum(["ORGANIZATION", "COMMITTEE", "MEMBERS"]).optional(),
   targetCommitteeId: z.string().min(1).optional(),
-  memberIds: z.array(z.string().min(1)).min(1, "Select at least one member.").max(10000).optional(),
+  memberIds: z.array(z.string().min(1)).min(1, "Select at least one member.").optional(),
 }).superRefine((data, ctx) => {
-  if (data.targetScope === "MEMBERS" && !data.memberIds?.length) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["memberIds"], message: "Select at least one member." });
+  const targetType = data.targetType ?? (data.targetScope === "MEMBERS" ? "COMMITTEE" : data.targetScope ?? "ORGANIZATION");
+  const recipientMode = data.recipientMode ?? (data.targetScope === "MEMBERS" ? "SPECIFIC_MEMBERS" : "ALL");
+  if (recipientMode === "SPECIFIC_MEMBERS" && !(data.recipientIds ?? data.memberIds)?.length) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["recipientIds"], message: "Select at least one member." });
   }
-  if (data.targetScope === "COMMITTEE" && !data.targetCommitteeId) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["targetCommitteeId"], message: "A committee is required." });
+  if (targetType === "COMMITTEE" && !(data.committeeId ?? data.targetCommitteeId)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["committeeId"], message: "A committee is required." });
   }
-});
+}).transform((data) => ({
+  title: data.title, message: data.message, type: data.type,
+  targetScope: data.targetType ?? (data.targetScope === "MEMBERS" ? "COMMITTEE" : data.targetScope ?? "ORGANIZATION"),
+  targetCommitteeId: data.committeeId ?? data.targetCommitteeId,
+  recipientMode: data.recipientMode ?? (data.targetScope === "MEMBERS" ? "SPECIFIC_MEMBERS" : "ALL"),
+  memberIds: data.recipientIds ?? data.memberIds,
+}));
 
 export const notificationQuerySchema = paginationQuerySchema.extend({
   isRead: z
