@@ -125,8 +125,8 @@ export class RoleService {
       throw new RoleNotFoundError(id);
     }
 
-    if (role.name === OWNER_ROLE_NAME) {
-      if (data.name && data.name.toLowerCase() !== OWNER_ROLE_NAME.toLowerCase()) {
+    if (role.name === OWNER_ROLE_NAME || role.name === "President") {
+      if (data.name && data.name.toLowerCase() !== OWNER_ROLE_NAME.toLowerCase() && data.name.toLowerCase() !== "president") {
         throw new ProtectedRoleModificationError("rename");
       }
     }
@@ -160,7 +160,7 @@ export class RoleService {
       throw new RoleNotFoundError(id);
     }
 
-    if (role.name === OWNER_ROLE_NAME) {
+    if (role.name === OWNER_ROLE_NAME || role.name === "President") {
       throw new ProtectedRoleModificationError("delete");
     }
 

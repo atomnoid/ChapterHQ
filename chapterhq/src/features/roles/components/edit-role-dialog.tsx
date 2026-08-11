@@ -88,8 +88,8 @@ export function EditRoleDialog({ role, open, onOpenChange, onSuccess }: EditRole
     }
   }
 
-  // Prevent editing the President role name
-  const isPresident = role?.name.toLowerCase() === "president";
+  // Prevent editing the Admin/President role name
+  const isPresident = role?.name.toLowerCase() === "admin" || role?.name.toLowerCase() === "president";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -110,7 +110,7 @@ export function EditRoleDialog({ role, open, onOpenChange, onSuccess }: EditRole
               aria-invalid={!!errors.name}
             />
             {isPresident && (
-              <p className="text-xs text-secondary-foreground">The President role name is immutable.</p>
+              <p className="text-xs text-secondary-foreground">The Admin/President role name is immutable.</p>
             )}
             {errors.name && (
               <p className="text-xs text-destructive">{errors.name.message}</p>
@@ -129,7 +129,7 @@ export function EditRoleDialog({ role, open, onOpenChange, onSuccess }: EditRole
             />
             {isPresident && (
               <p className="text-xs text-secondary-foreground">
-                This label is shown in the UI. The internal role identity ("President") is used for authorization and cannot be changed.
+                This label is shown in the UI. The internal role identity ("Admin" or "President") is used for authorization and cannot be changed.
               </p>
             )}
             {errors.description && (

@@ -185,7 +185,7 @@ export function PermissionMatrix() {
   }
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId);
-  const isPresident = selectedRole?.name.toLowerCase() === "president";
+  const isPresident = selectedRole?.name.toLowerCase() === "admin" || selectedRole?.name.toLowerCase() === "president";
 
   return (
     <div className="space-y-6">
@@ -243,7 +243,7 @@ export function PermissionMatrix() {
           <div>
             <p className="font-semibold">Protected Role Settings</p>
             <p className="mt-1 leading-relaxed text-amber-700">
-              The President role maintains system-owner permissions by default. Modifying permissions for this role is not recommended.
+              The Admin/President role maintains system-owner permissions by default. Modifying permissions for this role is not recommended.
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 export const DEFAULT_ORG_ROLES = [
-  { name: "President", scope: "ORGANIZATION" as const },
+  { name: "Admin", scope: "ORGANIZATION" as const },
 ] as const;
 
-export const OWNER_ROLE_NAME = "President";
+export const OWNER_ROLE_NAME = "Admin";

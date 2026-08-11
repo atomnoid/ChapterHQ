@@ -254,7 +254,7 @@ async function validateCommitteeAccess(userId: string, organizationId: string, c
     });
 
     const activeUserRoles = userRoles.filter((ur) => !ur.role.deletedAt);
-    const isPresident = activeUserRoles.some((ur) => ur.role.name === "President");
+    const isPresident = activeUserRoles.some((ur) => ur.role.name === "Admin" || ur.role.name === "President");
     if (isPresident) {
       return true;
     }

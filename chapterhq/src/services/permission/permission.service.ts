@@ -25,14 +25,14 @@ export class PermissionService {
     // 2. Fetch all roles for the organization
     const roles = await this.roleRepository.findManyByOrganization(organizationId);
 
-    const presidentRole = roles.find(r => r.name === "President");
+    const presidentRole = roles.find(r => r.name === "Admin" || r.name === "President");
     const secretaryRole = roles.find(r => r.name === "Secretary");
     const treasurerRole = roles.find(r => r.name === "Treasurer");
     const memberRole = roles.find(r => r.name === "Member");
 
     const rolePermissionsData: { roleId: string; permissionId: string }[] = [];
 
-    // President gets ALL permissions
+    // Owner role (Admin/President) gets ALL permissions
     if (presidentRole) {
       allDbPermissions.forEach(p => {
         rolePermissionsData.push({ roleId: presidentRole.id, permissionId: p.id });

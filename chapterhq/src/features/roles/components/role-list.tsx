@@ -57,7 +57,7 @@ function RoleCard({
   onDelete: (r: Role) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const isPresident = role.name.toLowerCase() === "president";
+  const isPresident = role.name.toLowerCase() === "admin" || role.name.toLowerCase() === "president";
 
   const permissionCount = role._count?.rolePermissions ?? 0;
   const memberCount = role._count?.userRoles ?? 0;

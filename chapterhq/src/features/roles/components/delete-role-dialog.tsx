@@ -52,8 +52,8 @@ export function DeleteRoleDialog({ role, open, onOpenChange, onSuccess }: Delete
     }
   }
 
-  // Prevent deleting the President role
-  const isPresident = role?.name.toLowerCase() === "president";
+  // Prevent deleting the Admin/President role
+  const isPresident = role?.name.toLowerCase() === "admin" || role?.name.toLowerCase() === "president";
 
   return (
     <AlertDialog

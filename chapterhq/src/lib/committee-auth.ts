@@ -11,7 +11,7 @@ export async function isPresident(userId: string, organizationId: string): Promi
       where: { memberId: member.id },
       include: { role: true },
     });
-    return userRoles.some((ur) => ur.role.name === "President" && !ur.role.deletedAt);
+    return userRoles.some((ur) => (ur.role.name === "Admin" || ur.role.name === "President") && !ur.role.deletedAt);
   } catch {
     return false;
   }

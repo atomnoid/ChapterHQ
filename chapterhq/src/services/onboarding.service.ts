@@ -151,10 +151,10 @@ export class OnboardingService {
         throw new OnboardingBootstrapError(`permission:${missingPermissions[0].resource}:${missingPermissions[0].action}`);
       }
 
-      const presidentRole = roles.find((role) => role.name === "President");
+      const presidentRole = roles.find((role) => role.name === "Admin" || role.name === "President");
       if (!presidentRole) {
-        console.error("[onboarding] Missing role record: President");
-        throw new OnboardingBootstrapError("role:President");
+        console.error("[onboarding] Missing role record: Admin/President");
+        throw new OnboardingBootstrapError("role:Admin");
       }
 
       const rolePermissions = permissions.map((permission) => ({
@@ -171,8 +171,8 @@ export class OnboardingService {
       });
 
       if (presidentMappings.length < permissions.length) {
-        console.error("[onboarding] Missing role-permission mapping record(s) for President");
-        throw new OnboardingBootstrapError("rolePermission:President");
+        console.error("[onboarding] Missing role-permission mapping record(s) for Admin/President");
+        throw new OnboardingBootstrapError("rolePermission:Admin");
       }
 
       const userRole = await tx.userRole.create({
