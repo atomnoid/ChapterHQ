@@ -604,6 +604,9 @@ model Notification {
   message     String
   type        String
   targetScope String
+  sourceType  String?
+  sourceId    String?
+  eventType   String?
   isRead      Boolean  @default(false)
 
   createdAt DateTime @default(now())

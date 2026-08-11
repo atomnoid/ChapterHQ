@@ -5,6 +5,7 @@ import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/
 import { logActivity } from "@/lib/audit-logger";
 import { AppointmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { SystemNotificationService } from "@/services/system-notification.service";
 
 // ─── Domain Errors ────────────────────────────────────────────────────────────
 
@@ -67,7 +68,8 @@ export class AppointmentService {
   constructor(
     private readonly appointmentRepo = new AppointmentRepository(),
     private readonly committeeRepo = new CommitteeRepository(),
-    private readonly memberRepo = new MemberRepository()
+    private readonly memberRepo = new MemberRepository(),
+    private readonly systemNotificationService = new SystemNotificationService()
   ) {}
 
   async createAppointment(
@@ -134,6 +136,22 @@ export class AppointmentService {
       organizationId,
       ...data,
     });
+
+    // The appointment is already committed. Notification delivery must never turn
+    // a successful appointment action into a failed request.
+    try {
+      await this.systemNotificationService.notifyMember({
+        organizationId,
+        memberId: appointment.memberId,
+        sourceType: "APPOINTMENT",
+        sourceId: appointment.id,
+        eventType: "APPOINTMENT_CREATED",
+        title: "Appointment Created",
+        message: `An appointment has been created for you${appointment.designation ? `: ${appointment.designation}.` : "."}`,
+      });
+    } catch (error) {
+      console.error("[SystemNotification] appointment delivery failed", error);
+    }
 
     if (actorUserId) {
       await logActivity(

@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
     const result = await notificationService.getNotifications(
       context.organizationId,
       parsedQuery,
-      context.activeCommitteeId ?? null
+      context.activeCommitteeId ?? null,
+      context.member.id
     );
 
     return apiResponse.success(result);

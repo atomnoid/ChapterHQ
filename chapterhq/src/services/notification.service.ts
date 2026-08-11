@@ -86,7 +86,8 @@ export class NotificationService {
   async getNotifications(
     organizationId: string,
     params: PaginationQuery & { isRead?: boolean; type?: string; targetScope?: string },
-    activeCommitteeId?: string | null
+    activeCommitteeId?: string | null,
+    memberId?: string
   ) {
     const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.repository.list({
@@ -96,6 +97,7 @@ export class NotificationService {
       type: params.type,
       targetScope: params.targetScope,
       committeeId: activeCommitteeId,
+      memberId,
     });
 
     return buildPaginatedResult(items, total, params);

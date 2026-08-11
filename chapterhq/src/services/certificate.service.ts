@@ -2,6 +2,7 @@ import { CertificateRepository } from "@/repositories/certificate.repository";
 import { MemberRepository } from "@/repositories/member.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 import { logActivity } from "@/lib/audit-logger";
+import { SystemNotificationService } from "@/services/system-notification.service";
 
 export class CertificateNotFoundError extends Error {
   constructor() {
@@ -27,7 +28,8 @@ export class MemberNotFoundError extends Error {
 export class CertificateService {
   constructor(
     private readonly repository = new CertificateRepository(),
-    private readonly memberRepo = new MemberRepository()
+    private readonly memberRepo = new MemberRepository(),
+    private readonly systemNotificationService = new SystemNotificationService()
   ) {}
 
   async createCertificate(
@@ -61,6 +63,22 @@ export class CertificateService {
       organizationId,
       ...data,
     });
+
+    try {
+      await this.systemNotificationService.notifyMember({
+        organizationId,
+        memberId: certificate.memberId,
+        sourceType: "CERTIFICATE",
+        sourceId: certificate.id,
+        eventType: "CERTIFICATE_ISSUED",
+        title: "Certificate Issued",
+        message: certificate.certificateUrl
+          ? `Your certificate has been issued and is now available: ${certificate.certificateUrl}`
+          : "Your certificate has been issued and is now available.",
+      });
+    } catch (error) {
+      console.error("[SystemNotification] certificate delivery failed", error);
+    }
 
     if (actorUserId) {
       await logActivity(

@@ -9,6 +9,9 @@ export interface CreateNotificationData {
   targetScope: string;
   targetCommitteeId?: string | null;
   memberIds?: string[];
+  sourceType?: string;
+  sourceId?: string;
+  eventType?: string;
 }
 
 export class NotificationRepository {
@@ -22,6 +25,9 @@ export class NotificationRepository {
         targetScope: data.targetScope,
         targetCommitteeId: data.targetCommitteeId,
         isRead: false,
+        sourceType: data.sourceType,
+        sourceId: data.sourceId,
+        eventType: data.eventType,
         recipients: data.memberIds?.length ? { create: data.memberIds.map((memberId) => ({ memberId })) } : undefined,
       },
     });
@@ -91,7 +97,7 @@ export class NotificationRepository {
     return prisma.notification.count({ where: { AND: andClauses } });
   }
 
-  async list(params: PaginationParams & { organizationId: string; isRead?: boolean; type?: string; targetScope?: string; committeeId?: string | null }) {
+  async list(params: PaginationParams & { organizationId: string; memberId?: string; isRead?: boolean; type?: string; targetScope?: string; committeeId?: string | null }) {
     const andClauses: any[] = [
       { organizationId: params.organizationId }
     ];
@@ -106,6 +112,12 @@ export class NotificationRepository {
 
     if (params.targetScope) {
       andClauses.push({ targetScope: params.targetScope });
+    }
+
+    // Notifications are delivered through recipient records. This prevents a
+    // member-specific system notification from appearing for another member.
+    if (params.memberId) {
+      andClauses.push({ recipients: { some: { memberId: params.memberId } } });
     }
 
     if (params.committeeId !== undefined && params.committeeId !== null) {
