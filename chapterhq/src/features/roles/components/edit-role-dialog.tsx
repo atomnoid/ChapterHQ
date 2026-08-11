@@ -118,13 +118,20 @@ export function EditRoleDialog({ role, open, onOpenChange, onSuccess }: EditRole
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="edit-role-description">Description</Label>
+            <Label htmlFor="edit-role-description">
+              {isPresident ? "Display label" : "Description"}
+            </Label>
             <Input
               id="edit-role-description"
-              placeholder="e.g. Manages announcements and documents"
+              placeholder={isPresident ? "e.g. Chapter President" : "e.g. Manages announcements and documents"}
               {...register("description")}
               aria-invalid={!!errors.description}
             />
+            {isPresident && (
+              <p className="text-xs text-secondary-foreground">
+                This label is shown in the UI. The internal role identity ("President") is used for authorization and cannot be changed.
+              </p>
+            )}
             {errors.description && (
               <p className="text-xs text-destructive">{errors.description.message}</p>
             )}

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 
@@ -48,7 +49,21 @@ export function SignupForm() {
       return;
     }
 
-    router.push("/login?registered=1");
+    // Auto sign-in after account creation, then go to onboarding choice
+    const signInResult = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+      callbackUrl: "/welcome",
+    });
+
+    if (signInResult?.error) {
+      // Account created but auto-login failed — send to login
+      router.push("/login?registered=1");
+      return;
+    }
+
+    router.push("/welcome");
     router.refresh();
   };
 
