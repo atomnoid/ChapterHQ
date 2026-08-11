@@ -54,7 +54,7 @@ export class EventRegistrationService {
     if (!event) {
       throw new EventNotFoundError();
     }
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -108,7 +108,7 @@ export class EventRegistrationService {
     if (!event) {
       throw new EventNotFoundError();
     }
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -141,7 +141,7 @@ export class EventRegistrationService {
     if (!event) {
       throw new EventNotFoundError();
     }
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -162,7 +162,7 @@ export class EventRegistrationService {
     if (!event) {
       throw new EventNotFoundError();
     }
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -203,7 +203,7 @@ export class EventRegistrationService {
     if (!event) {
       throw new EventNotFoundError();
     }
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -236,7 +236,7 @@ export class EventRegistrationService {
     if (!event) {
       throw new EventNotFoundError();
     }
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 

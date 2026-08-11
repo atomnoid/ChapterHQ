@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import {
   ChevronLeft, ChevronRight, Filter, Edit2, Trash2,
@@ -41,24 +42,70 @@ const STATUS_LABELS: Record<InventoryStatus, string> = {
 
 function InventoryRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuStyle({
+        position: "fixed",
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+        zIndex: 9999,
+      });
+    }
+    setOpen((v) => !v);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
-    <div className="relative">
-      <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => setOpen((v) => !v)} aria-label="Actions">
+    <div>
+      <Button
+        ref={btnRef}
+        variant="ghost"
+        size="icon"
+        className="rounded-full h-8 w-8"
+        onClick={handleOpen}
+        aria-label="Actions"
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
         <MoreHorizontal className="h-4 w-4" />
       </Button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-[calc(100%+6px)] z-20 w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]">
-            <button className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary" onClick={() => { setOpen(false); onEdit(); }}>
-              <Edit2 className="h-3.5 w-3.5" /> Edit
-            </button>
-            <button className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10" onClick={() => { setOpen(false); onDelete(); }}>
-              <Trash2 className="h-3.5 w-3.5" /> Delete
-            </button>
-          </div>
-        </>
-      )}
+      {open &&
+        typeof window !== "undefined" &&
+        createPortal(
+          <>
+            <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
+            <div
+              style={menuStyle}
+              className="w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]"
+            >
+              <button
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary"
+                onClick={() => { setOpen(false); onEdit(); }}
+              >
+                <Edit2 className="h-3.5 w-3.5" /> Edit
+              </button>
+              <button
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
+                onClick={() => { setOpen(false); onDelete(); }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }

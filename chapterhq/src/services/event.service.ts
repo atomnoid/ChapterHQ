@@ -136,7 +136,7 @@ export class EventService {
     const event = await this.repository.findById(id, organizationId);
     if (!event) throw new EventNotFoundError();
 
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -153,7 +153,7 @@ export class EventService {
     const event = await this.repository.findById(id, organizationId);
     if (!event) throw new EventNotFoundError();
 
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 
@@ -180,7 +180,7 @@ export class EventService {
     const event = await this.repository.findById(id, organizationId);
     if (!event) throw new EventNotFoundError();
 
-    if (activeCommitteeId && event.committeeId !== activeCommitteeId) {
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
       throw new EventNotFoundError();
     }
 

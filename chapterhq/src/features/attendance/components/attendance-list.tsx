@@ -75,7 +75,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
     setError(null);
     try {
       const [membersRes, attendanceRes] = await Promise.all([
-        fetch("/api/members?limit=200"),
+        fetch("/api/members?limit=100"),
         fetch(`/api/events/${eventId}/attendance`),
       ]);
 

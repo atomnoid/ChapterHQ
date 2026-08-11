@@ -110,12 +110,12 @@ export function CreateAppointmentDialog({
     setServerError(null);
 
     Promise.all([
-      fetch("/api/members?limit=200").then((r) => r.json()),
-      fetch("/api/committees?limit=200").then((r) => r.json()),
+      fetch("/api/members?limit=100").then((r) => r.json()),
+      fetch("/api/committees?limit=100").then((r) => r.json()),
     ])
       .then(([m, c]) => {
-        setMembers(Array.isArray(m?.items) ? m.items : []);
-        setCommittees(Array.isArray(c?.items) ? c.items : []);
+        setMembers(Array.isArray(m?.items) ? m.items : Array.isArray(m?.data?.items) ? m.data.items : []);
+        setCommittees(Array.isArray(c?.items) ? c.items : Array.isArray(c?.data?.items) ? c.data.items : []);
       })
       .catch(() => {
         setMembers([]);

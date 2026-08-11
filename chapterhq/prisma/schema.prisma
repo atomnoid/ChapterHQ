@@ -570,11 +570,12 @@ model Certificate {
   organization Organization @relation(fields: [organizationId], references: [id])
   member       Member       @relation(fields: [memberId], references: [id])
 
-  title        String
-  description  String?
-  issueDate    DateTime
-  expiryDate   DateTime?
-  credentialId String?
+  title          String
+  description    String?
+  issueDate      DateTime
+  expiryDate     DateTime?
+  credentialId   String?
+  certificateUrl String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

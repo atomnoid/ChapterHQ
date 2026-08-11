@@ -9,6 +9,7 @@ export interface CreateCertificateData {
   issueDate: Date;
   expiryDate?: Date;
   credentialId?: string;
+  certificateUrl?: string;
 }
 
 export interface UpdateCertificateData {
@@ -18,6 +19,7 @@ export interface UpdateCertificateData {
   issueDate?: Date;
   expiryDate?: Date;
   credentialId?: string;
+  certificateUrl?: string;
 }
 
 export class CertificateRepository {
@@ -31,6 +33,7 @@ export class CertificateRepository {
         issueDate: data.issueDate,
         expiryDate: data.expiryDate,
         credentialId: data.credentialId,
+        certificateUrl: data.certificateUrl,
       },
       include: {
         member: {

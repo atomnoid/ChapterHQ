@@ -81,9 +81,9 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     try {
       const [eventRes, regRes, attRes, membersRes] = await Promise.all([
         fetch(`/api/events/${eventId}`),
-        fetch(`/api/events/${eventId}/registrations?limit=200`),
+        fetch(`/api/events/${eventId}/registrations?limit=100`),
         fetch(`/api/events/${eventId}/attendance`),
-        fetch("/api/members?limit=200"),
+        fetch("/api/members?limit=100"),
       ]);
 
       if (!eventRes.ok || !regRes.ok || !attRes.ok || !membersRes.ok) {

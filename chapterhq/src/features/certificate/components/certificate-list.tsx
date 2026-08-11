@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ChevronLeft, ChevronRight, Award, Plus, RefreshCw, Search, Trash2, Download,
+  ChevronLeft, ChevronRight, Award, Plus, RefreshCw, Search, Trash2, Download, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +47,8 @@ export function CertificateList() {
       const res = await fetch(`/api/certificates?${params}`);
       if (!res.ok) throw new Error((await res.json()).message ?? "Failed to load certificates.");
       const json = await res.json();
-      setData(json?.data ?? json);
+      // Handle both direct response and data-wrapped response
+      setData(json?.items !== undefined ? json : (json?.data ?? null));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally { setLoading(false); }
@@ -56,6 +57,10 @@ export function CertificateList() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const closeDialog = () => setDialog({ type: "none" });
+
+  const handleSuccess = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
 
   return (
     <div className="space-y-5">
@@ -115,7 +120,7 @@ export function CertificateList() {
       {!loading && !error && data && data.items.length > 0 && (
         <>
           <div className="overflow-hidden rounded-[1.75rem] border border-border">
-            <div className="hidden grid-cols-[minmax(0,1fr)_180px_120px_120px_100px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground lg:grid">
+            <div className="hidden grid-cols-[minmax(0,1fr)_180px_120px_120px_120px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground lg:grid">
               <span>Title</span>
               <span>Recipient</span>
               <span>Issued</span>
@@ -124,7 +129,7 @@ export function CertificateList() {
             </div>
 
             {data.items.map((cert) => (
-              <div key={cert.id} className="grid grid-cols-[minmax(0,1fr)_80px] items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors lg:grid-cols-[minmax(0,1fr)_180px_120px_120px_100px]">
+              <div key={cert.id} className="grid grid-cols-[minmax(0,1fr)_100px] items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors lg:grid-cols-[minmax(0,1fr)_180px_120px_120px_120px]">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Award className="h-4 w-4 text-primary shrink-0" />
@@ -150,15 +155,33 @@ export function CertificateList() {
                 </p>
 
                 <div className="flex justify-end items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full h-8 w-8 text-secondary-foreground hover:text-foreground"
-                    title="Download (not yet available)"
-                    aria-label="Download certificate"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
+                  {cert.certificateUrl ? (
+                    <a
+                      href={cert.certificateUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open Certificate Link"
+                      aria-label="Open Certificate Link"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full h-8 w-8 text-primary hover:bg-primary/10"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    </a>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full h-8 w-8 text-secondary-foreground hover:text-foreground"
+                      title="Download (not yet available)"
+                      aria-label="Download certificate"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -195,14 +218,14 @@ export function CertificateList() {
       <GenerateCertificateDialog
         open={dialog.type === "generate"}
         onOpenChange={(o) => !o && closeDialog()}
-        onSuccess={fetchData}
+        onSuccess={handleSuccess}
       />
       {dialog.type === "delete" && (
         <DeleteCertificateDialog
           certificate={dialog.certificate}
           open
           onOpenChange={(o) => !o && closeDialog()}
-          onSuccess={fetchData}
+          onSuccess={handleSuccess}
         />
       )}
     </div>

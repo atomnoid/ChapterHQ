@@ -20,6 +20,12 @@ export const createCertificateSchema = z.object({
     .trim()
     .max(100, "Credential ID must be 100 characters or less.")
     .optional(),
+  certificateUrl: z
+    .string()
+    .trim()
+    .url("Please enter a valid URL.")
+    .optional()
+    .or(z.literal("")),
 });
 
 export const updateCertificateSchema = z.object({
@@ -42,6 +48,12 @@ export const updateCertificateSchema = z.object({
     .trim()
     .max(100, "Credential ID must be 100 characters or less.")
     .optional(),
+  certificateUrl: z
+    .string()
+    .trim()
+    .url("Please enter a valid URL.")
+    .optional()
+    .or(z.literal("")),
 });
 
 export const certificateQuerySchema = paginationQuerySchema;

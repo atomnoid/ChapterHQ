@@ -39,6 +39,7 @@ export class CertificateService {
       issueDate: Date;
       expiryDate?: Date;
       credentialId?: string;
+      certificateUrl?: string;
     },
     actorUserId?: string
   ) {
@@ -102,6 +103,7 @@ export class CertificateService {
       issueDate?: Date;
       expiryDate?: Date;
       credentialId?: string;
+      certificateUrl?: string;
     },
     actorUserId?: string
   ) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Award, Trash2 } from "lucide-react";
+import { Loader2, Award, Trash2, ExternalLink } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -19,6 +19,7 @@ export interface Certificate {
   issueDate: string;
   expiryDate: string | null;
   credentialId: string | null;
+  certificateUrl: string | null;
   member: {
     id: string;
     user: { name: string | null; email: string | null };
@@ -37,6 +38,14 @@ const generateSchema = z.object({
   issueDate: z.string().min(1, "Issue date is required."),
   expiryDate: z.string().optional(),
   credentialId: z.string().trim().max(100).optional(),
+  certificateUrl: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (val) => !val || val === "" || /^https?:\/\/.+/.test(val),
+      { message: "Please enter a valid URL (must start with http:// or https://)." }
+    ),
 });
 type GenerateInput = z.infer<typeof generateSchema>;
 
@@ -51,7 +60,6 @@ interface GenerateCertificateDialogProps {
 export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: GenerateCertificateDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [members, setMembers] = useState<MemberOption[]>([]);
-
   const [membersLoading, setMembersLoading] = useState(false);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<GenerateInput>({
@@ -62,13 +70,13 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
     if (!open) return;
     reset({
       memberId: "", title: "", description: "", issueDate: new Date().toISOString().split("T")[0],
-      expiryDate: "", credentialId: "",
+      expiryDate: "", credentialId: "", certificateUrl: "",
     });
     setServerError(null);
     setMembersLoading(true);
     fetch("/api/members?limit=100&status=ACTIVE")
       .then((r) => r.ok ? r.json() : { items: [] })
-      .then((d) => setMembers(d?.items ?? []))
+      .then((d) => setMembers(d?.items ?? d?.data?.items ?? []))
       .catch(() => setMembers([]))
       .finally(() => setMembersLoading(false));
   }, [open, reset]);
@@ -81,9 +89,10 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
         title: data.title,
         issueDate: new Date(data.issueDate).toISOString(),
       };
-      if (data.description) payload.description = data.description;
+      if (data.description?.trim()) payload.description = data.description.trim();
       if (data.expiryDate) payload.expiryDate = new Date(data.expiryDate).toISOString();
-      if (data.credentialId) payload.credentialId = data.credentialId;
+      if (data.credentialId?.trim()) payload.credentialId = data.credentialId.trim();
+      if (data.certificateUrl?.trim()) payload.certificateUrl = data.certificateUrl.trim();
 
       const res = await fetch("/api/certificates", {
         method: "POST",
@@ -153,6 +162,20 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
             <Input id="cert-cred" placeholder="e.g. CHQ-2026-001" {...register("credentialId")} />
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="cert-url">Certificate Link (Optional)</Label>
+            <Input
+              id="cert-url"
+              type="url"
+              placeholder="https://example.com/certificate"
+              {...register("certificateUrl")}
+            />
+            {errors.certificateUrl && <p className="text-xs text-destructive">{errors.certificateUrl.message}</p>}
+            <p className="text-[11px] text-secondary-foreground">
+              A URL to the actual certificate document or verification page. Leave blank if not applicable.
+            </p>
+          </div>
+
           {serverError && <div className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{serverError}</div>}
 
           <DialogFooter>
@@ -212,7 +235,7 @@ export function DeleteCertificateDialog({ certificate, open, onOpenChange, onSuc
         <DialogFooter>
           <Button type="button" variant="outline" className="rounded-full" onClick={() => onOpenChange(false)} disabled={isDeleting}>Cancel</Button>
           <Button variant="destructive" className="rounded-full" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Revoke & Delete
+            {isDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Revoke &amp; Delete
           </Button>
         </DialogFooter>
       </DialogContent>

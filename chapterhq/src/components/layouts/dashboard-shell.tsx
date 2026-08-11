@@ -271,41 +271,47 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8f4ec_0%,#fbf8f2_40%,#f8f4ec_100%)] text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1800px]">
         {/* ── Desktop Sidebar ── */}
-        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-border/80 bg-card/95 px-5 py-6 shadow-[10px_0_40px_rgba(77,54,37,0.04)] backdrop-blur-xl lg:flex lg:flex-col">
-          {/* Org + Role header */}
-          <SidebarHeader
-            orgName={orgName}
-            orgSlug={orgSlug}
-            roleNames={roleNames}
-            loading={meLoading}
-          />
+        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-border/80 bg-card/95 px-5 py-6 shadow-[10px_0_40px_rgba(77,54,37,0.04)] backdrop-blur-xl lg:flex lg:flex-col overflow-hidden">
+          {/* Org + Role header — fixed at top */}
+          <div className="shrink-0">
+            <SidebarHeader
+              orgName={orgName}
+              orgSlug={orgSlug}
+              roleNames={roleNames}
+              loading={meLoading}
+            />
+          </div>
 
-          {/* Committee context switcher */}
-          <div className="mt-4">
+          {/* Committee context switcher — fixed below header */}
+          <div className="mt-4 shrink-0">
             <CommitteeSwitcher />
           </div>
 
-          {/* Navigation */}
-          {meLoading ? (
-            <div className="mt-6 space-y-1.5">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className="h-10 animate-pulse rounded-2xl bg-secondary/40"
-                />
-              ))}
-            </div>
-          ) : (
-            <SidebarNavList items={allowedNavItems} />
-          )}
+          {/* Navigation — scrollable middle section */}
+          <div className="mt-2 flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+            {meLoading ? (
+              <div className="mt-4 space-y-1.5">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="h-10 animate-pulse rounded-2xl bg-secondary/40"
+                  />
+                ))}
+              </div>
+            ) : (
+              <SidebarNavList items={allowedNavItems} />
+            )}
+          </div>
 
-          {/* Org overview at the bottom */}
-          <SidebarOrgOverview
-            orgName={orgName}
-            orgSlug={orgSlug}
-            orgStatus={meData?.organization?.status ?? null}
-            loading={meLoading}
-          />
+          {/* Org overview at the bottom — always pinned */}
+          <div className="shrink-0 pt-3">
+            <SidebarOrgOverview
+              orgName={orgName}
+              orgSlug={orgSlug}
+              orgStatus={meData?.organization?.status ?? null}
+              loading={meLoading}
+            />
+          </div>
         </aside>
 
         {/* ── Main content area ── */}
@@ -385,39 +391,42 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
                   </Button>
 
                   {isProfileMenuOpen ? (
-                    <div className="absolute right-0 top-[calc(100%+0.75rem)] w-72 overflow-hidden rounded-3xl border border-border bg-card p-2 shadow-[0_18px_50px_rgba(77,54,37,0.12)]">
-                      <div className="rounded-2xl bg-[#fcf8f1] px-4 py-4">
-                        <p className="text-sm font-semibold text-foreground">
-                          {displayName}
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-secondary-foreground">
-                          {displayEmail}
-                        </p>
-                        {roleNames.length > 0 && (
-                          <p className="mt-1.5 text-[11px] font-semibold text-primary">
-                            {roleNames.join(", ")}
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsProfileMenuOpen(false)} />
+                      <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-72 overflow-hidden rounded-3xl border border-border bg-card p-2 shadow-[0_18px_50px_rgba(77,54,37,0.12)]">
+                        <div className="rounded-2xl bg-[#fcf8f1] px-4 py-4">
+                          <p className="text-sm font-semibold text-foreground">
+                            {displayName}
                           </p>
-                        )}
-                      </div>
+                          <p className="mt-1 text-xs leading-5 text-secondary-foreground">
+                            {displayEmail}
+                          </p>
+                          {roleNames.length > 0 && (
+                            <p className="mt-1.5 text-[11px] font-semibold text-primary">
+                              {roleNames.join(", ")}
+                            </p>
+                          )}
+                        </div>
 
-                      <div className="mt-2 space-y-1">
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                          onClick={() => setIsProfileMenuOpen(false)}
-                        >
-                          <Settings className="h-4 w-4" />
-                          <span>Account settings</span>
-                        </button>
+                        <div className="mt-2 space-y-1">
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                          >
+                            <Settings className="h-4 w-4" />
+                            <span>Account settings</span>
+                          </button>
 
-                        <div onClick={() => setIsProfileMenuOpen(false)}>
-                          <DashboardLogoutButton>
-                            <LogOut className="h-4 w-4" />
-                            Logout
-                          </DashboardLogoutButton>
+                          <div onClick={() => setIsProfileMenuOpen(false)}>
+                            <DashboardLogoutButton>
+                              <LogOut className="h-4 w-4" />
+                              Logout
+                            </DashboardLogoutButton>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </>
                   ) : null}
                 </div>
               </div>
@@ -559,7 +568,7 @@ function SidebarOrgOverview({
 }) {
   if (loading) {
     return (
-      <div className="mt-auto rounded-[1.5rem] border border-border bg-[#fcf8f1] p-4">
+      <div className="rounded-[1.5rem] border border-border bg-[#fcf8f1] p-4">
         <div className="h-3 w-20 animate-pulse rounded-full bg-secondary/50" />
         <div className="mt-2 h-4 w-32 animate-pulse rounded-full bg-secondary/40" />
         <div className="mt-1 h-3 w-16 animate-pulse rounded-full bg-secondary/30" />
@@ -570,7 +579,7 @@ function SidebarOrgOverview({
   if (!orgName) return null;
 
   return (
-    <div className="mt-auto rounded-[1.5rem] border border-border bg-[#fcf8f1] p-4 shadow-[0_16px_40px_rgba(77,54,37,0.06)]">
+    <div className="rounded-[1.5rem] border border-border bg-[#fcf8f1] p-4 shadow-[0_16px_40px_rgba(77,54,37,0.06)]">
       <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-secondary-foreground">
         Organization
       </p>
