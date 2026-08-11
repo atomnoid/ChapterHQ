@@ -146,6 +146,9 @@ export function GlobalSearchInput() {
         )}
       </div>
 
+      {/* Keyboard Escape to Close Dropdown */}
+      <KeyboardEscapeHandler open={open} onClose={() => setOpen(false)} />
+
       {/* Floating Search Results Dropdown */}
       {open && query && (
         <>
@@ -194,4 +197,19 @@ export function GlobalSearchInput() {
       )}
     </div>
   );
+}
+
+function KeyboardEscapeHandler({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  return null;
 }
