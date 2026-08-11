@@ -30,7 +30,6 @@ export class RoleRepository {
         name: r.name,
         scope: r.scope,
       })),
-      skipDuplicates: true,
     });
   }
 
