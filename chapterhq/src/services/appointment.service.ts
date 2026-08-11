@@ -82,16 +82,16 @@ export class AppointmentService {
     // the committee belongs to the org and that the actor has access to it.
     // Validate committee belongs to org and is not deleted
     const committee = await prisma.committee.findFirst({
-      where: { id: data.committeeId, organizationId, deletedAt: null },
+      where: { id: data.committeeId, organizationId },
     });
-    if (!committee) throw new CommitteeNotFoundError();
+    if (!committee || committee.deletedAt) throw new CommitteeNotFoundError();
 
     // Validate actor has access to the committee (President bypass, or CM member)
     if (actorUserId) {
       const actorMember = await prisma.member.findFirst({
-        where: { userId: actorUserId, organizationId, status: "ACTIVE", deletedAt: null },
+        where: { userId: actorUserId, organizationId, status: "ACTIVE" },
       });
-      if (!actorMember) throw new MemberNotFoundError();
+      if (!actorMember || actorMember.deletedAt) throw new MemberNotFoundError();
 
       const userRoles = await prisma.userRole.findMany({
         where: { memberId: actorMember.id },
@@ -101,9 +101,9 @@ export class AppointmentService {
 
       if (!isPresident) {
         const isCM = await prisma.committeeMember.findFirst({
-          where: { committeeId: data.committeeId, memberId: actorMember.id, deletedAt: null },
+          where: { committeeId: data.committeeId, memberId: actorMember.id },
         });
-        if (!isCM) throw new CommitteeNotFoundError();
+        if (!isCM || isCM.deletedAt) throw new CommitteeNotFoundError();
       }
     }
 
@@ -117,9 +117,9 @@ export class AppointmentService {
     // appointment using a Committee B memberId (Test Case 7).
     if (activeCommitteeId) {
       const memberInCommittee = await prisma.committeeMember.findFirst({
-        where: { committeeId: activeCommitteeId, memberId: data.memberId, deletedAt: null },
+        where: { committeeId: activeCommitteeId, memberId: data.memberId },
       });
-      if (!memberInCommittee) throw new MemberNotInCommitteeError();
+      if (!memberInCommittee || memberInCommittee.deletedAt) throw new MemberNotInCommitteeError();
     }
 
     // Prevent duplicate active appointment for same member + committee + designation
