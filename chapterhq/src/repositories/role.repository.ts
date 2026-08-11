@@ -6,6 +6,7 @@ interface CreateRoleData {
   organizationId: string;
   name: string;
   scope: RoleScope;
+  description?: string;
 }
 
 export class RoleRepository {
@@ -15,6 +16,7 @@ export class RoleRepository {
         organizationId: data.organizationId,
         name: data.name,
         scope: data.scope,
+        description: data.description,
       },
     });
   }

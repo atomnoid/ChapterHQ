@@ -59,7 +59,7 @@ function RoleCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const isPresident = role.name.toLowerCase() === "president";
 
-  const permissionCount = role._count?.permissions ?? 0;
+  const permissionCount = role._count?.rolePermissions ?? 0;
   const memberCount = role._count?.userRoles ?? 0;
 
   return (
