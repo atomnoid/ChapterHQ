@@ -50,18 +50,99 @@ export class OrganizationService {
       throw new OrganizationAlreadyExistsError();
     }
 
-    const organization = await this.repository.create(validatedData);
+    const { prisma } = await import("@/lib/prisma");
+    const { ALL_PERMISSIONS } = await import("@/constants/permissions");
+    const { randomBytes } = await import("crypto");
 
-    const member = await this.memberService.createMember(
-      organization.id,
-      userId
-    );
+    const organization = await prisma.$transaction(async (tx) => {
+      // 1. Create Organization
+      const org = await tx.organization.create({
+        data: {
+          name: validatedData.name,
+          slug: validatedData.slug,
+          description: validatedData.description ?? undefined,
+        },
+      });
 
-    await this.roleService.seedDefaultRoles(organization.id);
+      // 2. Create Member
+      const member = await tx.member.create({
+        data: {
+          organizationId: org.id,
+          userId,
+          status: "ACTIVE",
+        },
+      });
 
-    await this.roleService.assignOwnerRole(organization.id, member.id);
+      // 3. Create Admin Role
+      const adminRole = await tx.role.create({
+        data: {
+          id: randomBytes(12).toString("hex"),
+          organizationId: org.id,
+          name: "Admin",
+          scope: "ORGANIZATION",
+        },
+      });
 
-    await this.permissionService.seedDefaultPermissionsAndMappings(organization.id);
+      // 4. Assign Admin Role to Member
+      await tx.userRole.create({
+        data: {
+          memberId: member.id,
+          roleId: adminRole.id,
+        },
+      });
+
+      // 5. Seed Permissions & Mappings
+      const permissionObjects = ALL_PERMISSIONS.map(p => {
+        const [resource, action] = p.split(":");
+        return { resource, action };
+      });
+
+      const existingPermissions = await tx.permission.findMany({
+        where: {
+          OR: permissionObjects.map((p) => ({
+            resource: p.resource,
+            action: p.action,
+          })),
+        },
+      });
+
+      const permissionsToCreate = permissionObjects.filter(
+        (p) => !existingPermissions.some(
+          (ep) => ep.resource === p.resource && ep.action === p.action
+        )
+      );
+
+      if (permissionsToCreate.length > 0) {
+        await tx.permission.createMany({
+          data: permissionsToCreate.map(p => ({
+            id: randomBytes(12).toString("hex"),
+            resource: p.resource,
+            action: p.action,
+          })),
+        });
+      }
+
+      const allPermissions = await tx.permission.findMany({
+        where: {
+          OR: permissionObjects.map((p) => ({
+            resource: p.resource,
+            action: p.action,
+          })),
+        },
+      });
+
+      const rolePermissions = allPermissions.map((permission) => ({
+        id: randomBytes(12).toString("hex"),
+        roleId: adminRole.id,
+        permissionId: permission.id,
+      }));
+
+      await tx.rolePermission.createMany({
+        data: rolePermissions,
+      });
+
+      return org;
+    });
 
     await logActivity(
       { userId, organizationId: organization.id },

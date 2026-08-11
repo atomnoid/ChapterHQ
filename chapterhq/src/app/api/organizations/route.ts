@@ -46,6 +46,7 @@ export async function POST(request: Request) {
 
     return apiResponse.created(organization, "Organization created successfully.");
   } catch (error) {
+    console.error("[POST /api/organizations] ERROR:", error);
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
