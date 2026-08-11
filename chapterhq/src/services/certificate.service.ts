@@ -75,11 +75,12 @@ export class CertificateService {
     return certificate;
   }
 
-  async getCertificates(organizationId: string, params: PaginationQuery) {
+  async getCertificates(organizationId: string, params: PaginationQuery, activeCommitteeId?: string | null) {
     const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.repository.list({
       ...paginationParams,
       organizationId,
+      activeCommitteeId,
     });
 
     return buildPaginatedResult(items, total, params);

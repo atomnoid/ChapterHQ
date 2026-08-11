@@ -11,7 +11,7 @@ export class DashboardRepository {
         }),
         prisma.role.findMany({
           where: { organizationId },
-          select: { id: true, deletedAt: true },
+          select: { id: true, name: true, deletedAt: true },
         }),
         prisma.userRole.findMany({
           where: { memberId },
@@ -20,7 +20,10 @@ export class DashboardRepository {
       ]);
 
       const totalMembers = committeeMemberRows.filter((m) => !m.deletedAt).length;
-      const totalRoles = roleRows.filter((r) => !r.deletedAt).length;
+      const totalRoles = roleRows
+        .filter((r) => !r.deletedAt)
+        .filter((r) => !r.name.startsWith("[committeeId:") || r.name.startsWith(`[committeeId:${activeCommitteeId}]`))
+        .length;
       const totalPermissions = await prisma.permission.count();
       const currentUserRoleCount = userRoleRows.filter(
         (ur) => !ur.role.deletedAt && ur.role.organizationId === organizationId

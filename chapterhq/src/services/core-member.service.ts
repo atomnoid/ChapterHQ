@@ -22,8 +22,8 @@ export class CoreMemberService {
     private readonly memberRepo = new MemberRepository()
   ) {}
 
-  async list(organizationId: string) {
-    return this.repository.list(organizationId);
+  async list(organizationId: string, activeCommitteeId?: string | null) {
+    return this.repository.list(organizationId, activeCommitteeId);
   }
 
   async add(

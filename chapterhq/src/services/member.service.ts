@@ -46,12 +46,13 @@ export class MemberService {
     return member;
   }
 
-  async getMembers(params: PaginationQuery & { organizationId: string; status?: any }) {
+  async getMembers(params: PaginationQuery & { organizationId: string; status?: any; activeCommitteeId?: string | null }) {
     const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.repository.list({
       ...paginationParams,
       organizationId: params.organizationId,
       status: params.status,
+      activeCommitteeId: params.activeCommitteeId,
     });
 
     return buildPaginatedResult(items, total, params);

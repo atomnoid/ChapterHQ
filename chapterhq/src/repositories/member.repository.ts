@@ -82,12 +82,23 @@ export class MemberRepository {
   }
 
   async list(
-    params: PaginationParams & { organizationId: string; status?: any },
+    params: PaginationParams & { organizationId: string; status?: any; activeCommitteeId?: string | null },
   ) {
     const whereClause: any = {
       organizationId: params.organizationId,
       // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
+
+    if (params.activeCommitteeId) {
+      const assignments = await prisma.committeeMember.findMany({
+        where: { committeeId: params.activeCommitteeId },
+        select: { memberId: true, deletedAt: true },
+      });
+      const activeMemberIds = assignments
+        .filter((a) => !a.deletedAt)
+        .map((a) => a.memberId);
+      whereClause.id = { in: activeMemberIds };
+    }
 
     if (params.status) {
       whereClause.status = params.status;

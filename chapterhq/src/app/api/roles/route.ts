@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     const result = await roleService.getRoles({
       ...parsedQuery,
       organizationId: context.organizationId,
+      activeCommitteeId: context.activeCommitteeId,
     });
 
     return apiResponse.success(result);
@@ -53,7 +54,9 @@ export async function POST(request: Request) {
 
     const createdRole = await roleService.createRole(
       context.organizationId,
-      validatedData
+      validatedData,
+      session.user.id,
+      context.activeCommitteeId
     );
 
     return apiResponse.created(createdRole, "Role created successfully.");

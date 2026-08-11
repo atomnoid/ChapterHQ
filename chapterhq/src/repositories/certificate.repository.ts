@@ -112,11 +112,22 @@ export class CertificateRepository {
     return !!cert;
   }
 
-  async list(params: PaginationParams & { organizationId: string }) {
+  async list(params: PaginationParams & { organizationId: string; activeCommitteeId?: string | null }) {
     const whereClause: any = {
       organizationId: params.organizationId,
       deletedAt: null,
     };
+
+    if (params.activeCommitteeId) {
+      const assignments = await prisma.committeeMember.findMany({
+        where: { committeeId: params.activeCommitteeId },
+        select: { memberId: true, deletedAt: true },
+      });
+      const activeMemberIds = assignments
+        .filter((a) => !a.deletedAt)
+        .map((a) => a.memberId);
+      whereClause.memberId = { in: activeMemberIds };
+    }
 
     if (params.search) {
       whereClause.OR = [

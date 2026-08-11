@@ -27,6 +27,7 @@ export async function GET(request: Request) {
     const result = await memberService.getMembers({
       ...parsedQuery,
       organizationId: context.organizationId,
+      activeCommitteeId: context.activeCommitteeId,
     });
 
     return NextResponse.json(result, { status: 200 });

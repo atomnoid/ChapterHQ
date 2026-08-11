@@ -23,7 +23,7 @@ export async function GET() {
 
     const { context } = await requirePermission(session.user.id, "members:read");
 
-    const coreMembers = await coreMemberService.list(context.organizationId);
+    const coreMembers = await coreMemberService.list(context.organizationId, context.activeCommitteeId);
 
     return apiResponse.success(coreMembers);
   } catch (error: any) {

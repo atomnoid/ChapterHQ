@@ -25,7 +25,23 @@ export class AuthorizationService {
   async resolveCurrentRoles(userId: string) {
     const context = await this.resolveContext(userId);
     const userRoles = await this.userRoleRepository.findUserRoles(context.member.id);
-    return userRoles.map(ur => ur.role);
+    const roles = userRoles.map(ur => ur.role);
+
+    return roles
+      .filter(role => {
+        if (!role.name.startsWith("[committeeId:")) return true;
+        if (context.activeCommitteeId && role.name.startsWith(`[committeeId:${context.activeCommitteeId}]`)) {
+          return true;
+        }
+        return false;
+      })
+      .map(role => {
+        if (role.name.startsWith("[committeeId:")) {
+          const cleanName = role.name.replace(/^\[committeeId:[^\]]+\]\s*/, "");
+          return { ...role, name: cleanName };
+        }
+        return role;
+      });
   }
 
   // Load Permissions resolved for current user

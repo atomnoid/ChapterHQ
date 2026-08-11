@@ -75,14 +75,29 @@ export class RoleService {
     return this.assignRoleByName(organizationId, memberId, "Member");
   }
 
-  async getRoles(params: PaginationQuery & { organizationId: string }) {
+  async getRoles(params: PaginationQuery & { organizationId: string; activeCommitteeId?: string | null }) {
     const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.roleRepository.listByOrganization({
       ...paginationParams,
       organizationId: params.organizationId,
     });
 
-    return buildPaginatedResult(items, total, params);
+    const activeCommitteeId = params.activeCommitteeId;
+    const filteredRoles = items
+      .filter((role) => {
+        if (!role.name.startsWith("[committeeId:")) return true;
+        if (activeCommitteeId && role.name.startsWith(`[committeeId:${activeCommitteeId}]`)) return true;
+        return false;
+      })
+      .map((role) => {
+        if (role.name.startsWith("[committeeId:")) {
+          const cleanName = role.name.replace(/^\[committeeId:[^\]]+\]\s*/, "");
+          return { ...role, name: cleanName };
+        }
+        return role;
+      });
+
+    return buildPaginatedResult(filteredRoles, filteredRoles.length, params);
   }
 
   async getRole(id: string, organizationId: string) {
@@ -90,21 +105,28 @@ export class RoleService {
     if (!role) {
       throw new RoleNotFoundError(id);
     }
+    if (role.name.startsWith("[committeeId:")) {
+      const cleanName = role.name.replace(/^\[committeeId:[^\]]+\]\s*/, "");
+      return { ...role, name: cleanName };
+    }
     return role;
   }
 
-  async createRole(organizationId: string, data: { name: string; description?: string; scope?: any }, actorUserId?: string) {
-    const nameExists = await this.roleRepository.existsByName(organizationId, data.name);
+  async createRole(organizationId: string, data: { name: string; description?: string; scope?: any }, actorUserId?: string, activeCommitteeId?: string | null) {
+    const prefixedName = activeCommitteeId ? `[committeeId:${activeCommitteeId}] ${data.name}` : data.name;
+    const nameExists = await this.roleRepository.existsByName(organizationId, prefixedName);
     if (nameExists) {
       throw new DuplicateRoleNameError();
     }
 
     const role = await this.roleRepository.create({
       organizationId,
-      name: data.name,
-      scope: data.scope ?? "ORGANIZATION",
-      ...data,
+      name: prefixedName,
+      scope: activeCommitteeId ? "COMMITTEE" : (data.scope ?? "ORGANIZATION"),
+      description: data.description,
     });
+
+    const cleanName = role.name.replace(/^\[committeeId:[^\]]+\]\s*/, "");
 
     if (actorUserId) {
       await logActivity(
@@ -112,11 +134,11 @@ export class RoleService {
         "create",
         "role",
         role.id,
-        role.name
+        cleanName
       );
     }
 
-    return role;
+    return { ...role, name: cleanName };
   }
 
   async updateRole(id: string, organizationId: string, data: { name?: string; description?: string; scope?: any }, actorUserId?: string) {

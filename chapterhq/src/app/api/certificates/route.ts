@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const parsedQuery = certificateQuerySchema.parse(Object.fromEntries(searchParams.entries()));
 
-    const result = await certificateService.getCertificates(context.organizationId, parsedQuery);
+    const result = await certificateService.getCertificates(context.organizationId, parsedQuery, context.activeCommitteeId);
 
     return apiResponse.success(result);
   } catch (error: any) {

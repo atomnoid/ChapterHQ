@@ -31,7 +31,7 @@ export interface CoreMemberWithDetails {
 }
 
 export class CoreMemberRepository {
-  async list(organizationId: string): Promise<CoreMemberWithDetails[]> {
+  async list(organizationId: string, activeCommitteeId?: string | null): Promise<CoreMemberWithDetails[]> {
     const records = await prisma.coreMember.findMany({
       where: { organizationId },
       include: {
@@ -57,7 +57,15 @@ export class CoreMemberRepository {
     });
 
     // Post-filter soft-deleted (MongoDB Prisma bug workaround)
-    return records.filter((r) => !r.deletedAt) as unknown as CoreMemberWithDetails[];
+    const notDeleted = records.filter((r) => !r.deletedAt) as unknown as CoreMemberWithDetails[];
+
+    if (activeCommitteeId) {
+      return notDeleted.filter((r) =>
+        r.member.committeeMembers.some((cm) => cm.committee.id === activeCommitteeId)
+      );
+    }
+
+    return notDeleted;
   }
 
   async findById(id: string, organizationId: string) {
