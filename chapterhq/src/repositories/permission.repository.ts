@@ -4,8 +4,13 @@ export class PermissionRepository {
   async ensurePermissionsExist(permissions: { resource: string; action: string }[]) {
     // MongoDB createMany does not return generated ids when skipDuplicates: true is used,
     // so we will query them after ensuring they exist.
+    const { randomBytes } = require("crypto");
     await prisma.permission.createMany({
-      data: permissions,
+      data: permissions.map(p => ({
+        id: randomBytes(12).toString("hex"),
+        resource: p.resource,
+        action: p.action,
+      })),
       skipDuplicates: true,
     });
     return prisma.permission.findMany();
@@ -38,19 +43,26 @@ export class PermissionRepository {
   }
 
   async createRolePermissions(data: { roleId: string; permissionId: string }[]) {
+    const { randomBytes } = require("crypto");
     return prisma.rolePermission.createMany({
-      data,
+      data: data.map(d => ({
+        id: randomBytes(12).toString("hex"),
+        roleId: d.roleId,
+        permissionId: d.permissionId,
+      })),
       skipDuplicates: true,
     });
   }
 
   async replaceRolePermissions(roleId: string, permissionIds: string[]) {
+    const { randomBytes } = require("crypto");
     return prisma.$transaction([
       prisma.rolePermission.deleteMany({
         where: { roleId },
       }),
       prisma.rolePermission.createMany({
         data: permissionIds.map(permissionId => ({
+          id: randomBytes(12).toString("hex"),
           roleId,
           permissionId,
         })),

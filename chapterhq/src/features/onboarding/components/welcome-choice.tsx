@@ -57,8 +57,7 @@ function CreateOrgForm({ onBack }: { onBack: () => void }) {
           await update({ activeOrganizationId: newOrgId });
         }
 
-        router.push("/dashboard");
-        router.refresh();
+        window.location.href = "/dashboard";
       } catch {
         setError("Something went wrong. Please try again.");
       }
@@ -198,8 +197,7 @@ function JoinOrgForm({ onBack }: { onBack: () => void }) {
 
         setSuccess(true);
         setTimeout(() => {
-          router.push("/dashboard");
-          router.refresh();
+          window.location.href = "/dashboard";
         }, 1200);
       } catch {
         setError("Something went wrong. Please try again.");

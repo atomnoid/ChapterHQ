@@ -22,8 +22,10 @@ export class RoleRepository {
   }
 
   async createMany(roles: CreateRoleData[]) {
+    const { randomBytes } = require("crypto");
     return prisma.role.createMany({
       data: roles.map((r) => ({
+        id: randomBytes(12).toString("hex"),
         organizationId: r.organizationId,
         name: r.name,
         scope: r.scope,

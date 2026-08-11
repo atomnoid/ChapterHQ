@@ -124,7 +124,11 @@ export class OnboardingService {
 
       if (permissionsToCreate.length > 0) {
         await tx.permission.createMany({
-          data: permissionsToCreate,
+          data: permissionsToCreate.map(p => ({
+            id: randomBytes(12).toString("hex"),
+            resource: p.resource,
+            action: p.action,
+          })),
         });
       }
 
@@ -163,7 +167,11 @@ export class OnboardingService {
       }));
 
       await tx.rolePermission.createMany({
-        data: rolePermissions,
+        data: rolePermissions.map(rp => ({
+          id: randomBytes(12).toString("hex"),
+          roleId: rp.roleId,
+          permissionId: rp.permissionId,
+        })),
       });
 
       const presidentMappings = await tx.rolePermission.findMany({
