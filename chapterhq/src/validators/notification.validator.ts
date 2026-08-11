@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { paginationQuerySchema } from "@/lib/pagination";
 
+export const NOTIFICATION_TYPES = ["INFO", "SUCCESS", "WARNING", "ERROR", "ANNOUNCEMENT", "SYSTEM"] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
 export const createNotificationSchema = z.object({
   title: z
     .string()
@@ -13,15 +16,11 @@ export const createNotificationSchema = z.object({
     .min(1, "Message is required.")
     .max(2000, "Message must be 2000 characters or less."),
   type: z
-    .string()
-    .trim()
-    .min(1, "Type is required.")
-    .max(50, "Type must be 50 characters or less."),
+    .enum(NOTIFICATION_TYPES, { errorMap: () => ({ message: "Invalid notification type." }) })
+    .default("INFO"),
   targetScope: z
-    .string()
-    .trim()
-    .min(1, "Target Scope is required.")
-    .max(100, "Target Scope must be 100 characters or less."),
+    .enum(["ORGANIZATION", "COMMITTEE"], { errorMap: () => ({ message: "targetScope must be ORGANIZATION or COMMITTEE." }) })
+    .default("ORGANIZATION"),
 });
 
 export const notificationQuerySchema = paginationQuerySchema.extend({

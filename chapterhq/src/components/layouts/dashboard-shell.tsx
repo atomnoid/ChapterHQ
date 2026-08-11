@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Bell,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -13,6 +12,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
+import { NotificationBell } from "@/components/notification-bell";
 
 import { Button } from "@/components/ui/button";
 import { DashboardLogoutButton } from "@/features/auth/components/dashboard-logout-button";
@@ -346,16 +346,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
               <CommitteeContextBadge />
 
               <div className="ml-auto flex items-center gap-2">
-                <Link href="/notifications" aria-label="Notifications">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full border-border bg-card text-foreground"
-                  >
-                    <Bell className="h-4 w-4" />
-                  </Button>
-                </Link>
+                <NotificationBell />
 
                 <div className="relative">
                   <Button

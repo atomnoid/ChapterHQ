@@ -84,4 +84,25 @@ export class NotificationService {
 
     return this.repository.markAsRead(id, organizationId);
   }
+
+  async markAllAsRead(organizationId: string, activeCommitteeId?: string | null) {
+    return this.repository.markAllAsRead(organizationId, activeCommitteeId);
+  }
+
+  async deleteNotification(id: string, organizationId: string, activeCommitteeId?: string | null) {
+    const notification = await this.repository.findById(id, organizationId);
+    if (!notification) {
+      throw new NotificationNotFoundError();
+    }
+
+    if (activeCommitteeId && notification.targetCommitteeId !== null && notification.targetCommitteeId !== activeCommitteeId) {
+      throw new NotificationNotFoundError();
+    }
+
+    return this.repository.delete(id, organizationId);
+  }
+
+  async getUnreadCount(organizationId: string, activeCommitteeId?: string | null): Promise<number> {
+    return this.repository.unreadCount(organizationId, activeCommitteeId);
+  }
 }

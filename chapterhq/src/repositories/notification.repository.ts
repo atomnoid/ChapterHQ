@@ -46,6 +46,49 @@ export class NotificationRepository {
     });
   }
 
+  async markAllAsRead(organizationId: string, committeeId?: string | null) {
+    const where: any = { organizationId, isRead: false };
+
+    if (committeeId) {
+      where.OR = [
+        { targetCommitteeId: committeeId },
+        { targetCommitteeId: null },
+      ];
+    }
+
+    return prisma.notification.updateMany({
+      where,
+      data: { isRead: true },
+    });
+  }
+
+  async delete(id: string, organizationId: string) {
+    return prisma.notification.delete({
+      where: {
+        id,
+        organizationId,
+      },
+    });
+  }
+
+  async unreadCount(organizationId: string, committeeId?: string | null): Promise<number> {
+    const andClauses: any[] = [
+      { organizationId },
+      { isRead: false },
+    ];
+
+    if (committeeId) {
+      andClauses.push({
+        OR: [
+          { targetCommitteeId: committeeId },
+          { targetCommitteeId: null },
+        ],
+      });
+    }
+
+    return prisma.notification.count({ where: { AND: andClauses } });
+  }
+
   async list(params: PaginationParams & { organizationId: string; isRead?: boolean; type?: string; targetScope?: string; committeeId?: string | null }) {
     const andClauses: any[] = [
       { organizationId: params.organizationId }
