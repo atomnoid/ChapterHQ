@@ -164,7 +164,9 @@ export function OrganizationList() {
       }
 
       await update({ activeOrganizationId: organizationId });
-      router.refresh();
+      // Force a complete page reload to flush all client-side contexts, 
+      // ensuring the session cookies are fully committed before revalidating.
+      window.location.reload();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unable to switch organizations.");
     }
