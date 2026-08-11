@@ -16,19 +16,22 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+      const { apiResponse } = await import("@/lib/api-response");
+      return apiResponse.unauthorized();
     }
 
     const { context } = await requirePermission(session.user.id, "members:create");
 
     const invitations = await invitationService.getInvitations(context.organizationId);
 
-    return NextResponse.json(invitations, { status: 200 });
+    const { apiResponse } = await import("@/lib/api-response");
+    return apiResponse.success(invitations);
   } catch (error: any) {
+    const { apiResponse } = await import("@/lib/api-response");
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }
 
@@ -54,26 +57,22 @@ export async function POST(request: Request) {
       actorId: session.user.id,
     });
 
-    return NextResponse.json(
-      { message: "Invitation created successfully.", data: invitation },
-      { status: 201 }
-    );
+    const { apiResponse } = await import("@/lib/api-response");
+    return apiResponse.created(invitation, "Invitation created successfully.");
   } catch (error: any) {
+    const { apiResponse } = await import("@/lib/api-response");
     if (error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
+      return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0]?.message ?? "Invalid request." },
-        { status: 400 }
-      );
+      return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
     if (error instanceof DuplicatePendingInvitationError) {
-      return NextResponse.json({ message: error.message }, { status: 409 });
+      return apiResponse.badRequest(error.message); // map conflict to badRequest
     }
     if (error instanceof RoleNotFoundError) {
-      return NextResponse.json({ message: error.message }, { status: 404 });
+      return apiResponse.notFound(error.message);
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return apiResponse.serverError();
   }
 }
