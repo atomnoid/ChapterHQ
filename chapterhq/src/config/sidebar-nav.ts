@@ -45,6 +45,12 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
     requiredPermission: "members:read",
   },
   {
+    title: "Core Members",
+    route: "/core-members",
+    icon: Shield,
+    requiredPermission: "members:read",
+  },
+  {
     title: "Roles",
     route: "/roles",
     icon: Shield,

@@ -52,6 +52,8 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
   const [serverError, setServerError] = useState<string | null>(null);
   const [members, setMembers] = useState<MemberOption[]>([]);
 
+  const [membersLoading, setMembersLoading] = useState(false);
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<GenerateInput>({
     resolver: zodResolver(generateSchema),
   });
@@ -63,10 +65,12 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
       expiryDate: "", credentialId: "",
     });
     setServerError(null);
-    fetch("/api/members?limit=200")
-      .then((r) => r.json())
-      .then((d) => setMembers(d?.items ?? d?.data?.items ?? []))
-      .catch(() => setMembers([]));
+    setMembersLoading(true);
+    fetch("/api/members?limit=100&status=ACTIVE")
+      .then((r) => r.ok ? r.json() : { items: [] })
+      .then((d) => setMembers(d?.items ?? []))
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false));
   }, [open, reset]);
 
   async function onSubmit(data: GenerateInput) {
@@ -110,8 +114,9 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
           <div className="space-y-1.5">
             <Label htmlFor="cert-member">Member</Label>
             <select id="cert-member" {...register("memberId")}
-              className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="">Select member…</option>
+              disabled={membersLoading}
+              className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60">
+              <option value="">{membersLoading ? "Loading members…" : members.length === 0 ? "No members found" : "Select member…"}</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>{m.user.name ?? m.user.email}</option>
               ))}
