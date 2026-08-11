@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "members:write");
+    const { context } = await requirePermission(session.user.id, "members:create");
 
     const body = await request.json();
     const validatedData = addCoreMemberSchema.parse(body);

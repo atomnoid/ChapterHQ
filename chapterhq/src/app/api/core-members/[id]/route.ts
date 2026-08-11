@@ -17,7 +17,7 @@ export async function DELETE(
       return apiResponse.unauthorized();
     }
 
-    const { context } = await requirePermission(session.user.id, "members:write");
+    const { context } = await requirePermission(session.user.id, "members:delete");
 
     await coreMemberService.remove(params.id, context.organizationId, session.user.id);
 
