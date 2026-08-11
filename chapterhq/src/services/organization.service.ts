@@ -182,7 +182,7 @@ export class OrganizationService {
     return this.repository.delete(validatedId);
   }
 
-  async updateSettings(id: string, data: { name?: string; slug?: string; status?: any }, userId?: string) {
+  async updateSettings(id: string, data: { name?: string; slug?: string; description?: string; status?: any }, userId?: string) {
     const existing = await this.repository.findById(id);
     if (!existing) {
       throw new OrganizationNotFoundError();

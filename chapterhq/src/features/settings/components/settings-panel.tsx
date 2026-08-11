@@ -45,6 +45,7 @@ export function SettingsPanel() {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
   const [status, setStatus] = useState<OrganizationStatus>("ACTIVE");
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -84,6 +85,7 @@ export function SettingsPanel() {
     if (!organization) return;
     setName(organization.name);
     setSlug(organization.slug);
+    setDescription(organization.description ?? "");
     setStatus(organization.status);
     setFormError(null);
     setNotice(null);
@@ -104,7 +106,7 @@ export function SettingsPanel() {
       const response = await fetch("/api/organization/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, slug, status }),
+        body: JSON.stringify({ name, slug, description, status }),
       });
       const payload = await response.json();
       if (!response.ok) {

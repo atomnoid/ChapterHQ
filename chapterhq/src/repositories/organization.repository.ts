@@ -57,7 +57,7 @@ export class OrganizationRepository {
     return !!org;
   }
 
-  async update(id: string, data: { name?: string; slug?: string; status?: any }) {
+  async update(id: string, data: { name?: string; slug?: string; description?: string; status?: any }) {
     return prisma.organization.update({
       where: {
         id,

@@ -71,6 +71,7 @@ export const updateOrganizationSchema = z.object({
       "Slug may only contain letters, numbers, hyphens, and underscores."
     )
     .optional(),
+  description: z.string().trim().max(500, "Description must be 500 characters or less.").optional(),
   status: z.nativeEnum(OrganizationStatus).optional(),
 });
 

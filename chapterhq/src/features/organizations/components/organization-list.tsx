@@ -163,7 +163,7 @@ export function OrganizationList() {
         throw new Error(payload.message ?? "Unable to switch organizations.");
       }
 
-      await update({ activeOrganizationId: organizationId });
+      await update({ activeOrganizationId: organizationId, activeCommitteeId: null });
       // Force a complete page reload to flush all client-side contexts, 
       // ensuring the session cookies are fully committed before revalidating.
       window.location.reload();
