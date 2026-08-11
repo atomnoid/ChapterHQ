@@ -97,7 +97,7 @@ export class AppointmentService {
         where: { memberId: actorMember.id },
         include: { role: true },
       });
-      const isPresident = userRoles.some((ur) => ur.role.name === "President" && !ur.role.deletedAt);
+      const isPresident = userRoles.some((ur) => (ur.role.name === "Admin" || ur.role.name === "President") && !ur.role.deletedAt);
 
       if (!isPresident) {
         const isCM = await prisma.committeeMember.findFirst({

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, Save, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 interface Permission {
   id: string;
