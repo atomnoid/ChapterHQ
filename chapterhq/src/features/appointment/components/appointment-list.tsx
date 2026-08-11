@@ -192,6 +192,11 @@ export function AppointmentList({
 
   const closeDialog = () => setDialog({ type: "none" });
 
+  const handleSuccess = useCallback(() => {
+    setPage(1);
+    fetchAppointments();
+  }, [fetchAppointments]);
+
   return (
     <div className="space-y-5">
       {/* Header toolbar */}
@@ -429,19 +434,19 @@ export function AppointmentList({
       <CreateAppointmentDialog
         open={dialog.type === "create"}
         onOpenChange={(open) => { if (!open) closeDialog(); }}
-        onSuccess={fetchAppointments}
+        onSuccess={handleSuccess}
       />
       <EditAppointmentDialog
         appointment={dialog.type === "edit" ? dialog.appointment : null}
         open={dialog.type === "edit"}
         onOpenChange={(open) => { if (!open) closeDialog(); }}
-        onSuccess={fetchAppointments}
+        onSuccess={handleSuccess}
       />
       <DeleteAppointmentDialog
         appointment={dialog.type === "delete" ? dialog.appointment : null}
         open={dialog.type === "delete"}
         onOpenChange={(open) => { if (!open) closeDialog(); }}
-        onSuccess={fetchAppointments}
+        onSuccess={handleSuccess}
       />
     </div>
   );

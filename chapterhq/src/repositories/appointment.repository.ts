@@ -46,6 +46,7 @@ export class AppointmentRepository {
         startDate: data.startDate,
         endDate: data.endDate,
         status: data.status ?? "ACTIVE",
+        deletedAt: null,
       },
       include: DEFAULT_INCLUDE,
     });
@@ -60,16 +61,17 @@ export class AppointmentRepository {
   }
 
   async findById(id: string, organizationId: string) {
-    return prisma.appointment.findFirst({
-      where: { id, organizationId, deletedAt: null },
+    const appointment = await prisma.appointment.findFirst({
+      where: { id, organizationId },
       include: DEFAULT_INCLUDE,
     });
+    if (!appointment || appointment.deletedAt) return null;
+    return appointment;
   }
 
   async list(params: PaginationParams & { organizationId: string; committeeId?: string; memberId?: string; status?: AppointmentStatus }) {
     const whereClause: any = {
       organizationId: params.organizationId,
-      deletedAt: null,
     };
 
     if (params.committeeId) whereClause.committeeId = params.committeeId;
@@ -82,16 +84,15 @@ export class AppointmentRepository {
 
     const orderBy = buildOrderBy(params.sortBy, params.order, "startDate");
 
-    const [total, items] = await Promise.all([
-      prisma.appointment.count({ where: whereClause }),
-      prisma.appointment.findMany({
-        where: whereClause,
-        skip: params.skip,
-        take: params.take,
-        orderBy,
-        include: DEFAULT_INCLUDE,
-      }),
-    ]);
+    const allItems = await prisma.appointment.findMany({
+      where: whereClause,
+      orderBy,
+      include: DEFAULT_INCLUDE,
+    });
+
+    const activeItems = allItems.filter((item) => !item.deletedAt);
+    const total = activeItems.length;
+    const items = activeItems.slice(params.skip, params.skip + params.take);
 
     return { total, items };
   }
@@ -114,16 +115,16 @@ export class AppointmentRepository {
     designation: string,
     excludeId?: string
   ) {
-    return prisma.appointment.findFirst({
+    const appointments = await prisma.appointment.findMany({
       where: {
         memberId,
         committeeId,
         designation: { equals: designation, mode: "insensitive" },
         status: "ACTIVE",
-        deletedAt: null,
         NOT: excludeId ? { id: excludeId } : undefined,
       },
     });
+    return appointments.find((item) => !item.deletedAt) || null;
   }
 
   async softDelete(id: string, organizationId: string) {
