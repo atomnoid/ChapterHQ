@@ -79,6 +79,7 @@ export function PermissionMatrix() {
         const permsJson = await permsRes.json();
 
         const rolesList = rolesJson.items ?? [];
+        console.log("[PermissionMatrix] permissions:", permsJson);
         setRoles(rolesList);
         setPermissionGroups(permsJson);
 
@@ -106,7 +107,9 @@ export function PermissionMatrix() {
         if (!res.ok) throw new Error("Failed to load permissions for the selected role.");
         const mappings = await res.json();
         // mappings is array of { roleId, permissionId, permission: { id, resource, action } }
-        const activeIds = mappings.map((m: { permissionId?: string; permission?: { id?: string } }) => m.permissionId ?? m.permission?.id);
+        const activeIds = mappings
+          .map((m: { permissionId?: unknown; permission?: { id?: unknown } }) => m.permissionId ?? m.permission?.id)
+          .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
         setSelectedPermissionIds(new Set(activeIds));
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "An error occurred while loading permissions.");
@@ -155,11 +158,16 @@ export function PermissionMatrix() {
     setSaveSuccess(false);
 
     try {
+      const permissionIds = Array.from(selectedPermissionIds).filter(
+        (id): id is string => typeof id === "string" && id.length > 0
+      );
+      console.log("[PermissionMatrix] permissionIds payload:", permissionIds);
+
       const res = await fetch(`/api/roles/${selectedRoleId}/permissions`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          permissionIds: Array.from(selectedPermissionIds),
+          permissionIds,
         }),
       });
 
