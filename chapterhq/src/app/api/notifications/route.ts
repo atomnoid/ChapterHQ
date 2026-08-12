@@ -26,6 +26,15 @@ export async function GET(request: NextRequest) {
       context.member.id
     );
 
+    const notificationItems = result.items ?? [];
+    console.log("[NotificationListDebug]", {
+      userId: session.user.id,
+      activeOrganizationId: context.organizationId,
+      totalNotifications: result.total,
+      unreadNotifications: notificationItems.filter((notification) => !notification.isRead).length,
+      notificationIds: notificationItems.map((notification) => notification.id),
+    });
+
     return apiResponse.success(result);
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();

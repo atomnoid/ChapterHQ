@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/services/permission/authorization.service";
 
 const authorizationService = new AuthorizationService();
@@ -26,14 +27,41 @@ export async function GET() {
 
     // Resolve org context, roles, and permissions via existing services.
     const context = await authorizationService.resolveContext(userId);
-    const roles = await authorizationService.resolveCurrentRoles(userId);
+    const assignedRoles = await authorizationService.resolveAssignedRoles(userId);
     const permissions = await authorizationService.resolveCurrentPermissions(userId);
+
+    const allUserRoleRecords = await prisma.userRole.findMany({
+      where: { memberId: context.member.id },
+      include: { role: true },
+    });
+
+    console.log("[DashboardRolesDebug]", {
+      userId,
+      activeOrganizationId: context.organizationId,
+      memberId: context.member.id,
+      allUserRoleRecords: allUserRoleRecords.map((userRole) => ({
+        id: userRole.id,
+        memberId: userRole.memberId,
+        roleId: userRole.roleId,
+        roleName: userRole.role.name,
+        roleOrganizationId: userRole.role.organizationId,
+        roleStatus: userRole.role.status,
+        roleDeleted: Boolean(userRole.role.deletedAt),
+      })),
+      allResolvedRoleRecords: assignedRoles.map((role) => ({
+        id: role.id,
+        name: role.name,
+        organizationId: role.organizationId,
+        scope: role.scope,
+        status: role.status,
+      })),
+    });
 
     const permissionStrings = permissions.map(
       (p) => `${p.resource}:${p.action}`
     );
 
-    const roleNames = roles.map((r) => r.name);
+    const roleNames = assignedRoles.map((r) => r.name);
 
     return NextResponse.json(
       {
@@ -46,7 +74,7 @@ export async function GET() {
         roles: roleNames,
         permissions: permissionStrings,
         notificationAudience: {
-          isOrganizationAdministrator: roles.some((role) => role.scope === "ORGANIZATION"),
+          isOrganizationAdministrator: assignedRoles.some((role) => role.scope === "ORGANIZATION"),
           activeCommitteeId: context.activeCommitteeId ?? null,
         },
       },

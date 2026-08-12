@@ -146,7 +146,7 @@ export class NotificationService {
     return this.repository.delete(id, organizationId);
   }
 
-  async getUnreadCount(organizationId: string, activeCommitteeId?: string | null): Promise<number> {
-    return this.repository.unreadCount(organizationId, activeCommitteeId);
+  async getUnreadCount(organizationId: string, activeCommitteeId?: string | null, memberId?: string): Promise<number> {
+    return this.repository.unreadCount(organizationId, activeCommitteeId, memberId);
   }
 }

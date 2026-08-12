@@ -27,10 +27,18 @@ export class AuthorizationService {
   }
 
   // Load Roles assigned to the user/member in the organization context
-  async resolveCurrentRoles(userId: string) {
+  async resolveAssignedRoles(userId: string) {
     const context = await this.resolveContext(userId);
     const userRoles = await this.userRoleRepository.findUserRoles(context.member.id);
-    const roles = userRoles.map(ur => ur.role);
+    return userRoles
+      .map(ur => ur.role)
+      .filter((role) => role.organizationId === context.organizationId);
+  }
+
+  // Load Roles visible in the current organization/committee context
+  async resolveCurrentRoles(userId: string) {
+    const context = await this.resolveContext(userId);
+    const roles = await this.resolveAssignedRoles(userId);
 
     return roles
       .filter(role => {

@@ -80,11 +80,15 @@ export class NotificationRepository {
     });
   }
 
-  async unreadCount(organizationId: string, committeeId?: string | null): Promise<number> {
+  async unreadCount(organizationId: string, committeeId?: string | null, memberId?: string): Promise<number> {
     const andClauses: Prisma.NotificationWhereInput[] = [
       { organizationId },
       { isRead: false },
     ];
+
+    if (memberId) {
+      andClauses.push({ recipients: { some: { memberId } } });
+    }
 
     if (committeeId) {
       andClauses.push({
