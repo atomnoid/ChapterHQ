@@ -3,8 +3,13 @@ import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { PermissionService } from "@/services/permission/permission.service";
 import { RoleNotFoundError } from "@/services/role.service";
+import { z } from "zod";
 
 const permissionService = new PermissionService();
+
+const permissionPatchSchema = z.object({
+  permissionIds: z.array(z.string().trim().length(24)).transform((ids) => [...new Set(ids)]),
+});
 
 // GET /api/roles/[id]/permissions
 export async function GET(
@@ -56,14 +61,8 @@ export async function PATCH(
     const { context: authContext } = await requirePermission(session.user.id, "roles:update");
     console.log(`[PermissionMatrixDebug] organizationId: ${authContext.organizationId}`);
 
-    const body = await request.json();
-    const { permissionIds } = body as { permissionIds?: string[] };
-    if (!permissionIds || !Array.isArray(permissionIds)) {
-      return NextResponse.json(
-        { message: "permissionIds must be an array of strings." },
-        { status: 400 }
-      );
-    }
+    const { permissionIds } = permissionPatchSchema.parse(await request.json());
+    console.log("[PermissionMatrixDebug] permissionIds:", permissionIds);
     console.log(`[PermissionMatrixDebug] requested permissions count: ${permissionIds.length}`);
 
     const updatedPermissions = await permissionService.updateRolePermissions(
@@ -87,12 +86,14 @@ export async function PATCH(
       error instanceof Error ? error.stack : undefined
     );
 
-    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
-    }
-    if (error instanceof RoleNotFoundError) {
-      return NextResponse.json({ message: error.message }, { status: 404 });
-    }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "PERMISSION_MATRIX_DEBUG",
+        message: error instanceof Error ? error.message : String(error),
+        name: error instanceof Error ? error.name : undefined,
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      { status: error instanceof RoleNotFoundError ? 404 : 500 }
+    );
   }
 }

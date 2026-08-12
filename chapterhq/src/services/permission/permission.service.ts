@@ -133,8 +133,7 @@ export class PermissionService {
     if (!role) {
       throw new RoleNotFoundError(roleId);
     }
-    const rolePermissions = await this.permissionRepository.findRolePermissions(roleId);
-    return rolePermissions.map(rp => rp.permission);
+    return this.permissionRepository.findRolePermissions(roleId);
   }
 
   async updateRolePermissions(organizationId: string, roleId: string, permissionIds: string[]) {
@@ -144,6 +143,9 @@ export class PermissionService {
     }
 
     const validatedPermissionIds = await this.permissionRepository.validatePermissionIds(permissionIds);
+    if (validatedPermissionIds.length !== new Set(permissionIds).size) {
+      throw new Error("One or more permission IDs are invalid.");
+    }
     await this.permissionRepository.replaceRolePermissions(roleId, validatedPermissionIds);
 
     return this.getRolePermissions(organizationId, roleId);
