@@ -63,6 +63,14 @@ export async function POST(request: Request) {
     const { apiResponse } = await import("@/lib/api-response");
     return apiResponse.created(invitation, "Invitation created successfully.");
   } catch (error: unknown) {
+    console.error("========== INVITATION RAW ERROR ==========");
+    console.error(error);
+    console.error("NAME:", error instanceof Error ? error.name : typeof error);
+    console.error("MESSAGE:", error instanceof Error ? error.message : String(error));
+    console.error("STACK:", error instanceof Error ? error.stack : "NO STACK");
+    console.error("CAUSE:", error instanceof Error ? error.cause : undefined);
+    console.error("==========================================");
+
     const { apiResponse } = await import("@/lib/api-response");
     if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
