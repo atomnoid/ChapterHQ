@@ -73,6 +73,13 @@ type DashboardApiResponse<T> = {
 
 type FinanceSummary = { totalIncome: number; totalExpense: number; netBalance?: number; balance?: number };
 
+const inrCurrency = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 const QUICK_ACTIONS: QuickAction[] = [
   {
     label: "Invite Member",
@@ -137,8 +144,7 @@ interface MePermissionsResponse {
 
 export function DashboardContent() {
   const { data: session } = useSession();
-
-  // Stable primitive keys Ã¢â‚¬â€ changes here must trigger a full data re-fetch.
+  // Stable primitive keys - changes here must trigger a full data re-fetch.
   const activeOrganizationId = session?.activeOrganizationId ?? null;
   const activeCommitteeId = session?.activeCommitteeId ?? null;
   
@@ -321,7 +327,7 @@ export function DashboardContent() {
 
   return (
     <div className="space-y-8">
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Dynamic Welcome Section Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* Dynamic Welcome Section */}
       <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-6 shadow-[0_20px_60px_rgba(77,54,37,0.06)] sm:p-8">
         <div className="absolute inset-y-0 right-0 -z-10 w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(176,137,104,0.08),transparent_50%)]" />
         
@@ -353,8 +359,7 @@ export function DashboardContent() {
           </div>
         </div>
       </section>
-
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Dynamic Statistics Rows (Conditional render) Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* Dynamic Statistics Rows (Conditional render) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {meData?.permissions.includes("members:read") && (
           <>
@@ -385,7 +390,7 @@ export function DashboardContent() {
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Ledger Balance</p>
               <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">
-                Ã¢â€šÂ¹{Number(financeSummary.netBalance ?? financeSummary.balance ?? 0).toLocaleString()}
+                {inrCurrency.format(Number(financeSummary.netBalance ?? financeSummary.balance ?? 0))}
               </p>
             </div>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-emerald-600 bg-emerald-50 border-emerald-100">
@@ -406,8 +411,7 @@ export function DashboardContent() {
           </article>
         )}
       </div>
-
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Dynamic Quick Actions Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* Dynamic Quick Actions */}
       {allowedQuickActions.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center gap-2">
@@ -436,8 +440,7 @@ export function DashboardContent() {
           </div>
         </section>
       )}
-
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Main Layout: Widgets Grid vs Activity Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* Main Layout: Widgets Grid vs Activity */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Modules Section */}
         <section className="space-y-4 md:col-span-2">
