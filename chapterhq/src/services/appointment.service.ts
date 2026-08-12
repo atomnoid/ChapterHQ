@@ -222,22 +222,18 @@ export class AppointmentService {
     // if the appointment does not belong to activeCommitteeId (V-03).
     const appointment = await this.getAppointment(id, organizationId, activeCommitteeId);
 
-    // Do NOT allow a client to move an appointment between committees.
-    // committeeId is not in UpdateAppointmentInput, but defensively strip it here.
-    const { committeeId: _ignored, ...updateData } = data as any;
-
     // If designation is changing, guard against duplicate active appointments
-    if (updateData.designation && updateData.designation.toLowerCase() !== appointment.designation.toLowerCase()) {
+    if (data.designation && data.designation.toLowerCase() !== appointment.designation.toLowerCase()) {
       const duplicate = await this.appointmentRepo.findActiveAppointment(
         appointment.memberId,
         appointment.committeeId,
-        updateData.designation,
+        data.designation,
         id
       );
       if (duplicate) throw new DuplicateActiveAppointmentError();
     }
 
-    const updated = await this.appointmentRepo.update(id, organizationId, updateData);
+    const updated = await this.appointmentRepo.update(id, organizationId, data);
 
     if (actorUserId) {
       await logActivity(
@@ -246,7 +242,7 @@ export class AppointmentService {
         "appointment",
         id,
         updated.designation,
-        updateData
+        { ...data }
       );
     }
 

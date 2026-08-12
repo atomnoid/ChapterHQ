@@ -9,6 +9,7 @@ const authorizationService = new AuthorizationService();
 const querySchema = z.object({ q: z.string().trim().min(2, "Enter at least 2 characters.").max(100, "Search is limited to 100 characters.") });
 const LIMIT = 5;
 const scoped = (organizationId: string, committeeId?: string | null) => ({ organizationId, ...(committeeId ? { committeeId } : {}) });
+type SearchResult = { id: string; type: "member" | "role" | "event" | "finance" | "inventory"; title: string | null; description: string | null; metadata: Record<string, never>; href: string };
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     const allowed = new Set(permissions.map((p) => `${p.resource}:${p.action}`));
     const contains = { contains: q, mode: "insensitive" as const };
     const committeeId = context.activeCommitteeId;
-    const jobs: Promise<any[]>[] = [];
+    const jobs: Promise<SearchResult[]>[] = [];
     if (allowed.has("members:read")) jobs.push(prisma.member.findMany({ where: { organizationId: context.organizationId, status: "ACTIVE", user: { OR: [{ name: contains }, { email: contains }] } }, take: LIMIT, include: { user: { select: { name: true, email: true } } } }).then(rows => rows.filter(r => !r.deletedAt).map(r => ({ id: r.id, type: "member", title: r.user.name ?? r.user.email, description: r.user.email, metadata: {}, href: "/members" }))));
     if (allowed.has("roles:read")) jobs.push(prisma.role.findMany({ where: { organizationId: context.organizationId, OR: [{ name: contains }, { description: contains }] }, take: LIMIT }).then(rows => rows.filter(r => !r.deletedAt).map(r => ({ id: r.id, type: "role", title: r.name, description: r.description ?? "Role", metadata: {}, href: "/roles" }))));
     if (allowed.has("events:read")) jobs.push(prisma.event.findMany({ where: { ...scoped(context.organizationId, committeeId), OR: [{ title: contains }, { description: contains }] }, take: LIMIT }).then(rows => rows.filter(r => !r.deletedAt).map(r => ({ id: r.id, type: "event", title: r.title, description: r.venue ?? "Event", metadata: {}, href: `/events/${r.id}` }))));
@@ -27,8 +28,8 @@ export async function GET(request: NextRequest) {
     if (allowed.has("inventory:read")) jobs.push(prisma.inventoryItem.findMany({ where: { ...scoped(context.organizationId, committeeId), OR: [{ name: contains }, { category: contains }] }, take: LIMIT }).then(rows => rows.filter(r => !r.deletedAt).map(r => ({ id: r.id, type: "inventory", title: r.name, description: r.category ?? "Inventory", metadata: {}, href: "/inventory" }))));
     const results = (await Promise.all(jobs)).flat().slice(0, 25);
     return apiResponse.success({ items: results });
-  } catch (error: any) {
-    if (error?.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof z.ZodError) return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid search.");
     return apiResponse.serverError();
   }

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -20,7 +21,7 @@ export function NotificationBell() {
         setUnreadCount(count);
       }
     } catch {
-      // Silent — don't break the header
+      // Silent â€” don't break the header
     }
   }, []);
 

@@ -32,8 +32,8 @@ export async function GET(
     );
 
     return apiResponse.success(appointment);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof AppointmentNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }
@@ -64,8 +64,8 @@ export async function PATCH(
     );
 
     return apiResponse.success(updated, "Appointment updated successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
@@ -96,8 +96,8 @@ export async function DELETE(
     );
 
     return apiResponse.success(null, "Appointment deleted successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof AppointmentNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }

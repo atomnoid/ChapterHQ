@@ -28,7 +28,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Role removed successfully." }, { status: 200 });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     if (error instanceof MemberNotFoundError || error instanceof UserRoleNotFoundError) {

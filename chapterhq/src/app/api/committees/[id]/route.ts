@@ -33,8 +33,8 @@ export async function GET(
     );
 
     return apiResponse.success(committee);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof CommitteeNotFoundError) {
@@ -76,8 +76,8 @@ export async function PATCH(
     );
 
     return apiResponse.success(updated, "Committee updated successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
@@ -121,8 +121,8 @@ export async function DELETE(
     );
 
     return apiResponse.success(null, "Committee deleted successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof CommitteeNotFoundError) {

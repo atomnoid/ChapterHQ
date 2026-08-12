@@ -18,8 +18,8 @@ export async function GET(request: Request) {
     const activities = await dashboardService.getActivity(context.organizationId);
 
     return NextResponse.json(activities, { status: 200 });
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     return NextResponse.json({ message: "Internal server error." }, { status: 500 });

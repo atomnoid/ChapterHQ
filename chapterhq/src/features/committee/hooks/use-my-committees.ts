@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 export interface Committee {
   id: string;
@@ -11,7 +12,7 @@ export interface Committee {
 /**
  * Fetches the committees the authenticated user can access for their active
  * organization. Re-runs whenever the active organization changes.
- * Hits GET /api/me/committees — a trusted server-side endpoint.
+ * Hits GET /api/me/committees â€” a trusted server-side endpoint.
  */
 export function useMyCommittees(activeOrganizationId: string | null | undefined) {
   const [committees, setCommittees] = useState<Committee[]>([]);

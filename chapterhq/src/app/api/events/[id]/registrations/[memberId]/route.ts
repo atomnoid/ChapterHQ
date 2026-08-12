@@ -26,8 +26,8 @@ export async function DELETE(
     );
 
     return apiResponse.success(null, "Registration cancelled successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
     if (error instanceof RegistrationNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();

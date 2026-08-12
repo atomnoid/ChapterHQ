@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
-import { EventStatus } from "@prisma/client";
+import { EventStatus, Prisma } from "@prisma/client";
 
 interface CreateEventData {
   organizationId: string;
-  committeeId?: string;
+  committeeId?: string | null;
   title: string;
   description?: string;
   venue?: string;
@@ -68,7 +68,7 @@ export class EventRepository {
       committeeId?: string | null;
     }
   ) {
-    const whereClause: any = {
+    const whereClause: Prisma.EventWhereInput = {
       organizationId: params.organizationId,
       // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };

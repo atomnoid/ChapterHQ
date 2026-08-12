@@ -26,7 +26,7 @@ export async function GET(
 
     return apiResponse.success(record);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof FinanceRecordNotFoundError) {
@@ -63,7 +63,7 @@ export async function PATCH(
 
     return apiResponse.success(updated, "Finance record updated successfully.");
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
@@ -94,7 +94,7 @@ export async function DELETE(
 
     return apiResponse.success(null, "Finance record deleted successfully.");
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof FinanceRecordNotFoundError) {

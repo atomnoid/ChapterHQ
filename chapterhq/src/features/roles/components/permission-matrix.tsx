@@ -85,8 +85,8 @@ export function PermissionMatrix() {
         if (rolesList.length > 0) {
           setSelectedRoleId(rolesList[0].id);
         }
-      } catch (err: any) {
-        setError(err.message ?? "An error occurred while loading settings.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An error occurred while loading settings.");
       } finally {
         setLoading(false);
       }
@@ -106,10 +106,10 @@ export function PermissionMatrix() {
         if (!res.ok) throw new Error("Failed to load permissions for the selected role.");
         const mappings = await res.json();
         // mappings is array of { roleId, permissionId, permission: { id, resource, action } }
-        const activeIds = mappings.map((m: any) => m.permissionId ?? m.permission?.id);
+        const activeIds = mappings.map((m: { permissionId?: string; permission?: { id?: string } }) => m.permissionId ?? m.permission?.id);
         setSelectedPermissionIds(new Set(activeIds));
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An error occurred while loading permissions.");
       }
     }
 
@@ -170,8 +170,8 @@ export function PermissionMatrix() {
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save permissions.");
     } finally {
       setSaving(false);
     }

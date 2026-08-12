@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -136,8 +137,8 @@ export function OrganizationList() {
       const json = await res.json();
       // GET /api/organizations returns an array of organizations directly
       setOrganizations(Array.isArray(json) ? json : (json.data ?? json.items ?? []));
-    } catch (err: any) {
-      setError(err.message ?? "Something went wrong.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }

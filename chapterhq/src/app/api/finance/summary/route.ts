@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest) {
 
     return apiResponse.success(summary);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     return apiResponse.serverError();

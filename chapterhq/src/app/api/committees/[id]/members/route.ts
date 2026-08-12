@@ -51,8 +51,8 @@ export async function GET(
     );
 
     return apiResponse.success(result);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
@@ -97,8 +97,8 @@ export async function POST(
     );
 
     return apiResponse.created(assignment, "Member assigned to committee successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {

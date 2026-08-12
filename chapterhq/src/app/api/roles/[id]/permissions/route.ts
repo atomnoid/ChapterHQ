@@ -27,7 +27,7 @@ export async function GET(
 
     return NextResponse.json(permissions, { status: 200 });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     if (error instanceof RoleNotFoundError) {
@@ -71,7 +71,7 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     if (error instanceof RoleNotFoundError) {

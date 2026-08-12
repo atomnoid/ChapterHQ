@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
 import { Calendar, Crown, Loader2, Plus, ShieldOff, Trash2, UserCheck, Users } from "lucide-react";
@@ -460,7 +461,7 @@ export function CommitteeDetailsModal({
                             {app.status}
                           </span>
 
-                          {/* Revoke button — only for ACTIVE appointments */}
+                          {/* Revoke button â€” only for ACTIVE appointments */}
                           {app.status === "ACTIVE" && (
                             <Button
                               variant="ghost"

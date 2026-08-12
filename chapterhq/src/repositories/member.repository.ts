@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
+import { MemberStatus, Prisma } from "@prisma/client";
 
 interface CreateMemberData {
   organizationId: string;
@@ -30,7 +31,7 @@ export class MemberRepository {
   }
 
   async findActiveByUserId(userId: string, activeOrganizationId?: string) {
-    const whereClause: any = {
+    const whereClause: Prisma.MemberWhereInput = {
       userId,
       status: "ACTIVE",
     };
@@ -82,9 +83,9 @@ export class MemberRepository {
   }
 
   async list(
-    params: PaginationParams & { organizationId: string; status?: any; activeCommitteeId?: string | null },
+    params: PaginationParams & { organizationId: string; status?: MemberStatus; activeCommitteeId?: string | null },
   ) {
-    const whereClause: any = {
+    const whereClause: Prisma.MemberWhereInput = {
       organizationId: params.organizationId,
       // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
@@ -138,7 +139,7 @@ export class MemberRepository {
     return { total, items };
   }
 
-  async update(id: string, organizationId: string, data: { status?: any }) {
+  async update(id: string, organizationId: string, data: { status?: MemberStatus }) {
     return prisma.member.update({
       where: {
         id,
@@ -180,4 +181,3 @@ export class MemberRepository {
     return final;
   }
 }
-

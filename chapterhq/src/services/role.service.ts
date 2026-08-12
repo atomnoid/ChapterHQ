@@ -3,6 +3,8 @@ import { UserRoleRepository } from "@/repositories/user-role.repository";
 import { DEFAULT_ORG_ROLES, OWNER_ROLE_NAME } from "@/constants/roles";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 import { logActivity } from "@/lib/audit-logger";
+import { PermissionRepository } from "@/repositories/permission.repository";
+import { RoleScope } from "@prisma/client";
 
 export class RoleNotFoundError extends Error {
   constructor(nameOrId: string) {
@@ -112,7 +114,7 @@ export class RoleService {
     return role;
   }
 
-  async createRole(organizationId: string, data: { name: string; description?: string; scope?: any }, actorUserId?: string, activeCommitteeId?: string | null) {
+  async createRole(organizationId: string, data: { name: string; description?: string; scope?: RoleScope }, actorUserId?: string, activeCommitteeId?: string | null) {
     const prefixedName = activeCommitteeId ? `[committeeId:${activeCommitteeId}] ${data.name}` : data.name;
     const nameExists = await this.roleRepository.existsByName(organizationId, prefixedName);
     if (nameExists) {
@@ -141,7 +143,7 @@ export class RoleService {
     return { ...role, name: cleanName };
   }
 
-  async updateRole(id: string, organizationId: string, data: { name?: string; description?: string; scope?: any }, actorUserId?: string) {
+  async updateRole(id: string, organizationId: string, data: { name?: string; description?: string; scope?: RoleScope }, actorUserId?: string) {
     const role = await this.roleRepository.findById(id, organizationId);
     if (!role) {
       throw new RoleNotFoundError(id);
@@ -221,14 +223,13 @@ export class RoleService {
     });
 
     // 2. Fetch original permission mappings
-    const { PermissionRepository } = require("@/repositories/permission.repository");
     const permissionRepo = new PermissionRepository();
     const sourcePermissions = await permissionRepo.findRolePermissions(id);
 
     // 3. Duplicate permission mappings
     if (sourcePermissions.length > 0) {
       await permissionRepo.createRolePermissions(
-        sourcePermissions.map((rp: any) => ({
+        sourcePermissions.map((rp) => ({
           roleId: newRole.id,
           permissionId: rp.permissionId,
         }))

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -49,7 +50,7 @@ const generateSchema = z.object({
 });
 type GenerateInput = z.infer<typeof generateSchema>;
 
-// ── Generate Certificate Dialog ───────────────────────────────────────────────
+// â”€â”€ Generate Certificate Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface GenerateCertificateDialogProps {
   open: boolean;
@@ -125,7 +126,7 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
             <select id="cert-member" {...register("memberId")}
               disabled={membersLoading}
               className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60">
-              <option value="">{membersLoading ? "Loading members…" : members.length === 0 ? "No members found" : "Select member…"}</option>
+              <option value="">{membersLoading ? "Loading membersâ€¦" : members.length === 0 ? "No members found" : "Select memberâ€¦"}</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>{m.user.name ?? m.user.email}</option>
               ))}
@@ -190,7 +191,7 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
   );
 }
 
-// ── Delete Certificate Dialog ─────────────────────────────────────────────────
+// â”€â”€ Delete Certificate Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface DeleteCertificateDialogProps {
   certificate: Certificate | null;

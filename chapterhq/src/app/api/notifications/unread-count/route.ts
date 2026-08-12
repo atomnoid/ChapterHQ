@@ -17,8 +17,8 @@ export async function GET(_request: NextRequest) {
     const count = await notificationService.getUnreadCount(context.organizationId, context.activeCommitteeId ?? null);
 
     return apiResponse.success({ count });
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     return apiResponse.serverError();
   }
 }

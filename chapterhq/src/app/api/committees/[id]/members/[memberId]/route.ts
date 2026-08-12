@@ -42,8 +42,8 @@ export async function DELETE(
     );
 
     return apiResponse.success(null, "Member removed from committee successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof CommitteeNotFoundError) {

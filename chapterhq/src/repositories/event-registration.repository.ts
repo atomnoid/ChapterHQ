@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { RegistrationStatus } from "@prisma/client";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
 
@@ -58,7 +59,7 @@ export class EventRegistrationRepository {
   }
 
   async list(eventId: string, params: PaginationParams) {
-    const whereClause: any = {
+    const whereClause: Prisma.EventRegistrationWhereInput = {
       eventId,
       // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };

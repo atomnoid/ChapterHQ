@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
 
+type DashboardActivity = {
+  type: string;
+  timestamp: Date;
+  details: Record<string, string | null | undefined>;
+};
+
 export class DashboardRepository {
   async getSummary(organizationId: string, memberId: string, activeCommitteeId: string | null = null) {
     // If a committee is active, restrict summary to the committee's scope.
@@ -124,7 +130,7 @@ export class DashboardRepository {
     const org = organization?.deletedAt ? null : organization;
 
     // Format activities
-    const activities: any[] = [];
+    const activities: DashboardActivity[] = [];
 
     members.forEach((m) => {
       const type = m.createdAt.getTime() === m.updatedAt.getTime() ? "member_created" : "member_updated";

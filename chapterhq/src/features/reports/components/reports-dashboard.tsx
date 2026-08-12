@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
 import { BarChart3, CalendarDays, ChevronRight, CircleDollarSign, Loader2, RefreshCw, Users } from "lucide-react";

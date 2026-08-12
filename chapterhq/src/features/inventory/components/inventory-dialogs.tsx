@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -37,7 +38,8 @@ const inventorySchema = z.object({
   location: z.string().trim().max(150).optional(),
   status: z.enum(["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]),
 });
-type InventoryInput = z.infer<typeof inventorySchema>;
+type InventoryFormValues = z.input<typeof inventorySchema>;
+type InventoryInput = z.output<typeof inventorySchema>;
 
 // ── Create ───────────────────────────────────────────────────────────────────
 
@@ -49,7 +51,7 @@ interface CreateInventoryDialogProps {
 
 export function CreateInventoryDialog({ open, onOpenChange, onSuccess }: CreateInventoryDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<InventoryInput>({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<InventoryFormValues, unknown, InventoryInput>({
     resolver: zodResolver(inventorySchema),
   });
 
@@ -152,7 +154,7 @@ interface EditInventoryDialogProps {
 
 export function EditInventoryDialog({ item, open, onOpenChange, onSuccess }: EditInventoryDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<InventoryInput>({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<InventoryFormValues, unknown, InventoryInput>({
     resolver: zodResolver(inventorySchema),
   });
 

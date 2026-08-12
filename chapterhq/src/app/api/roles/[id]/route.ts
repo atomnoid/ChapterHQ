@@ -31,7 +31,7 @@ export async function GET(
 
     return apiResponse.success(role);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof RoleNotFoundError) {
@@ -67,7 +67,7 @@ export async function PATCH(
 
     return apiResponse.success(updatedRole, "Role updated successfully.");
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
@@ -104,7 +104,7 @@ export async function DELETE(
 
     return apiResponse.success(null, "Role deleted successfully.");
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof RoleNotFoundError) {

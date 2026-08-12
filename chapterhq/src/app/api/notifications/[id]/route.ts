@@ -21,8 +21,8 @@ export async function DELETE(
     await notificationService.deleteNotification(id, authContext.organizationId, authContext.activeCommitteeId);
 
     return apiResponse.success(null, "Notification deleted successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof NotificationNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
 
 export interface CreateCertificateData {
@@ -113,7 +114,7 @@ export class CertificateRepository {
   }
 
   async list(params: PaginationParams & { organizationId: string; activeCommitteeId?: string | null }) {
-    const whereClause: any = {
+    const whereClause: Prisma.CertificateWhereInput = {
       organizationId: params.organizationId,
       deletedAt: null,
     };

@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 
-const db = prisma as any;
 
 interface MonthBucket {
   month: string;
@@ -142,13 +141,13 @@ export class ReportRepository {
     const currentMonthStart = months[months.length - 1];
 
     // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
-    const allMembers = await db.member.findMany({
+    const allMembers = await prisma.member.findMany({
       where: { organizationId },
       select: { status: true, joinedAt: true, deletedAt: true },
     });
 
     // Post-filter soft-deleted records in JS.
-    const members = allMembers.filter((m: any) => !m.deletedAt);
+    const members = allMembers.filter((m) => !m.deletedAt);
 
     const monthlyMap = buildMonthMap(months, () => ({ joined: 0 }));
 
@@ -203,14 +202,14 @@ export class ReportRepository {
 
     // MongoDB Prisma bug: deletedAt: null (including nested relation filters) returns no results.
     const [allEvents, allRegistrations, allAttendanceRows] = await Promise.all([
-      db.event.findMany({
+      prisma.event.findMany({
         where: {
           organizationId,
           ...(committeeId ? { committeeId } : {}),
         },
         select: { status: true, createdAt: true, deletedAt: true },
       }),
-      db.eventRegistration.findMany({
+      prisma.eventRegistration.findMany({
         where: {
           event: {
             organizationId,
@@ -219,7 +218,7 @@ export class ReportRepository {
         },
         select: { registeredAt: true, deletedAt: true },
       }),
-      db.attendance.findMany({
+      prisma.attendance.findMany({
         where: {
           event: {
             organizationId,
@@ -231,10 +230,10 @@ export class ReportRepository {
     ]);
 
     // Post-filter soft-deleted records in JS.
-    const events = allEvents.filter((e: any) => !e.deletedAt);
-    const registrations = allRegistrations.filter((r: any) => !r.deletedAt);
+    const events = allEvents.filter((e) => !e.deletedAt);
+    const registrations = allRegistrations.filter((r) => !r.deletedAt);
     const attendanceRecords = allAttendanceRows.filter(
-      (attendance: any) => !attendance.event?.deletedAt,
+      (attendance) => !attendance.event?.deletedAt,
     ).length;
 
     const monthlyMap = buildMonthMap(months, () => ({ created: 0, registrations: 0 }));
@@ -296,7 +295,7 @@ export class ReportRepository {
     const firstMonthStart = months[0];
 
     // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
-    const allRecords = await db.financeRecord.findMany({
+    const allRecords = await prisma.financeRecord.findMany({
       where: {
         organizationId,
         ...(committeeId ? { committeeId } : {}),
@@ -305,7 +304,7 @@ export class ReportRepository {
     });
 
     // Post-filter soft-deleted records in JS.
-    const records = allRecords.filter((r: any) => !r.deletedAt);
+    const records = allRecords.filter((r) => !r.deletedAt);
 
     const monthlyMap = buildMonthMap(months, () => ({ income: 0, expense: 0, net: 0, transactions: 0 }));
 
@@ -363,7 +362,7 @@ export class ReportRepository {
     const firstMonthStart = months[0];
 
     // MongoDB Prisma bug: nested relation filter { event: { deletedAt: null } } returns no results.
-    const allRecords = await db.attendance.findMany({
+    const allRecords = await prisma.attendance.findMany({
       where: {
         event: {
           organizationId,
@@ -379,7 +378,7 @@ export class ReportRepository {
 
     // Post-filter records from soft-deleted events because MongoDB Prisma
     // cannot reliably apply nested deletedAt: null relation filters.
-    const records = allRecords.filter((record: any) => !record.event?.deletedAt);
+    const records = allRecords.filter((record) => !record.event?.deletedAt);
 
     const monthlyMap = buildMonthMap(months, () => ({ present: 0, absent: 0, excused: 0, total: 0, attendanceRate: 0 }));
 

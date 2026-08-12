@@ -3,6 +3,9 @@ import { InvitationRepository } from "@/repositories/invitation.repository";
 import { RoleRepository } from "@/repositories/role.repository";
 import { CommitteeRepository } from "@/repositories/committee.repository";
 import { logActivity } from "@/lib/audit-logger";
+import { isCommitteeHead, isPresident } from "@/lib/committee-auth";
+import { PermissionDeniedError } from "@/types/errors";
+import { RoleNotFoundError } from "@/services/role.service";
 
 export class DuplicatePendingInvitationError extends Error {
   constructor() {
@@ -50,7 +53,6 @@ export class InvitationService {
     if (params.roleId) {
       const role = await this.roleRepository.findById(params.roleId, params.organizationId);
       if (!role) {
-        const { RoleNotFoundError } = require("@/services/role.service");
         throw new RoleNotFoundError(params.roleId);
       }
     }
@@ -64,11 +66,9 @@ export class InvitationService {
         finalCommitteeId = undefined;
       } else {
         // Verify actor can manage that committee
-        const { isPresident, isCommitteeHead } = require("@/lib/committee-auth");
         const isPres = await isPresident(params.actorId, params.organizationId);
         const isHead = await isCommitteeHead(params.actorId, params.organizationId, finalCommitteeId);
         if (!isPres && !isHead) {
-          const { PermissionDeniedError } = require("@/types/errors");
           throw new PermissionDeniedError();
         }
       }

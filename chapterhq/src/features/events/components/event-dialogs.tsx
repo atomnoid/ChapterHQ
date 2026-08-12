@@ -57,7 +57,8 @@ const createSchema = z.object({
   registrationRequired: z.boolean().optional().default(false),
   status: z.enum(["DRAFT", "PUBLISHED", "COMPLETED", "CANCELLED"]).optional().default("DRAFT"),
 });
-type CreateInput = z.infer<typeof createSchema>;
+type CreateFormValues = z.input<typeof createSchema>;
+type CreateInput = z.output<typeof createSchema>;
 
 const editSchema = z.object({
   title: z
@@ -86,7 +87,8 @@ const editSchema = z.object({
   registrationRequired: z.boolean().optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "COMPLETED", "CANCELLED"]).optional(),
 });
-type EditInput = z.infer<typeof editSchema>;
+type EditFormValues = z.input<typeof editSchema>;
+type EditInput = z.output<typeof editSchema>;
 
 function toDateInputValue(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -109,7 +111,7 @@ export function CreateEventDialog({ open, onOpenChange, onSuccess }: CreateEvent
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<CreateInput>({ resolver: zodResolver(createSchema) });
+  } = useForm<CreateFormValues, unknown, CreateInput>({ resolver: zodResolver(createSchema) });
 
   const registrationRequiredVal = watch("registrationRequired");
 
@@ -275,7 +277,7 @@ export function EditEventDialog({ event, open, onOpenChange, onSuccess }: EditEv
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<EditInput>({ resolver: zodResolver(editSchema) });
+  } = useForm<EditFormValues, unknown, EditInput>({ resolver: zodResolver(editSchema) });
 
   const registrationRequiredVal = watch("registrationRequired");
 

@@ -26,8 +26,8 @@ export async function GET() {
     const coreMembers = await coreMemberService.list(context.organizationId, context.activeCommitteeId);
 
     return apiResponse.success(coreMembers);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     return apiResponse.serverError();
@@ -55,8 +55,8 @@ export async function POST(request: Request) {
     );
 
     return apiResponse.created(record, "Core Member added successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {

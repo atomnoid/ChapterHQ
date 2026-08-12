@@ -6,6 +6,7 @@ import { createOrganizationSchema } from "@/validators/organization.validator";
 import type { CreateOrganizationInput } from "@/validators/organization.validator";
 import { z } from "zod";
 import { logActivity } from "@/lib/audit-logger";
+import { OrganizationStatus } from "@prisma/client";
 
 const organizationIdSchema = z
   .string()
@@ -182,7 +183,7 @@ export class OrganizationService {
     return this.repository.delete(validatedId);
   }
 
-  async updateSettings(id: string, data: { name?: string; slug?: string; description?: string; status?: any }, userId?: string) {
+  async updateSettings(id: string, data: { name?: string; slug?: string; description?: string; status?: OrganizationStatus }, userId?: string) {
     const existing = await this.repository.findById(id);
     if (!existing) {
       throw new OrganizationNotFoundError();

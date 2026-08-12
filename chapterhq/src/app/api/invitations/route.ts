@@ -26,9 +26,9 @@ export async function GET(request: Request) {
 
     const { apiResponse } = await import("@/lib/api-response");
     return apiResponse.success(invitations);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { apiResponse } = await import("@/lib/api-response");
-    if (error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     return apiResponse.serverError();
@@ -59,9 +59,9 @@ export async function POST(request: Request) {
 
     const { apiResponse } = await import("@/lib/api-response");
     return apiResponse.created(invitation, "Invitation created successfully.");
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { apiResponse } = await import("@/lib/api-response");
-    if (error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {

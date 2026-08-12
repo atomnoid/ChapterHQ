@@ -23,8 +23,8 @@ export async function GET(request: Request) {
     );
 
     return NextResponse.json(summary, { status: 200 });
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     return NextResponse.json({ message: "Internal server error." }, { status: 500 });

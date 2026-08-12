@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
-import { AppointmentStatus } from "@prisma/client";
+import { AppointmentStatus, Prisma } from "@prisma/client";
 
 interface CreateAppointmentData {
   organizationId: string;
@@ -70,7 +70,7 @@ export class AppointmentRepository {
   }
 
   async list(params: PaginationParams & { organizationId: string; committeeId?: string; memberId?: string; status?: AppointmentStatus }) {
-    const whereClause: any = {
+    const whereClause: Prisma.AppointmentWhereInput = {
       organizationId: params.organizationId,
     };
 

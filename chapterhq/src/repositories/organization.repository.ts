@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { CreateOrganizationInput } from "@/validators/organization.validator";
+import type { OrganizationStatus } from "@prisma/client";
 
 export class OrganizationRepository {
   async create(data: CreateOrganizationInput) {
@@ -57,7 +58,7 @@ export class OrganizationRepository {
     return !!org;
   }
 
-  async update(id: string, data: { name?: string; slug?: string; description?: string; status?: any }) {
+  async update(id: string, data: { name?: string; slug?: string; description?: string; status?: OrganizationStatus }) {
     return prisma.organization.update({
       where: {
         id,

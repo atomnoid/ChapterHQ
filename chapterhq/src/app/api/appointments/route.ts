@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
     );
 
     return apiResponse.success(result);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
     );
 
     return apiResponse.created(appointment, "Appointment created successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }

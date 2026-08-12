@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     return apiResponse.success(result);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     return apiResponse.created(record, "Finance record created successfully.");
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {

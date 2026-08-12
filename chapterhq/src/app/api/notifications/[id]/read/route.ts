@@ -21,8 +21,8 @@ export async function PATCH(
     const notification = await notificationService.markAsRead(id, authContext.organizationId, authContext.activeCommitteeId);
 
     return apiResponse.success(notification, "Notification marked as read successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof NotificationNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }

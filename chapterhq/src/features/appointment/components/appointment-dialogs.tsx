@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -17,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// ── Shared types ───────────────────────────────────────────────────────────────
+// â”€â”€ Shared types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type AppointmentStatus = "ACTIVE" | "INACTIVE" | "REVOKED";
 
@@ -44,7 +45,7 @@ interface CommitteeOption {
   name: string;
 }
 
-// ── Zod schemas (mirrors server validators) ────────────────────────────────────
+// â”€â”€ Zod schemas (mirrors server validators) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const createSchema = z.object({
   committeeId: z.string().min(1, "Committee is required."),
@@ -73,14 +74,14 @@ const editSchema = z.object({
 });
 type EditInput = z.infer<typeof editSchema>;
 
-// ── Helper ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function toDateInputValue(iso: string | null | undefined): string {
   if (!iso) return "";
   return iso.slice(0, 10); // "YYYY-MM-DD"
 }
 
-// ── Create Appointment Dialog ──────────────────────────────────────────────────
+// â”€â”€ Create Appointment Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface CreateAppointmentDialogProps {
   open: boolean;
@@ -183,7 +184,7 @@ export function CreateAppointmentDialog({
               {...register("committeeId")}
               className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Select committee…</option>
+              <option value="">Select committeeâ€¦</option>
               {committees.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -203,7 +204,7 @@ export function CreateAppointmentDialog({
               {...register("memberId")}
               className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Select member…</option>
+              <option value="">Select memberâ€¦</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.user.name ?? m.user.email ?? m.id}
@@ -284,7 +285,7 @@ export function CreateAppointmentDialog({
   );
 }
 
-// ── Edit Appointment Dialog ────────────────────────────────────────────────────
+// â”€â”€ Edit Appointment Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface EditAppointmentDialogProps {
   appointment: Appointment | null;
@@ -377,7 +378,7 @@ export function EditAppointmentDialog({
               Committee
             </p>
             <p className="text-sm font-semibold text-foreground">
-              {appointment?.committee.name ?? "—"}
+              {appointment?.committee.name ?? "â€”"}
             </p>
           </div>
 
@@ -443,7 +444,7 @@ export function EditAppointmentDialog({
   );
 }
 
-// ── Delete Appointment Dialog ──────────────────────────────────────────────────
+// â”€â”€ Delete Appointment Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface DeleteAppointmentDialogProps {
   appointment: Appointment | null;

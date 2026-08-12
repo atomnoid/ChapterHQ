@@ -129,7 +129,7 @@ export function EditRoleDialog({ role, open, onOpenChange, onSuccess }: EditRole
             />
             {isPresident && (
               <p className="text-xs text-secondary-foreground">
-                This label is shown in the UI. The internal role identity ("Admin" or "President") is used for authorization and cannot be changed.
+                This label is shown in the UI. The internal role identity (&quot;Admin&quot; or &quot;President&quot;) is used for authorization and cannot be changed.
               </p>
             )}
             {errors.description && (

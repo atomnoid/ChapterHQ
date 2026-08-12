@@ -52,8 +52,8 @@ export async function GET() {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    if (error.name === "OrganizationContextNotFoundError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "OrganizationContextNotFoundError") {
       return NextResponse.json(
         { message: "No active organization found." },
         { status: 404 }

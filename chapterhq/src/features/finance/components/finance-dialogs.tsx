@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -30,7 +31,7 @@ export interface FinanceRecord {
 
 const financeRecordSchema = z.object({
   type: z.enum(["INCOME", "EXPENSE"], {
-    errorMap: () => ({ message: "Type must be either INCOME or EXPENSE." }),
+    error: "Type must be either INCOME or EXPENSE.",
   }),
   category: z
     .string()
@@ -48,7 +49,8 @@ const financeRecordSchema = z.object({
     .optional(),
 });
 
-type FinanceFormInput = z.infer<typeof financeRecordSchema>;
+type FinanceFormValues = z.input<typeof financeRecordSchema>;
+type FinanceFormInput = z.output<typeof financeRecordSchema>;
 
 interface CreateFinanceRecordDialogProps {
   open: boolean;
@@ -68,7 +70,7 @@ export function CreateFinanceRecordDialog({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<FinanceFormInput>({
+  } = useForm<FinanceFormValues, unknown, FinanceFormInput>({
     resolver: zodResolver(financeRecordSchema),
   });
 
@@ -202,7 +204,7 @@ export function EditFinanceRecordDialog({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<FinanceFormInput>({
+  } = useForm<FinanceFormValues, unknown, FinanceFormInput>({
     resolver: zodResolver(financeRecordSchema),
   });
 

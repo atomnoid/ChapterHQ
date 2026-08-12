@@ -157,10 +157,7 @@ export class EventService {
       throw new EventNotFoundError();
     }
 
-    // Explicitly omit committeeId from data to prevent reassignment
-    const { committeeId, ...updateData } = data as any;
-
-    const updated = await this.repository.update(id, organizationId, updateData);
+    const updated = await this.repository.update(id, organizationId, data);
 
     if (actorUserId) {
       await logActivity(
@@ -169,7 +166,7 @@ export class EventService {
         "event",
         id,
         updated.title,
-        data
+        { ...data }
       );
     }
 

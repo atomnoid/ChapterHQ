@@ -24,7 +24,7 @@ export async function GET(
 
     return apiResponse.success(document);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof DocumentNotFoundError) {
@@ -52,7 +52,7 @@ export async function DELETE(
 
     return apiResponse.success(null, "Document deleted successfully.");
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof DocumentNotFoundError) {

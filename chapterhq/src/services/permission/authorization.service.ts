@@ -3,6 +3,11 @@ import { UserRoleRepository } from "@/repositories/user-role.repository";
 import { PermissionRepository } from "@/repositories/permission.repository";
 import { PermissionDeniedError } from "@/types/errors";
 
+type ResolvedPermission = {
+  resource: string;
+  action: string;
+};
+
 export class AuthorizationService {
   constructor(
     private readonly contextService = new OrganizationContextService(),
@@ -49,7 +54,7 @@ export class AuthorizationService {
     const context = await this.resolveContext(userId);
     const roles = await this.resolveCurrentRoles(userId);
     const roleIds = roles.map(r => r.id);
-    let permissions: any[] = [];
+    let permissions: ResolvedPermission[] = [];
     
     if (roleIds.length > 0) {
       const rolePermissions = await this.permissionRepository.findRolePermissionsByRoleIds(roleIds);

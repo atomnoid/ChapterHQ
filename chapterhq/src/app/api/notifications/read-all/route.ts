@@ -17,8 +17,8 @@ export async function PATCH(_request: NextRequest) {
     await notificationService.markAllAsRead(context.organizationId, context.activeCommitteeId ?? null);
 
     return apiResponse.success(null, "All notifications marked as read.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     return apiResponse.serverError();
   }
 }

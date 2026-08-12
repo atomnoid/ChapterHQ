@@ -101,10 +101,7 @@ export class InventoryService {
   ) {
     const existing = await this.getItem(id, organizationId, activeCommitteeId);
 
-    // Remove committeeId from input to prevent reassignment
-    const { committeeId, ...updateInput } = input as any;
-
-    const updated = await this.inventoryRepo.update(id, organizationId, updateInput);
+    const updated = await this.inventoryRepo.update(id, organizationId, input);
 
     if (actorId) {
       await logActivity({

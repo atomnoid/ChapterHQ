@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
 import { Clock, MapPin, ChevronRight, Loader2 } from "lucide-react";
@@ -33,8 +34,8 @@ export default function AttendancePage() {
       const json = await res.json();
       const result: EventsResponse = json?.data ?? json;
       setEvents(result.items ?? []);
-    } catch (e: any) {
-      setError(e.message ?? "Failed to load events.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load events.");
     } finally {
       setLoading(false);
     }

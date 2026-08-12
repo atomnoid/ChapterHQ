@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import type { RoleScope } from "@prisma/client";
+import type { Prisma, RoleScope } from "@prisma/client";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
+import { randomBytes } from "crypto";
 
 interface CreateRoleData {
   organizationId: string;
@@ -22,7 +23,6 @@ export class RoleRepository {
   }
 
   async createMany(roles: CreateRoleData[]) {
-    const { randomBytes } = require("crypto");
     return prisma.role.createMany({
       data: roles.map((r) => ({
         id: randomBytes(12).toString("hex"),
@@ -73,7 +73,7 @@ export class RoleRepository {
   }
 
   async listByOrganization(params: PaginationParams & { organizationId: string }) {
-    const whereClause: any = {
+    const whereClause: Prisma.RoleWhereInput = {
       organizationId: params.organizationId,
       // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
@@ -105,7 +105,7 @@ export class RoleRepository {
     return { total, items };
   }
 
-  async update(id: string, organizationId: string, data: { name?: string; description?: string; scope?: any }) {
+  async update(id: string, organizationId: string, data: { name?: string; description?: string; scope?: RoleScope }) {
     return prisma.role.update({
       where: {
         id,

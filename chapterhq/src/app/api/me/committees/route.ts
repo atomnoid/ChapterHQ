@@ -37,7 +37,7 @@ export async function GET() {
       (ur) => !ur.role.deletedAt && (ur.role.name === "Admin" || ur.role.name === "President")
     );
 
-    let committees;
+    let committees: { id: string; name: string; description: string | null }[];
 
     if (isPresident) {
       // Presidents can access every non-deleted committee in the organization.
@@ -81,7 +81,7 @@ export async function GET() {
       committees.map((c) => ({
         id: c.id,
         name: c.name,
-        description: (c as any).description ?? null,
+        description: c.description ?? null,
       }))
     );
   } catch {

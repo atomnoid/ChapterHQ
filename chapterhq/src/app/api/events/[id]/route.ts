@@ -23,8 +23,8 @@ export async function GET(
     const event = await eventService.getEvent(id, authContext.organizationId, authContext.activeCommitteeId);
 
     return apiResponse.success(event);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }
@@ -54,8 +54,8 @@ export async function PATCH(
     );
 
     return apiResponse.success(updated, "Event updated successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
@@ -79,8 +79,8 @@ export async function DELETE(
     await eventService.deleteEvent(id, authContext.organizationId, session.user.id, authContext.activeCommitteeId);
 
     return apiResponse.success(null, "Event deleted successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }

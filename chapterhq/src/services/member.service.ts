@@ -1,6 +1,7 @@
 import { MemberRepository } from "@/repositories/member.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 import { logActivity } from "@/lib/audit-logger";
+import { MemberStatus } from "@prisma/client";
 
 export class MemberAlreadyExistsError extends Error {
   constructor() {
@@ -46,7 +47,7 @@ export class MemberService {
     return member;
   }
 
-  async getMembers(params: PaginationQuery & { organizationId: string; status?: any; activeCommitteeId?: string | null }) {
+  async getMembers(params: PaginationQuery & { organizationId: string; status?: MemberStatus; activeCommitteeId?: string | null }) {
     const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.repository.list({
       ...paginationParams,
@@ -66,7 +67,7 @@ export class MemberService {
     return member;
   }
 
-  async updateMember(id: string, organizationId: string, data: { status?: any }, actorUserId?: string) {
+  async updateMember(id: string, organizationId: string, data: { status?: MemberStatus }, actorUserId?: string) {
     const member = await this.repository.findByIdAndOrganization(id, organizationId);
     if (!member) {
       throw new MemberNotFoundError();

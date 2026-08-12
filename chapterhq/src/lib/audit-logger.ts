@@ -1,14 +1,17 @@
 import { AuditLogService } from "@/services/audit-log.service";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 const auditLogService = new AuditLogService();
 
 interface LogContext { userId: string; organizationId: string; }
-interface LegacyLogEntry { organizationId: string; actorId: string; action: string; resource: string; targetId?: string | null; targetName?: string | null; metadata?: unknown; }
+type AuditMetadata = Prisma.InputJsonValue;
+
+interface LegacyLogEntry { organizationId: string; actorId: string; action: string; resource: string; targetId?: string | null; targetName?: string | null; metadata?: AuditMetadata; }
 
 export function logActivity(entry: LegacyLogEntry): Promise<void>;
-export function logActivity(context: LogContext, action: string, resource: string, targetId: string | null, targetName: string | null, metadata?: unknown): Promise<void>;
-export async function logActivity(contextOrEntry: LogContext | LegacyLogEntry, action?: string, resource?: string, targetId?: string | null, targetName?: string | null, metadata?: unknown) {
+export function logActivity(context: LogContext, action: string, resource: string, targetId: string | null, targetName: string | null, metadata?: AuditMetadata): Promise<void>;
+export async function logActivity(contextOrEntry: LogContext | LegacyLogEntry, action?: string, resource?: string, targetId?: string | null, targetName?: string | null, metadata?: AuditMetadata) {
   try {
     const legacy = "actorId" in contextOrEntry;
     const context = legacy ? { userId: contextOrEntry.actorId, organizationId: contextOrEntry.organizationId } : contextOrEntry;

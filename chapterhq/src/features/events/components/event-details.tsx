@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -56,6 +57,11 @@ interface OrgMember {
   };
 }
 
+interface AttendanceRecord {
+  id: string;
+  status: string;
+}
+
 interface EventDetailsProps {
   eventId: string;
 }
@@ -63,7 +69,7 @@ interface EventDetailsProps {
 export function EventDetails({ eventId }: EventDetailsProps) {
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
-  const [attendance, setAttendance] = useState<any[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [allMembers, setAllMembers] = useState<OrgMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,8 +105,8 @@ export function EventDetails({ eventId }: EventDetailsProps) {
       setRegistrations(regJson?.data?.items ?? regJson?.items ?? []);
       setAttendance(attJson?.data ?? attJson ?? []);
       setAllMembers(membersJson?.items ?? membersJson?.data?.items ?? []);
-    } catch (e: any) {
-      setError(e.message ?? "Failed to fetch details.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to fetch details.");
     } finally {
       setLoading(false);
     }

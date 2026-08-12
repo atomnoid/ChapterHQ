@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
@@ -19,7 +20,8 @@ import {
   Layers,
   ChevronRight,
   AlertTriangle,
-  Shield
+  Shield,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DASHBOARD_WIDGETS } from "@/config/dashboard-widgets";
@@ -33,8 +35,43 @@ interface QuickAction {
   label: string;
   route: string;
   permission: string;
-  icon: any;
+  icon: LucideIcon;
 }
+
+interface EventSummaryItem {
+  id: string;
+  title: string;
+  startDate?: string;
+  status?: string;
+}
+
+interface NotificationSummaryItem {
+  id: string;
+  title: string;
+  message?: string;
+  createdAt?: string;
+}
+
+interface AuditLogSummaryItem {
+  id: string;
+  actorEmail?: string | null;
+  actorName?: string | null;
+  action: string;
+  resource: string;
+  targetName?: string | null;
+  createdAt: string;
+}
+
+type DashboardApiResponse<T> = {
+  items?: T[];
+  total?: number;
+  data?: {
+    items?: T[];
+    total?: number;
+  };
+};
+
+type FinanceSummary = { totalIncome: number; totalExpense: number; netBalance?: number; balance?: number };
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
@@ -101,7 +138,7 @@ interface MePermissionsResponse {
 export function DashboardContent() {
   const { data: session } = useSession();
 
-  // Stable primitive keys — changes here must trigger a full data re-fetch.
+  // Stable primitive keys Ã¢â‚¬â€ changes here must trigger a full data re-fetch.
   const activeOrganizationId = session?.activeOrganizationId ?? null;
   const activeCommitteeId = session?.activeCommitteeId ?? null;
   
@@ -114,11 +151,11 @@ export function DashboardContent() {
   // Statistics & lists fetched conditionally based on permissions
   const [membersCount, setMembersCount] = useState<number>(0);
   const [rolesCount, setRolesCount] = useState<number>(0);
-  const [financeSummary, setFinanceSummary] = useState<{ totalIncome: number; totalExpense: number; netBalance?: number; balance?: number } | null>(null);
+  const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
   const [inventoryCount, setInventoryCount] = useState<number>(0);
-  const [eventsList, setEventsList] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [eventsList, setEventsList] = useState<EventSummaryItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationSummaryItem[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogSummaryItem[]>([]);
 
   // Current date
   const currentDateString = useMemo(() => {
@@ -148,7 +185,7 @@ export function DashboardContent() {
       const hasPerm = (p: string) => userPermissions.has(p);
 
       // 2. Fetch allowed datasets in parallel
-      const fetches: Promise<any>[] = [];
+      const fetches: Promise<unknown>[] = [];
       const fetchKeys: string[] = [];
 
       if (hasPerm("members:read")) {
@@ -186,35 +223,45 @@ export function DashboardContent() {
       results.forEach((data, index) => {
         const key = fetchKeys[index];
         if (key === "members") {
-          const items = data?.items ?? data?.data?.items ?? [];
-          setMembersCount(data?.total ?? items.length);
+          const response = data as DashboardApiResponse<unknown>;
+          const items = response.items ?? response.data?.items ?? [];
+          setMembersCount(response.total ?? items.length);
         } else if (key === "roles") {
-          setRolesCount(data?.total ?? data?.data?.total ?? 0);
+          const response = data as DashboardApiResponse<unknown>;
+          setRolesCount(response.total ?? response.data?.total ?? 0);
         } else if (key === "finance") {
-          setFinanceSummary(data?.data ?? data);
+          const response = data as { data?: FinanceSummary };
+          if (response.data) {
+            setFinanceSummary(response.data);
+          } else {
+            setFinanceSummary(data as FinanceSummary);
+          }
         } else if (key === "inventory") {
-          const items = data?.items ?? data?.data?.items ?? [];
-          setInventoryCount(data?.total ?? items.length);
+          const response = data as DashboardApiResponse<unknown>;
+          const items = response.items ?? response.data?.items ?? [];
+          setInventoryCount(response.total ?? items.length);
         } else if (key === "events") {
-          const items = data?.items ?? data?.data?.items ?? [];
+          const response = data as DashboardApiResponse<EventSummaryItem>;
+          const items = response.items ?? response.data?.items ?? [];
           setEventsList(items);
         } else if (key === "notifications") {
-          const items = data?.items ?? data?.data?.items ?? [];
+          const response = data as DashboardApiResponse<NotificationSummaryItem>;
+          const items = response.items ?? response.data?.items ?? [];
           setNotifications(items);
         } else if (key === "audit-logs") {
-          const items = data?.items ?? data?.data?.items ?? [];
+          const response = data as DashboardApiResponse<AuditLogSummaryItem>;
+          const items = response.items ?? response.data?.items ?? [];
           setAuditLogs(items);
         }
       });
-    } catch (err: any) {
-      setError(err.message ?? "An unexpected error occurred.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
   };
 
   // Re-fetch whenever the active organization or committee changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchDashboardData();
   }, [activeOrganizationId, activeCommitteeId]);
@@ -274,7 +321,7 @@ export function DashboardContent() {
 
   return (
     <div className="space-y-8">
-      {/* ── Dynamic Welcome Section ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Dynamic Welcome Section Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-6 shadow-[0_20px_60px_rgba(77,54,37,0.06)] sm:p-8">
         <div className="absolute inset-y-0 right-0 -z-10 w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(176,137,104,0.08),transparent_50%)]" />
         
@@ -307,7 +354,7 @@ export function DashboardContent() {
         </div>
       </section>
 
-      {/* ── Dynamic Statistics Rows (Conditional render) ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Dynamic Statistics Rows (Conditional render) Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {meData?.permissions.includes("members:read") && (
           <>
@@ -338,7 +385,7 @@ export function DashboardContent() {
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Ledger Balance</p>
               <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">
-                ₹{Number(financeSummary.netBalance ?? financeSummary.balance ?? 0).toLocaleString()}
+                Ã¢â€šÂ¹{Number(financeSummary.netBalance ?? financeSummary.balance ?? 0).toLocaleString()}
               </p>
             </div>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-emerald-600 bg-emerald-50 border-emerald-100">
@@ -360,7 +407,7 @@ export function DashboardContent() {
         )}
       </div>
 
-      {/* ── Dynamic Quick Actions ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Dynamic Quick Actions Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {allowedQuickActions.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center gap-2">
@@ -390,7 +437,7 @@ export function DashboardContent() {
         </section>
       )}
 
-      {/* ── Main Layout: Widgets Grid vs Activity ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Main Layout: Widgets Grid vs Activity Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Modules Section */}
         <section className="space-y-4 md:col-span-2">
@@ -456,7 +503,7 @@ export function DashboardContent() {
                       </div>
                       <p className="mt-1 text-secondary-foreground leading-normal">
                         Performed <strong className="text-foreground">{log.action}</strong> on {log.resource}{" "}
-                        {log.targetName && <span className="italic">("{log.targetName}")</span>}
+                        {log.targetName && <span className="italic">(&quot;{log.targetName}&quot;)</span>}
                       </p>
                     </div>
                   ))}

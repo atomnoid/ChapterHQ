@@ -27,8 +27,8 @@ export async function GET(
     );
 
     return apiResponse.success(result);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }
@@ -70,8 +70,8 @@ export async function PATCH(
       );
       return apiResponse.success(result, "Attendance marked successfully.");
     }
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }

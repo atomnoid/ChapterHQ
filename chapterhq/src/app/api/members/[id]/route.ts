@@ -26,7 +26,7 @@ export async function GET(
 
     return apiResponse.success(member);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof MemberNotFoundError) {
@@ -62,7 +62,7 @@ export async function PUT(
 
     return apiResponse.success(updatedMember, "Member updated successfully.");
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof ZodError) {
@@ -93,7 +93,7 @@ export async function DELETE(
 
     return apiResponse.success(null, "Member deleted successfully.");
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof MemberNotFoundError) {

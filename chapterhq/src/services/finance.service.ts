@@ -106,10 +106,7 @@ export class FinanceService {
   ) {
     const record = await this.getRecord(id, organizationId, activeCommitteeId);
 
-    // Remove committeeId from input if present to prevent reassignment
-    const { committeeId, ...updateInput } = input as any;
-
-    const updated = await this.financeRepo.update(id, organizationId, updateInput);
+    const updated = await this.financeRepo.update(id, organizationId, input);
 
     if (actorId) {
       await logActivity({

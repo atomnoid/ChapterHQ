@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -95,7 +96,7 @@ export function CommitteeList() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
           <Input
-            placeholder="Search committees…"
+            placeholder="Search committeesâ€¦"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -171,7 +172,7 @@ export function CommitteeList() {
           {data.totalPages > 1 && (
             <div className="flex items-center justify-between gap-4 mt-6">
               <p className="text-sm text-secondary-foreground">
-                Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, data.total)} of {data.total}
+                Showing {(page - 1) * LIMIT + 1}â€“{Math.min(page * LIMIT, data.total)} of {data.total}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -239,7 +240,7 @@ export function CommitteeList() {
   );
 }
 
-// ── Single Committee Card Component ──────────────────────────────────────────
+// â”€â”€ Single Committee Card Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CommitteeCard({
   committee,

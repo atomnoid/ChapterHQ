@@ -23,8 +23,8 @@ export async function DELETE(
     await coreMemberService.remove(id, context.organizationId, session.user.id);
 
     return apiResponse.success(null, "Core Member status removed successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     if (error instanceof CoreMemberNotFoundError) {

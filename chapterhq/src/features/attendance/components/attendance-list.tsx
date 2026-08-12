@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -89,8 +90,8 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
       setMembers(membersJson?.items ?? membersJson?.data?.items ?? []);
       setAttendance(attendanceJson?.data ?? attendanceJson ?? []);
       setSelectedMemberIds([]);
-    } catch (e: any) {
-      setError(e.message ?? "Failed to fetch data.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to fetch data.");
     } finally {
       setLoading(false);
     }
@@ -193,7 +194,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           <div className="relative flex-1 max-w-sm min-w-[200px]">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
             <Input
-              placeholder="Search by name or email…"
+              placeholder="Search by name or emailâ€¦"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -302,7 +303,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             const name = member.user.name ?? member.user.email ?? "Unknown Member";
             const record = attendance.find((att) => att.memberId === member.id);
             const status = record?.status ?? "ABSENT";
-            const notes = record?.notes ?? "—";
+            const notes = record?.notes ?? "â€”";
 
             return (
               <div

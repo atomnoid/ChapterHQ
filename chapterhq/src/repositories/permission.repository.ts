@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { randomBytes } from "crypto";
 
 export class PermissionRepository {
   async ensurePermissionsExist(permissions: { resource: string; action: string }[]) {
@@ -8,7 +9,6 @@ export class PermissionRepository {
     );
 
     if (toCreate.length > 0) {
-      const { randomBytes } = require("crypto");
       await prisma.permission.createMany({
         data: toCreate.map(p => ({
           id: randomBytes(12).toString("hex"),
@@ -47,7 +47,6 @@ export class PermissionRepository {
   }
 
   async createRolePermissions(data: { roleId: string; permissionId: string }[]) {
-    const { randomBytes } = require("crypto");
     return prisma.rolePermission.createMany({
       data: data.map(d => ({
         id: randomBytes(12).toString("hex"),
@@ -58,7 +57,6 @@ export class PermissionRepository {
   }
 
   async replaceRolePermissions(roleId: string, permissionIds: string[]) {
-    const { randomBytes } = require("crypto");
     return prisma.$transaction([
       prisma.rolePermission.deleteMany({
         where: { roleId },

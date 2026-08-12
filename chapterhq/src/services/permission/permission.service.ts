@@ -6,6 +6,13 @@ import {
   SECRETARY_RESOURCES,
   TREASURER_RESOURCES,
 } from "@/constants/permissions";
+import { RoleNotFoundError } from "@/services/role.service";
+
+type PermissionResource = (typeof SECRETARY_RESOURCES)[number] | (typeof TREASURER_RESOURCES)[number];
+
+function isPermissionResource(resource: string): resource is PermissionResource {
+  return [...SECRETARY_RESOURCES, ...TREASURER_RESOURCES].includes(resource as PermissionResource);
+}
 
 export class PermissionService {
   constructor(
@@ -42,7 +49,7 @@ export class PermissionService {
     // Secretary gets specific resources and all actions
     if (secretaryRole) {
       allDbPermissions.forEach(p => {
-        if (SECRETARY_RESOURCES.includes(p.resource as any)) {
+        if (isPermissionResource(p.resource) && SECRETARY_RESOURCES.includes(p.resource)) {
           rolePermissionsData.push({ roleId: secretaryRole.id, permissionId: p.id });
         }
       });
@@ -51,7 +58,7 @@ export class PermissionService {
     // Treasurer gets specific resources and all actions
     if (treasurerRole) {
       allDbPermissions.forEach(p => {
-        if (TREASURER_RESOURCES.includes(p.resource as any)) {
+        if (isPermissionResource(p.resource) && TREASURER_RESOURCES.includes(p.resource)) {
           rolePermissionsData.push({ roleId: treasurerRole.id, permissionId: p.id });
         }
       });
@@ -114,7 +121,6 @@ export class PermissionService {
   async getRolePermissions(organizationId: string, roleId: string) {
     const role = await this.roleRepository.findById(roleId, organizationId);
     if (!role) {
-      const { RoleNotFoundError } = require("@/services/role.service");
       throw new RoleNotFoundError(roleId);
     }
     const rolePermissions = await this.permissionRepository.findRolePermissions(roleId);
@@ -124,7 +130,6 @@ export class PermissionService {
   async updateRolePermissions(organizationId: string, roleId: string, permissionIds: string[]) {
     const role = await this.roleRepository.findById(roleId, organizationId);
     if (!role) {
-      const { RoleNotFoundError } = require("@/services/role.service");
       throw new RoleNotFoundError(roleId);
     }
 

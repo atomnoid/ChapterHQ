@@ -28,8 +28,8 @@ export async function GET(
     const certificate = await certificateService.getCertificate(id, authContext.organizationId);
 
     return apiResponse.success(certificate);
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof CertificateNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }
@@ -58,8 +58,8 @@ export async function PATCH(
     );
 
     return apiResponse.success(updated, "Certificate updated successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
@@ -85,8 +85,8 @@ export async function DELETE(
     await certificateService.deleteCertificate(id, authContext.organizationId, session.user.id);
 
     return apiResponse.success(null, "Certificate deleted successfully.");
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") return apiResponse.forbidden();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof CertificateNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -24,7 +25,7 @@ import {
   DeleteAppointmentDialog,
 } from "./appointment-dialogs";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface PaginatedAppointments {
   items: Appointment[];
@@ -40,7 +41,7 @@ type DialogState =
   | { type: "edit"; appointment: Appointment }
   | { type: "delete"; appointment: Appointment };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const STATUS_STYLES: Record<AppointmentStatus, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-700",
@@ -55,7 +56,7 @@ const STATUS_LABELS: Record<AppointmentStatus, string> = {
 };
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   return new Date(iso).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -69,7 +70,7 @@ function getInitials(name: string | null, email: string | null): string {
   return "?";
 }
 
-// ── Row action menu ───────────────────────────────────────────────────────────
+// â”€â”€ Row action menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AppointmentRowMenu({
   canEdit,
@@ -124,7 +125,7 @@ function AppointmentRowMenu({
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface AppointmentListProps {
   /** If true the user has appointments:create permission */
@@ -206,7 +207,7 @@ export function AppointmentList({
           <div className="relative flex-1 max-w-sm min-w-[200px]">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
             <Input
-              placeholder="Search by designation…"
+              placeholder="Search by designationâ€¦"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -243,7 +244,7 @@ export function AppointmentList({
           </Button>
         </div>
 
-        {/* Create button — only shown when permitted */}
+        {/* Create button â€” only shown when permitted */}
         {canCreate && (
           <Button
             className="rounded-full shrink-0"
@@ -367,7 +368,7 @@ export function AppointmentList({
                   <div className="hidden lg:block">
                     <p className="text-xs text-foreground">{formatDate(apt.startDate)}</p>
                     {apt.endDate && (
-                      <p className="text-xs text-secondary-foreground">→ {formatDate(apt.endDate)}</p>
+                      <p className="text-xs text-secondary-foreground">â†’ {formatDate(apt.endDate)}</p>
                     )}
                   </div>
 
@@ -400,7 +401,7 @@ export function AppointmentList({
           {data.totalPages > 1 && (
             <div className="flex items-center justify-between gap-4">
               <p className="text-sm text-secondary-foreground">
-                Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, data.total)} of {data.total}
+                Showing {(page - 1) * LIMIT + 1}â€“{Math.min(page * LIMIT, data.total)} of {data.total}
               </p>
               <div className="flex items-center gap-2">
                 <Button

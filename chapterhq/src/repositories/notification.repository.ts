@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
+import { Prisma } from "@prisma/client";
 
 export interface CreateNotificationData {
   organizationId: string;
@@ -55,7 +56,7 @@ export class NotificationRepository {
   }
 
   async markAllAsRead(organizationId: string, committeeId?: string | null) {
-    const where: any = { organizationId, isRead: false };
+    const where: Prisma.NotificationWhereInput = { organizationId, isRead: false };
 
     if (committeeId) {
       where.OR = [
@@ -80,7 +81,7 @@ export class NotificationRepository {
   }
 
   async unreadCount(organizationId: string, committeeId?: string | null): Promise<number> {
-    const andClauses: any[] = [
+    const andClauses: Prisma.NotificationWhereInput[] = [
       { organizationId },
       { isRead: false },
     ];
@@ -98,7 +99,7 @@ export class NotificationRepository {
   }
 
   async list(params: PaginationParams & { organizationId: string; memberId?: string; isRead?: boolean; type?: string; targetScope?: string; committeeId?: string | null }) {
-    const andClauses: any[] = [
+    const andClauses: Prisma.NotificationWhereInput[] = [
       { organizationId: params.organizationId }
     ];
 

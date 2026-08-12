@@ -11,7 +11,7 @@ export interface CreateAuditLogData {
   resource: string;
   targetId?: string;
   targetName?: string;
-  metadata?: any;
+  metadata?: Prisma.InputJsonValue;
 }
 
 export class AuditLogRepository {

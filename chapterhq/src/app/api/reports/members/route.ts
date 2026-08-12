@@ -18,7 +18,7 @@ export async function GET() {
 
     return apiResponse.success(report);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }
     return apiResponse.serverError();

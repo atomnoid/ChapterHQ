@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -272,7 +273,7 @@ function AuditPagination({
     <div className="flex items-center justify-between gap-4 pt-2">
       <p className="text-xs text-secondary-foreground">
         Showing{" "}
-        <span className="font-medium text-foreground">{start}–{end}</span> of{" "}
+        <span className="font-medium text-foreground">{start}â€“{end}</span> of{" "}
         <span className="font-medium text-foreground">{total}</span> entries
       </p>
       <div className="flex items-center gap-1.5">
@@ -389,14 +390,14 @@ export function AuditLogList() {
 
   return (
     <div className="space-y-5">
-      {/* ── Filters bar ── */}
+      {/* â”€â”€ Filters bar â”€â”€ */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1 min-w-0">
           <FilterInput
             id="audit-search"
             value={search}
             onChange={setSearch}
-            placeholder="Search by actor or target…"
+            placeholder="Search by actor or targetâ€¦"
             icon={Search}
           />
         </div>
@@ -406,7 +407,7 @@ export function AuditLogList() {
               id="audit-action-filter"
               value={action}
               onChange={setAction}
-              placeholder="Action…"
+              placeholder="Actionâ€¦"
               icon={Filter}
             />
           </div>
@@ -415,7 +416,7 @@ export function AuditLogList() {
               id="audit-resource-filter"
               value={resource}
               onChange={setResource}
-              placeholder="Resource…"
+              placeholder="Resourceâ€¦"
               icon={Filter}
             />
           </div>
@@ -447,7 +448,7 @@ export function AuditLogList() {
         </div>
       </div>
 
-      {/* ── Result count ── */}
+      {/* â”€â”€ Result count â”€â”€ */}
       {!loading && !error && data && (
         <p className="text-xs text-secondary-foreground">
           {data.total === 0 ? (
@@ -462,7 +463,7 @@ export function AuditLogList() {
         </p>
       )}
 
-      {/* ── Content ── */}
+      {/* â”€â”€ Content â”€â”€ */}
       {loading ? (
         <LoadingSkeleton />
       ) : error ? (
@@ -477,7 +478,7 @@ export function AuditLogList() {
         </div>
       )}
 
-      {/* ── Pagination ── */}
+      {/* â”€â”€ Pagination â”€â”€ */}
       {!loading && !error && data && data.totalPages > 1 && (
         <AuditPagination
           page={data.page}

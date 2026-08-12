@@ -33,11 +33,11 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(organization, { status: 200 });
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
-    if (error.name === "OrganizationContextNotFoundError") {
+    if (error instanceof Error && error.name === "OrganizationContextNotFoundError") {
       return NextResponse.json({ message: "No active organization found." }, { status: 404 });
     }
     return NextResponse.json({ message: "Internal server error." }, { status: 500 });
@@ -67,8 +67,8 @@ export async function PATCH(request: Request) {
       { message: "Organization settings updated successfully.", data: updated },
       { status: 200 }
     );
-  } catch (error: any) {
-    if (error.name === "PermissionDeniedError") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     if (error instanceof ZodError) {
