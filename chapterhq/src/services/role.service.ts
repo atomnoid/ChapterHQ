@@ -116,24 +116,31 @@ export class RoleService {
 
   async createRole(organizationId: string, data: { name: string; description?: string; scope?: RoleScope }, actorUserId?: string, activeCommitteeId?: string | null) {
     const prefixedName = activeCommitteeId ? `[committeeId:${activeCommitteeId}] ${data.name}` : data.name;
-    const nameExists = await this.roleRepository.existsByName(organizationId, prefixedName);
-    if (nameExists) {
+    const scope = activeCommitteeId ? "COMMITTEE" : (data.scope ?? "ORGANIZATION");
+    const activeRole = await this.roleRepository.findActiveByOrganizationAndName(organizationId, prefixedName);
+    if (activeRole) {
       throw new DuplicateRoleNameError();
     }
 
-    const role = await this.roleRepository.create({
-      organizationId,
-      name: prefixedName,
-      scope: activeCommitteeId ? "COMMITTEE" : (data.scope ?? "ORGANIZATION"),
-      description: data.description,
-    });
+    const softDeletedRole = await this.roleRepository.findSoftDeletedByOrganizationAndName(organizationId, prefixedName);
+    const role = softDeletedRole
+      ? await this.roleRepository.restore(softDeletedRole.id, organizationId, {
+          scope,
+          description: data.description ?? softDeletedRole.description ?? undefined,
+        })
+      : await this.roleRepository.create({
+          organizationId,
+          name: prefixedName,
+          scope,
+          description: data.description,
+        });
 
     const cleanName = role.name.replace(/^\[committeeId:[^\]]+\]\s*/, "");
 
     if (actorUserId) {
       await logActivity(
         { userId: actorUserId, organizationId },
-        "create",
+        softDeletedRole ? "restore" : "create",
         "role",
         role.id,
         cleanName

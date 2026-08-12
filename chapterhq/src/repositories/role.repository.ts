@@ -42,6 +42,27 @@ export class RoleRepository {
     return role;
   }
 
+  async findManyByOrganizationAndName(organizationId: string, name: string, excludeId?: string) {
+    return prisma.role.findMany({
+      where: {
+        organizationId,
+        name: { equals: name, mode: "insensitive" },
+        NOT: excludeId ? { id: excludeId } : undefined,
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+
+  async findActiveByOrganizationAndName(organizationId: string, name: string, excludeId?: string) {
+    const roles = await this.findManyByOrganizationAndName(organizationId, name, excludeId);
+    return roles.find((role) => !role.deletedAt && role.status === "ACTIVE") ?? null;
+  }
+
+  async findSoftDeletedByOrganizationAndName(organizationId: string, name: string) {
+    const roles = await this.findManyByOrganizationAndName(organizationId, name);
+    return roles.find((role) => !!role.deletedAt) ?? null;
+  }
+
   async findManyByOrganization(organizationId: string) {
     // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
     const roles = await prisma.role.findMany({
@@ -51,15 +72,7 @@ export class RoleRepository {
   }
 
   async existsByName(organizationId: string, name: string, excludeId?: string) {
-    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
-    const role = await prisma.role.findFirst({
-      where: {
-        organizationId,
-        name: { equals: name, mode: "insensitive" },
-        NOT: excludeId ? { id: excludeId } : undefined,
-      },
-    });
-    if (role?.deletedAt || role?.status !== "ACTIVE") return false;
+    const role = await this.findActiveByOrganizationAndName(organizationId, name, excludeId);
     return !!role;
   }
 
@@ -112,6 +125,21 @@ export class RoleRepository {
         organizationId,
       },
       data,
+    });
+  }
+
+  async restore(id: string, organizationId: string, data: { description?: string; scope?: RoleScope }) {
+    return prisma.role.update({
+      where: {
+        id,
+        organizationId,
+      },
+      data: {
+        deletedAt: null,
+        status: "ACTIVE",
+        description: data.description,
+        scope: data.scope,
+      },
     });
   }
 

@@ -372,7 +372,7 @@ model Role {
   userRoles UserRole[]
   rolePermissions RolePermission[]
 
-  @@unique([organizationId, name])
+  @@index([organizationId, name])
 
   @@map("roles")
 }
