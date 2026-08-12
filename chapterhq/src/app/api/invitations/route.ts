@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/permission-enforcer";
 import {
   InvitationService,
   DuplicatePendingInvitationError,
+  InvitationEmailDeliveryError,
 } from "@/services/invitation.service";
 import { RoleNotFoundError } from "@/services/role.service";
 import { createInvitationSchema } from "@/validators/invitation.validator";
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
       email: validatedData.email,
       roleId: validatedData.roleId,
       committeeId: validatedData.committeeId,
+      emailTemplateId: validatedData.emailTemplateId,
       expiresInDays: validatedData.expiresInDays,
       actorId: session.user.id,
     });
@@ -72,6 +74,9 @@ export async function POST(request: Request) {
     }
     if (error instanceof RoleNotFoundError) {
       return apiResponse.notFound(error.message);
+    }
+    if (error instanceof InvitationEmailDeliveryError) {
+      return apiResponse.serverError(error.message);
     }
     return apiResponse.serverError();
   }

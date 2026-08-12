@@ -6,6 +6,11 @@ import { logActivity } from "@/lib/audit-logger";
 import { isCommitteeHead, isPresident } from "@/lib/committee-auth";
 import { PermissionDeniedError } from "@/types/errors";
 import { RoleNotFoundError } from "@/services/role.service";
+import { EmailService } from "@/services/email.service";
+import { prisma } from "@/lib/prisma";
+import type { EmailPrismaClient } from "@/types/email";
+
+const emailPrisma = prisma as unknown as EmailPrismaClient;
 
 export class DuplicatePendingInvitationError extends Error {
   constructor() {
@@ -21,11 +26,19 @@ export class InvitationNotFoundError extends Error {
   }
 }
 
+export class InvitationEmailDeliveryError extends Error {
+  constructor(message: string) {
+    super(`Email could not be sent: ${message}`);
+    this.name = "InvitationEmailDeliveryError";
+  }
+}
+
 export class InvitationService {
   constructor(
     private readonly invitationRepository = new InvitationRepository(),
     private readonly roleRepository = new RoleRepository(),
-    private readonly committeeRepository = new CommitteeRepository()
+    private readonly committeeRepository = new CommitteeRepository(),
+    private readonly emailService = new EmailService()
   ) {}
 
   private generateToken(): string {
@@ -37,6 +50,7 @@ export class InvitationService {
     email: string;
     roleId?: string;
     committeeId?: string;
+    emailTemplateId?: string;
     expiresInDays: number;
     actorId: string;
   }) {
@@ -74,6 +88,16 @@ export class InvitationService {
       }
     }
 
+    let emailTemplateId: string | undefined = params.emailTemplateId;
+    if (emailTemplateId) {
+      const template = await emailPrisma.emailTemplate.findFirst({
+        where: { id: emailTemplateId, organizationId: params.organizationId },
+      });
+      if (!template || template.deletedAt || template.archivedAt || template.type !== "ORGANIZATION_INVITATION") {
+        emailTemplateId = undefined;
+      }
+    }
+
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + params.expiresInDays);
 
@@ -82,9 +106,40 @@ export class InvitationService {
       email: params.email,
       roleId: params.roleId,
       committeeId: finalCommitteeId,
+      emailTemplateId,
       token: this.generateToken(),
       expiresAt,
     });
+
+    try {
+      const [organization, role, committee] = await Promise.all([
+        prisma.organization.findFirst({ where: { id: params.organizationId } }),
+        params.roleId ? prisma.role.findFirst({ where: { id: params.roleId, organizationId: params.organizationId } }) : null,
+        finalCommitteeId ? prisma.committee.findFirst({ where: { id: finalCommitteeId, organizationId: params.organizationId } }) : null,
+      ]);
+
+      const emailResult = await this.emailService.sendInvitationEmail({
+        organizationId: params.organizationId,
+        invitationId: invitation.id,
+        email: invitation.email,
+        token: invitation.token,
+        templateId: emailTemplateId,
+        variables: {
+          organizationName: organization?.name,
+          organizationSlug: organization?.slug,
+          roleName: role?.name,
+          committeeName: committee?.name,
+        },
+      });
+
+      if (!emailResult.success) {
+        throw new InvitationEmailDeliveryError(emailResult.error ?? "Unknown email provider error.");
+      }
+    } catch (error) {
+      console.error("[EmailService] invitation email failed", error instanceof Error ? error.message : error);
+      if (error instanceof InvitationEmailDeliveryError) throw error;
+      throw new InvitationEmailDeliveryError(error instanceof Error ? error.message : "Unknown email provider error.");
+    }
 
     await logActivity(
       { userId: params.actorId, organizationId: params.organizationId },
@@ -95,6 +150,7 @@ export class InvitationService {
       {
         roleId: params.roleId ?? null,
         committeeId: finalCommitteeId ?? null,
+        emailTemplateId: emailTemplateId ?? null,
         expiresAt: expiresAt.toISOString(),
       }
     );

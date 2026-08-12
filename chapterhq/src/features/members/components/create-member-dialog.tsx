@@ -20,12 +20,26 @@ import { Label } from "@/components/ui/label";
 const createSchema = z.object({
   email: z.string().trim().email("Valid email address is required."),
   roleId: z.string().optional(),
+  committeeId: z.string().optional(),
+  emailTemplateId: z.string().optional(),
 });
 type CreateInput = z.infer<typeof createSchema>;
 
 interface RoleOption {
   id: string;
   name: string;
+}
+
+interface CommitteeOption {
+  id: string;
+  name: string;
+}
+
+interface EmailTemplateOption {
+  id: string;
+  name: string;
+  type: string;
+  isActive: boolean;
 }
 
 interface CreateMemberDialogProps {
@@ -37,6 +51,8 @@ interface CreateMemberDialogProps {
 export function CreateMemberDialog({ open, onOpenChange, onSuccess }: CreateMemberDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [committees, setCommittees] = useState<CommitteeOption[]>([]);
+  const [templates, setTemplates] = useState<EmailTemplateOption[]>([]);
 
   const {
     register,
@@ -49,17 +65,22 @@ export function CreateMemberDialog({ open, onOpenChange, onSuccess }: CreateMemb
 
   useEffect(() => {
     if (open) {
-      reset({ email: "", roleId: "" });
-      fetch("/api/roles")
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setRoles(data);
-          } else if (data && Array.isArray(data.items)) {
-            setRoles(data.items);
-          }
+      reset({ email: "", roleId: "", committeeId: "", emailTemplateId: "" });
+      Promise.all([
+        fetch("/api/roles").then((res) => res.json()),
+        fetch("/api/committees?limit=100").then((res) => res.json()),
+        fetch("/api/email-templates?type=ORGANIZATION_INVITATION").then((res) => res.json()),
+      ])
+        .then(([roleData, committeeData, templateData]) => {
+          setRoles(Array.isArray(roleData) ? roleData : roleData?.items ?? roleData?.data?.items ?? []);
+          setCommittees(Array.isArray(committeeData) ? committeeData : committeeData?.items ?? committeeData?.data?.items ?? []);
+          setTemplates(Array.isArray(templateData) ? templateData : templateData?.items ?? templateData?.data?.items ?? []);
         })
-        .catch(() => setRoles([]));
+        .catch(() => {
+          setRoles([]);
+          setCommittees([]);
+          setTemplates([]);
+        });
     }
   }, [open, reset]);
 
@@ -72,11 +93,13 @@ export function CreateMemberDialog({ open, onOpenChange, onSuccess }: CreateMemb
         body: JSON.stringify({
           email: data.email,
           roleId: data.roleId || undefined,
+          committeeId: data.committeeId || undefined,
+          emailTemplateId: data.emailTemplateId || undefined,
         }),
       });
       const json = await res.json();
       if (!res.ok) {
-        setServerError(json.message ?? "Failed to send member invitation.");
+        setServerError(json.message ? `Email could not be sent. ${json.message}` : "Email could not be sent.");
         return;
       }
       onOpenChange(false);
@@ -134,6 +157,42 @@ export function CreateMemberDialog({ open, onOpenChange, onSuccess }: CreateMemb
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {committees.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="member-committee">Committee Assignment (Optional)</Label>
+              <select
+                id="member-committee"
+                {...register("committeeId")}
+                className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">No committee assignment</option>
+                {committees.map((committee) => (
+                  <option key={committee.id} value={committee.id}>
+                    {committee.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {templates.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="member-email-template">Email Template</Label>
+              <select
+                id="member-email-template"
+                {...register("emailTemplateId")}
+                className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Use active organization invitation template</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}{template.isActive ? " (Active)" : ""}
                   </option>
                 ))}
               </select>

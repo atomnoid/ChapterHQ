@@ -5,6 +5,7 @@ interface CreateInvitationData {
   email: string;
   roleId?: string;
   committeeId?: string;
+  emailTemplateId?: string;
   token: string;
   expiresAt: Date;
 }
@@ -17,6 +18,7 @@ export class InvitationRepository {
         email: data.email,
         roleId: data.roleId,
         committeeId: data.committeeId,
+        emailTemplateId: data.emailTemplateId,
         token: data.token,
         expiresAt: data.expiresAt,
       },

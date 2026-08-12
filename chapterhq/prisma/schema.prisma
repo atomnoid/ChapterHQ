@@ -99,6 +99,27 @@ enum PriorityLevel {
   URGENT
 }
 
+enum EmailTemplateType {
+  ORGANIZATION_INVITATION
+  APPOINTMENT_CREATED
+  CERTIFICATE_ISSUED
+  MANUAL
+  EVENT_REMINDER
+}
+
+enum EmailLogStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum EmailSourceType {
+  INVITATION
+  MANUAL
+  APPOINTMENT
+  CERTIFICATE
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION
 //////////////////////////////////////////////////////
@@ -131,6 +152,8 @@ model Organization {
   pages Page[]
   announcements Announcement[]
   coreMembers CoreMember[]
+  emailTemplates EmailTemplate[]
+  emailLogs EmailLog[]
 
   @@map("organizations")
 }
@@ -437,6 +460,7 @@ model Invitation {
   status InvitationStatus @default(PENDING)
 
   expiresAt DateTime
+  emailTemplateId String? @db.ObjectId
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -445,6 +469,62 @@ model Invitation {
   @@unique([organizationId, email, status])
 
   @@map("invitations")
+}
+
+//////////////////////////////////////////////////////
+// EMAIL
+//////////////////////////////////////////////////////
+
+model EmailTemplate {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  name String
+  subject String
+  bodyHtml String
+  type EmailTemplateType
+  isActive Boolean @default(false)
+  archivedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  emailLogs EmailLog[]
+
+  @@index([organizationId, type])
+  @@map("email_templates")
+}
+
+model EmailLog {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+  templateId String? @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  template EmailTemplate? @relation(fields: [templateId], references: [id])
+
+  recipient String
+  subject String
+  type EmailTemplateType
+  sourceType EmailSourceType
+  sourceId String?
+  eventType String?
+  status EmailLogStatus @default(PENDING)
+  providerMessageId String?
+  errorMessage String?
+  sentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, sourceType, sourceId, eventType])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@map("email_logs")
 }
 
 //////////////////////////////////////////////////////

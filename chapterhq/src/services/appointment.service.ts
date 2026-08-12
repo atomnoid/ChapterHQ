@@ -6,6 +6,7 @@ import { logActivity } from "@/lib/audit-logger";
 import { AppointmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { SystemNotificationService } from "@/services/system-notification.service";
+import { EmailService } from "@/services/email.service";
 
 // ─── Domain Errors ────────────────────────────────────────────────────────────
 
@@ -69,7 +70,8 @@ export class AppointmentService {
     private readonly appointmentRepo = new AppointmentRepository(),
     private readonly committeeRepo = new CommitteeRepository(),
     private readonly memberRepo = new MemberRepository(),
-    private readonly systemNotificationService = new SystemNotificationService()
+    private readonly systemNotificationService = new SystemNotificationService(),
+    private readonly emailService = new EmailService()
   ) {}
 
   async createAppointment(
@@ -151,6 +153,13 @@ export class AppointmentService {
       });
     } catch (error) {
       console.error("[SystemNotification] appointment delivery failed", error);
+    }
+
+    try {
+      const result = await this.emailService.sendAppointmentEmail(organizationId, appointment.id);
+      if (!result.success) console.error("[EmailService] appointment email failed", result.error);
+    } catch (error) {
+      console.error("[EmailService] appointment email failed", error instanceof Error ? error.message : error);
     }
 
     if (actorUserId) {

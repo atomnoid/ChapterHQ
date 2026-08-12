@@ -3,6 +3,7 @@ import { MemberRepository } from "@/repositories/member.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 import { logActivity } from "@/lib/audit-logger";
 import { SystemNotificationService } from "@/services/system-notification.service";
+import { EmailService } from "@/services/email.service";
 
 export class CertificateNotFoundError extends Error {
   constructor() {
@@ -29,7 +30,8 @@ export class CertificateService {
   constructor(
     private readonly repository = new CertificateRepository(),
     private readonly memberRepo = new MemberRepository(),
-    private readonly systemNotificationService = new SystemNotificationService()
+    private readonly systemNotificationService = new SystemNotificationService(),
+    private readonly emailService = new EmailService()
   ) {}
 
   async createCertificate(
@@ -78,6 +80,13 @@ export class CertificateService {
       });
     } catch (error) {
       console.error("[SystemNotification] certificate delivery failed", error);
+    }
+
+    try {
+      const result = await this.emailService.sendCertificateEmail(organizationId, certificate.id);
+      if (!result.success) console.error("[EmailService] certificate email failed", result.error);
+    } catch (error) {
+      console.error("[EmailService] certificate email failed", error instanceof Error ? error.message : error);
     }
 
     if (actorUserId) {

@@ -7,6 +7,7 @@ import type { CreateOrganizationInput } from "@/validators/organization.validato
 import { z } from "zod";
 import { logActivity } from "@/lib/audit-logger";
 import { OrganizationStatus } from "@prisma/client";
+import { EmailService } from "@/services/email.service";
 
 const organizationIdSchema = z
   .string()
@@ -37,7 +38,8 @@ export class OrganizationService {
     private readonly repository = new OrganizationRepository(),
     private readonly memberService = new MemberService(),
     private readonly roleService = new RoleService(),
-    private readonly permissionService = new PermissionService()
+    private readonly permissionService = new PermissionService(),
+    private readonly emailService = new EmailService()
   ) {}
 
   async createOrganization(data: CreateOrganizationInput, userId: string) {
@@ -152,6 +154,8 @@ export class OrganizationService {
       organization.id,
       organization.name
     );
+
+    await this.emailService.seedDefaultTemplates(organization.id);
 
     return organization;
   }
