@@ -2,9 +2,7 @@ import { z } from "zod";
 import { TransactionType } from "@prisma/client";
 
 export const createFinanceSchema = z.object({
-  type: z.nativeEnum(TransactionType, {
-    errorMap: () => ({ message: "Type must be either INCOME or EXPENSE." }),
-  }),
+  type: z.nativeEnum(TransactionType, { error: "Type must be either INCOME or EXPENSE." }),
   category: z
     .string()
     .trim()

@@ -28,6 +28,7 @@ interface Role {
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
   _count?: {
+    rolePermissions?: number;
     permissions?: number;
     userRoles?: number;
   };

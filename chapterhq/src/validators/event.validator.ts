@@ -20,7 +20,7 @@ export const createEventSchema = z.object({
     .trim()
     .max(200, "Venue must be 200 characters or less.")
     .optional(),
-  startDate: z.coerce.date({ required_error: "startDate is required." }),
+  startDate: z.coerce.date({ error: "startDate is required." }),
   endDate: z.coerce.date().optional(),
   capacity: z
     .number()

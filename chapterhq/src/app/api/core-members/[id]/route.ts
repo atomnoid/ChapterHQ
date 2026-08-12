@@ -9,7 +9,7 @@ const coreMemberService = new CoreMemberService();
 // DELETE /api/core-members/[id]
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -19,7 +19,8 @@ export async function DELETE(
 
     const { context } = await requirePermission(session.user.id, "members:delete");
 
-    await coreMemberService.remove(params.id, context.organizationId, session.user.id);
+    const { id } = await params;
+    await coreMemberService.remove(id, context.organizationId, session.user.id);
 
     return apiResponse.success(null, "Core Member status removed successfully.");
   } catch (error: any) {

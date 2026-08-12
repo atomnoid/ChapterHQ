@@ -13,7 +13,7 @@ export const createCertificateSchema = z.object({
     .trim()
     .max(1000, "Description must be 1000 characters or less.")
     .optional(),
-  issueDate: z.coerce.date({ required_error: "issueDate is required." }),
+  issueDate: z.coerce.date({ error: "issueDate is required." }),
   expiryDate: z.coerce.date().optional(),
   credentialId: z
     .string()

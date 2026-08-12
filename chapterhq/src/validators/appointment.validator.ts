@@ -12,7 +12,7 @@ export const createAppointmentSchema = z.object({
     .trim()
     .min(2, "Designation must be at least 2 characters.")
     .max(100, "Designation must be 100 characters or less."),
-  startDate: z.coerce.date({ required_error: "startDate is required." }),
+  startDate: z.coerce.date({ error: "startDate is required." }),
   endDate: z.coerce.date().optional(),
   status: appointmentStatusSchema.optional(),
 });
