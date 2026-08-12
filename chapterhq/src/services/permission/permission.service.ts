@@ -1,6 +1,7 @@
 import { PermissionRepository } from "@/repositories/permission.repository";
 import { RoleRepository } from "@/repositories/role.repository";
 import { UserRoleRepository } from "@/repositories/user-role.repository";
+import { MemberRepository } from "@/repositories/member.repository";
 import {
   ALL_PERMISSIONS,
   SECRETARY_RESOURCES,
@@ -18,7 +19,8 @@ export class PermissionService {
   constructor(
     private readonly permissionRepository = new PermissionRepository(),
     private readonly roleRepository = new RoleRepository(),
-    private readonly userRoleRepository = new UserRoleRepository()
+    private readonly userRoleRepository = new UserRoleRepository(),
+    private readonly memberRepository = new MemberRepository()
   ) {}
 
   async seedDefaultPermissionsAndMappings(organizationId: string) {
@@ -79,9 +81,11 @@ export class PermissionService {
   }
 
   async hasPermission(organizationId: string, userId: string, permission: string): Promise<boolean> {
-    const activeRoles = await this.userRoleRepository.findUserRoles(userId);
-    // Filter roles belonging to organization
-    const orgRoles = activeRoles.filter(ur => ur.role.organizationId === organizationId && ur.role.deletedAt === null);
+    const member = await this.memberRepository.findByOrganizationAndUser(organizationId, userId);
+    if (!member || member.status !== "ACTIVE") return false;
+
+    const activeRoles = await this.userRoleRepository.findUserRoles(member.id);
+    const orgRoles = activeRoles.filter(ur => ur.role.organizationId === organizationId && ur.role.status === "ACTIVE");
     if (orgRoles.length === 0) return false;
 
     const roleIds = orgRoles.map(ur => ur.roleId);
@@ -91,8 +95,11 @@ export class PermissionService {
   }
 
   async hasAnyPermission(organizationId: string, userId: string, permissions: string[]): Promise<boolean> {
-    const activeRoles = await this.userRoleRepository.findUserRoles(userId);
-    const orgRoles = activeRoles.filter(ur => ur.role.organizationId === organizationId && ur.role.deletedAt === null);
+    const member = await this.memberRepository.findByOrganizationAndUser(organizationId, userId);
+    if (!member || member.status !== "ACTIVE") return false;
+
+    const activeRoles = await this.userRoleRepository.findUserRoles(member.id);
+    const orgRoles = activeRoles.filter(ur => ur.role.organizationId === organizationId && ur.role.status === "ACTIVE");
     if (orgRoles.length === 0) return false;
 
     const roleIds = orgRoles.map(ur => ur.roleId);
@@ -104,8 +111,11 @@ export class PermissionService {
   }
 
   async hasAllPermissions(organizationId: string, userId: string, permissions: string[]): Promise<boolean> {
-    const activeRoles = await this.userRoleRepository.findUserRoles(userId);
-    const orgRoles = activeRoles.filter(ur => ur.role.organizationId === organizationId && ur.role.deletedAt === null);
+    const member = await this.memberRepository.findByOrganizationAndUser(organizationId, userId);
+    if (!member || member.status !== "ACTIVE") return false;
+
+    const activeRoles = await this.userRoleRepository.findUserRoles(member.id);
+    const orgRoles = activeRoles.filter(ur => ur.role.organizationId === organizationId && ur.role.status === "ACTIVE");
     if (orgRoles.length === 0) return false;
 
     const roleIds = orgRoles.map(ur => ur.roleId);

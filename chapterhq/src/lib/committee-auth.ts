@@ -1,4 +1,33 @@
 import { prisma } from "@/lib/prisma";
+import { ALL_PERMISSIONS } from "@/constants/permissions";
+
+async function memberHasAllPermissions(memberId: string) {
+  const userRoles = await prisma.userRole.findMany({
+    where: { memberId },
+    include: {
+      role: {
+        include: {
+          rolePermissions: {
+            include: {
+              permission: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const permissionKeys = new Set<string>();
+  userRoles
+    .filter((ur) => !ur.role.deletedAt && ur.role.status === "ACTIVE")
+    .forEach((ur) => {
+      ur.role.rolePermissions.forEach((rp) => {
+        permissionKeys.add(`${rp.permission.resource}:${rp.permission.action}`);
+      });
+    });
+
+  return ALL_PERMISSIONS.every((permission) => permissionKeys.has(permission));
+}
 
 export async function isPresident(userId: string, organizationId: string): Promise<boolean> {
   try {
@@ -7,11 +36,7 @@ export async function isPresident(userId: string, organizationId: string): Promi
     });
     if (!member || member.deletedAt) return false;
 
-    const userRoles = await prisma.userRole.findMany({
-      where: { memberId: member.id },
-      include: { role: true },
-    });
-    return userRoles.some((ur) => (ur.role.name === "Admin" || ur.role.name === "President") && !ur.role.deletedAt);
+    return memberHasAllPermissions(member.id);
   } catch {
     return false;
   }

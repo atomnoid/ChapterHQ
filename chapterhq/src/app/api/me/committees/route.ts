@@ -1,6 +1,7 @@
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isPresident } from "@/lib/committee-auth";
 
 // GET /api/me/committees
 // Returns the list of committees the authenticated user is permitted to access
@@ -28,19 +29,13 @@ export async function GET() {
       return apiResponse.success([]);
     }
 
-    // Check if this member holds the President role (organization-wide access).
-    const userRoles = await prisma.userRole.findMany({
-      where: { memberId: member.id },
-      include: { role: { select: { name: true, deletedAt: true } } },
-    });
-    const isPresident = userRoles.some(
-      (ur) => !ur.role.deletedAt && (ur.role.name === "Admin" || ur.role.name === "President")
-    );
+    // Check if this member has organization-owner permissions.
+    const hasOwnerAccess = await isPresident(userId, organizationId);
 
     let committees: { id: string; name: string; description: string | null }[];
 
-    if (isPresident) {
-      // Presidents can access every non-deleted committee in the organization.
+    if (hasOwnerAccess) {
+      // Organization owners can access every non-deleted committee in the organization.
       const all = await prisma.committee.findMany({
         where: { organizationId },
         orderBy: { name: "asc" },

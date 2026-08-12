@@ -2,6 +2,7 @@ import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { OrganizationContextService } from "@/services/session/organization-context.service";
 import { prisma } from "@/lib/prisma";
+import { isPresident } from "@/lib/committee-auth";
 
 const contextService = new OrganizationContextService();
 
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Verify user has access to that committee
-    // Either is active CommitteeMember OR has President role in organization
+    // Either is active CommitteeMember OR has organization-owner permissions.
     const committeeMember = await prisma.committeeMember.findFirst({
       where: {
         committeeId,
@@ -57,17 +58,8 @@ export async function POST(request: Request) {
     let hasAccess = !!(committeeMember && !committeeMember.deletedAt);
 
     if (!hasAccess) {
-      const userRoles = await prisma.userRole.findMany({
-        where: {
-          memberId: member.id,
-        },
-        include: {
-          role: true,
-        },
-      });
-      const activeUserRoles = userRoles.filter((ur) => !ur.role.deletedAt);
-      const isPresident = activeUserRoles.some((ur) => ur.role.name === "Admin" || ur.role.name === "President");
-      if (isPresident) {
+      const hasOwnerAccess = await isPresident(session.user.id, organizationId);
+      if (hasOwnerAccess) {
         hasAccess = true;
       }
     }

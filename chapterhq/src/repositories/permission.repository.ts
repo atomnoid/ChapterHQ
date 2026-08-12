@@ -57,18 +57,47 @@ export class PermissionRepository {
   }
 
   async replaceRolePermissions(roleId: string, permissionIds: string[]) {
-    return prisma.$transaction([
-      prisma.rolePermission.deleteMany({
-        where: { roleId },
-      }),
-      prisma.rolePermission.createMany({
-        data: permissionIds.map(permissionId => ({
+    const uniquePermissionIds = [...new Set(permissionIds)];
+
+    await prisma.rolePermission.deleteMany({
+      where: uniquePermissionIds.length > 0
+        ? {
+            roleId,
+            permissionId: { notIn: uniquePermissionIds },
+          }
+        : { roleId },
+    });
+
+    if (uniquePermissionIds.length === 0) {
+      return { deletedStale: true, created: 0 };
+    }
+
+    const existing = await prisma.rolePermission.findMany({
+      where: {
+        roleId,
+        permissionId: { in: uniquePermissionIds },
+      },
+      select: {
+        permissionId: true,
+      },
+    });
+
+    const existingPermissionIds = new Set(existing.map((rp) => rp.permissionId));
+    const missingPermissionIds = uniquePermissionIds.filter(
+      (permissionId) => !existingPermissionIds.has(permissionId)
+    );
+
+    for (const permissionId of missingPermissionIds) {
+      await prisma.rolePermission.create({
+        data: {
           id: randomBytes(12).toString("hex"),
           roleId,
           permissionId,
-        })),
-      }),
-    ]);
+        },
+      });
+    }
+
+    return { deletedStale: true, created: missingPermissionIds.length };
   }
 
   async validatePermissionIds(permissionIds: string[]) {

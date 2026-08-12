@@ -42,13 +42,19 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   try {
+    console.log("[PermissionMatrixDebug] PATCH started");
+    console.log(`[PermissionMatrixDebug] roleId: ${id}`);
+
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
     const { context: authContext } = await requirePermission(session.user.id, "roles:update");
+    console.log(`[PermissionMatrixDebug] organizationId: ${authContext.organizationId}`);
 
     const body = await request.json();
     const { permissionIds } = body as { permissionIds?: string[] };
@@ -58,8 +64,8 @@ export async function PATCH(
         { status: 400 }
       );
     }
+    console.log(`[PermissionMatrixDebug] requested permissions count: ${permissionIds.length}`);
 
-    const { id } = await params;
     const updatedPermissions = await permissionService.updateRolePermissions(
       authContext.organizationId,
       id,
@@ -71,6 +77,16 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error: unknown) {
+    console.error("[PermissionMatrixDebug] RAW ERROR", error);
+    console.error(
+      "[PermissionMatrixDebug] MESSAGE",
+      error instanceof Error ? error.message : String(error)
+    );
+    console.error(
+      "[PermissionMatrixDebug] STACK",
+      error instanceof Error ? error.stack : undefined
+    );
+
     if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }

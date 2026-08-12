@@ -31,7 +31,7 @@ export class UserRoleRepository {
       include: { role: true },
     });
     // Post-filter: exclude assignments where the role has been soft-deleted.
-    return userRoles.filter((ur) => !ur.role.deletedAt);
+    return userRoles.filter((ur) => !ur.role.deletedAt && ur.role.status === "ACTIVE");
   }
 
   async delete(memberId: string, roleId: string) {

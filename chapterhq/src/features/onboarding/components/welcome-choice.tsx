@@ -54,7 +54,7 @@ function CreateOrgForm({ onBack }: { onBack: () => void }) {
         // Switch session to the new organization
         const newOrgId = json.data?.id;
         if (newOrgId) {
-          await update({ activeOrganizationId: newOrgId });
+          await update({ activeOrganizationId: newOrgId, activeCommitteeId: null });
         }
 
         window.location.href = "/dashboard";
@@ -192,7 +192,10 @@ function JoinOrgForm({ onBack }: { onBack: () => void }) {
         // Update session with the joined organization
         const newOrgId = json.activeOrganizationId;
         if (newOrgId) {
-          await update({ activeOrganizationId: newOrgId });
+          await update({
+            activeOrganizationId: newOrgId,
+            activeCommitteeId: json.activeCommitteeId ?? null,
+          });
         }
 
         setSuccess(true);

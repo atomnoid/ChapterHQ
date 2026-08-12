@@ -28,9 +28,14 @@ export async function GET(
     // Fetch assigned role details if present
     let role = null;
     if (invitation.roleId) {
-      role = await prisma.role.findUnique({
-        where: { id: invitation.roleId },
+      const assignedRole = await prisma.role.findFirst({
+        where: {
+          id: invitation.roleId,
+          organizationId: invitation.organizationId,
+          status: "ACTIVE",
+        },
       });
+      role = assignedRole && !assignedRole.deletedAt ? assignedRole : null;
     }
 
     return NextResponse.json({
@@ -132,9 +137,13 @@ export async function POST(
     let roleIdToAssign = invitation.roleId;
     if (roleIdToAssign) {
       const roleExists = await prisma.role.findFirst({
-        where: { id: roleIdToAssign, organizationId: invitation.organizationId, deletedAt: null }
+        where: {
+          id: roleIdToAssign,
+          organizationId: invitation.organizationId,
+          status: "ACTIVE",
+        },
       });
-      if (!roleExists) {
+      if (!roleExists || roleExists.deletedAt) {
         return NextResponse.json({ message: "The invited role is no longer available." }, { status: 400 });
       }
     } else {
@@ -142,10 +151,9 @@ export async function POST(
         where: {
           organizationId: invitation.organizationId,
           name: "Volunteer",
-          deletedAt: null
         },
       });
-      if (defaultRole) {
+      if (defaultRole && !defaultRole.deletedAt && defaultRole.status === "ACTIVE") {
         roleIdToAssign = defaultRole.id;
       }
     }

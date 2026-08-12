@@ -38,7 +38,7 @@ export class RoleRepository {
     const role = await prisma.role.findFirst({
       where: { organizationId, name },
     });
-    if (role?.deletedAt) return null;
+    if (role?.deletedAt || role?.status !== "ACTIVE") return null;
     return role;
   }
 
@@ -47,7 +47,7 @@ export class RoleRepository {
     const roles = await prisma.role.findMany({
       where: { organizationId },
     });
-    return roles.filter((r) => !r.deletedAt);
+    return roles.filter((r) => !r.deletedAt && r.status === "ACTIVE");
   }
 
   async existsByName(organizationId: string, name: string, excludeId?: string) {
@@ -59,7 +59,7 @@ export class RoleRepository {
         NOT: excludeId ? { id: excludeId } : undefined,
       },
     });
-    if (role?.deletedAt) return false;
+    if (role?.deletedAt || role?.status !== "ACTIVE") return false;
     return !!role;
   }
 
@@ -68,7 +68,7 @@ export class RoleRepository {
     const role = await prisma.role.findFirst({
       where: { id, organizationId },
     });
-    if (role?.deletedAt) return null;
+    if (role?.deletedAt || role?.status !== "ACTIVE") return null;
     return role;
   }
 
@@ -98,7 +98,7 @@ export class RoleRepository {
     });
 
     // Post-filter soft-deleted records in JS (MongoDB Prisma bug workaround).
-    const notDeleted = allItems.filter((r) => !r.deletedAt);
+    const notDeleted = allItems.filter((r) => !r.deletedAt && r.status === "ACTIVE");
     const total = notDeleted.length;
     const items = notDeleted.slice(params.skip, params.skip + params.take);
 
