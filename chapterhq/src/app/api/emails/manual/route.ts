@@ -34,8 +34,8 @@ export async function POST(request: Request) {
         organizationId: context.organizationId,
         to: member.user.email,
         templateId: data.templateId,
-        templateType: "MANUAL",
-        type: "MANUAL",
+        templateType: "GENERAL",
+        type: "GENERAL",
         sourceType: "MANUAL",
         sourceId: member.id,
         eventType: `MANUAL_${Date.now()}`,
@@ -48,7 +48,12 @@ export async function POST(request: Request) {
       }));
     }
 
-    return apiResponse.success({ results }, "Manual email operation finished.");
+    const failed = results.filter((result) => !result.success);
+    if (failed.length > 0) {
+      return apiResponse.serverError(`Email could not be sent. ${failed[0]?.error ?? "Unknown email provider error."}`);
+    }
+
+    return apiResponse.success({ results }, "Manual email sent successfully.");
   } catch (error) {
     if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof ZodError) return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");

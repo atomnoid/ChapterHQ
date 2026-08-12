@@ -33,6 +33,13 @@ export class InvitationEmailDeliveryError extends Error {
   }
 }
 
+export class EmailTemplateNotFoundError extends Error {
+  constructor() {
+    super("Please create or select an email template before sending.");
+    this.name = "EmailTemplateNotFoundError";
+  }
+}
+
 export class InvitationService {
   constructor(
     private readonly invitationRepository = new InvitationRepository(),
@@ -94,7 +101,7 @@ export class InvitationService {
         where: { id: emailTemplateId, organizationId: params.organizationId },
       });
       if (!template || template.deletedAt || template.archivedAt || template.type !== "ORGANIZATION_INVITATION") {
-        emailTemplateId = undefined;
+        throw new EmailTemplateNotFoundError();
       }
     }
 
@@ -138,6 +145,7 @@ export class InvitationService {
     } catch (error) {
       console.error("[EmailService] invitation email failed", error instanceof Error ? error.message : error);
       if (error instanceof InvitationEmailDeliveryError) throw error;
+      if (error instanceof EmailTemplateNotFoundError) throw error;
       throw new InvitationEmailDeliveryError(error instanceof Error ? error.message : "Unknown email provider error.");
     }
 

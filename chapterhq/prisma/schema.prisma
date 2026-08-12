@@ -105,6 +105,7 @@ enum EmailTemplateType {
   CERTIFICATE_ISSUED
   MANUAL
   EVENT_REMINDER
+  GENERAL
 }
 
 enum EmailLogStatus {

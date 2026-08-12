@@ -6,6 +6,7 @@ import {
   InvitationService,
   DuplicatePendingInvitationError,
   InvitationEmailDeliveryError,
+  EmailTemplateNotFoundError,
 } from "@/services/invitation.service";
 import { RoleNotFoundError } from "@/services/role.service";
 import { createInvitationSchema } from "@/validators/invitation.validator";
@@ -77,6 +78,9 @@ export async function POST(request: Request) {
     }
     if (error instanceof InvitationEmailDeliveryError) {
       return apiResponse.serverError(error.message);
+    }
+    if (error instanceof EmailTemplateNotFoundError) {
+      return apiResponse.badRequest(error.message);
     }
     return apiResponse.serverError();
   }

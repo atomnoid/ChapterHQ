@@ -6,6 +6,7 @@ export const emailTemplateTypeSchema = z.enum([
   "CERTIFICATE_ISSUED",
   "MANUAL",
   "EVENT_REMINDER",
+  "GENERAL",
 ]);
 
 export const createEmailTemplateSchema = z.object({

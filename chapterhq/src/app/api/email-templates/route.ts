@@ -4,10 +4,12 @@ import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permission-enforcer";
+import { EmailService } from "@/services/email.service";
 import type { EmailPrismaClient } from "@/types/email";
 import { createEmailTemplateSchema, emailTemplateQuerySchema } from "@/validators/email.validator";
 
 const db = prisma as unknown as EmailPrismaClient;
+const emailService = new EmailService();
 
 export async function GET(request: Request) {
   try {
@@ -15,6 +17,15 @@ export async function GET(request: Request) {
     if (!session?.user?.id) return apiResponse.unauthorized();
     const { context } = await requirePermission(session.user.id, "settings:read");
     const parsed = emailTemplateQuerySchema.parse(Object.fromEntries(new URL(request.url).searchParams.entries()));
+
+    const existingTemplates = await db.emailTemplate.findMany({
+      where: { organizationId: context.organizationId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existingTemplates.filter((template) => !template.deletedAt).length === 0) {
+      await emailService.seedDefaultTemplates(context.organizationId);
+    }
 
     const templates = await db.emailTemplate.findMany({
       where: {

@@ -90,6 +90,27 @@ export class EmailService {
     }
   }
 
+  async ensureDefaultTemplate(organizationId: string, type: EmailTemplateTypeValue) {
+    const existing = await this.getActiveTemplate(organizationId, type);
+    if (existing) return existing;
+
+    const defaultTemplate = DEFAULT_EMAIL_TEMPLATES.find((template) => template.type === type);
+    if (!defaultTemplate) return null;
+
+    const created = await prismaClient.emailTemplate.create({
+      data: {
+        organizationId,
+        name: defaultTemplate.name,
+        type: defaultTemplate.type,
+        subject: defaultTemplate.subject,
+        bodyHtml: defaultTemplate.bodyHtml,
+        isActive: true,
+      },
+    });
+
+    return created;
+  }
+
   async getActiveTemplate(organizationId: string, type: EmailTemplateTypeValue) {
     const template = await prismaClient.emailTemplate.findFirst({
       where: { organizationId, type, isActive: true },
@@ -213,11 +234,11 @@ export class EmailService {
   async sendTemplateEmail(params: SendTemplateParams): Promise<EmailResult> {
     const template = params.templateId
       ? await prismaClient.emailTemplate.findFirst({ where: { id: params.templateId, organizationId: params.organizationId } })
-      : await this.getActiveTemplate(params.organizationId, params.templateType);
+      : await this.ensureDefaultTemplate(params.organizationId, params.templateType);
 
     if (!template || template.deletedAt || template.archivedAt) {
       console.error("[EmailDebug] template unavailable", { templateId: params.templateId ?? null, templateType: params.templateType });
-      return { success: false, error: "Email template not found." };
+      return { success: false, error: "Please create or select an email template before sending." };
     }
 
     return this.sendEmail({

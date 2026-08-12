@@ -7,6 +7,13 @@ export const DEFAULT_EMAIL_TEMPLATES = [
       "<p>Hello {{memberEmail}},</p><p>You have been invited to join {{organizationName}} as {{roleName}}.</p><p><a href=\"{{invitationUrl}}\">Accept your invitation</a></p>",
   },
   {
+    name: "General Member Email",
+    type: "GENERAL",
+    subject: "Update from {{organizationName}}",
+    bodyHtml:
+      "<p>Hello {{memberName}},</p><p>This is an update from {{organizationName}}.</p><p>Regards,<br />{{organizationName}}</p>",
+  },
+  {
     name: "Appointment Created",
     type: "APPOINTMENT_CREATED",
     subject: "Appointment created: {{appointmentTitle}}",

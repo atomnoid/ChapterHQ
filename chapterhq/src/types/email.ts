@@ -3,7 +3,8 @@ export type EmailTemplateTypeValue =
   | "APPOINTMENT_CREATED"
   | "CERTIFICATE_ISSUED"
   | "MANUAL"
-  | "EVENT_REMINDER";
+  | "EVENT_REMINDER"
+  | "GENERAL";
 
 export type EmailLogStatusValue = "PENDING" | "SENT" | "FAILED";
 
