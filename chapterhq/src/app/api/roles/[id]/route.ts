@@ -13,6 +13,12 @@ import { updateRoleSchema } from "@/validators/role.validator";
 
 const roleService = new RoleService();
 
+function logRoleDelete(details: Record<string, unknown>) {
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[ROLE DELETE]", details);
+  }
+}
+
 // GET /api/roles/[id]
 export async function GET(
   request: NextRequest,
@@ -91,19 +97,57 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let userId: string | undefined;
+  let organizationId: string | undefined;
+  let roleId: string | undefined;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return apiResponse.unauthorized();
     }
+    userId = session.user.id;
 
     const { context: authContext } = await requirePermission(session.user.id, "roles:delete");
+    organizationId = authContext.organizationId;
 
     const { id } = await params;
-    await roleService.deleteRole(id, authContext.organizationId, session.user.id);
+    roleId = id;
+
+    logRoleDelete({
+      userId,
+      organizationId,
+      memberId: authContext.member.id,
+      roleId,
+      permission: "roles:delete",
+      result: "pending",
+    });
+
+    const deletedRole = await roleService.deleteRole(id, authContext.organizationId, session.user.id);
+
+    logRoleDelete({
+      userId,
+      organizationId,
+      memberId: authContext.member.id,
+      roleId,
+      result: {
+        id: deletedRole.id,
+        name: deletedRole.name,
+        deletedAt: deletedRole.deletedAt,
+      },
+    });
 
     return apiResponse.success(null, "Role deleted successfully.");
   } catch (error: unknown) {
+    logRoleDelete({
+      userId,
+      organizationId,
+      roleId,
+      result: "error",
+      errorName: error instanceof Error ? error.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+
     if (error instanceof Error && error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
     }

@@ -144,14 +144,20 @@ export class RoleRepository {
   }
 
   async softDelete(id: string, organizationId: string) {
-    return prisma.role.update({
-      where: {
-        id,
-        organizationId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+    return prisma.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({
+        where: { roleId: id },
+      });
+
+      return tx.role.update({
+        where: {
+          id,
+          organizationId,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
     });
   }
 }

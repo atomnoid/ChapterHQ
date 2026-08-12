@@ -139,6 +139,7 @@ interface MePermissionsResponse {
     status: string;
   };
   roles: string[];
+  assignedRoleCount: number;
   permissions: string[];
 }
 
@@ -156,6 +157,7 @@ export function DashboardContent() {
 
   // Statistics & lists fetched conditionally based on permissions
   const [membersCount, setMembersCount] = useState<number>(0);
+  const [rolesCount, setRolesCount] = useState<number>(0);
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
   const [inventoryCount, setInventoryCount] = useState<number>(0);
   const [eventsList, setEventsList] = useState<EventSummaryItem[]>([]);
@@ -197,6 +199,10 @@ export function DashboardContent() {
         fetches.push(fetch("/api/members?limit=5").then((r) => r.json()));
         fetchKeys.push("members");
       }
+      if (hasPerm("roles:read")) {
+        fetches.push(fetch("/api/roles?limit=1").then((r) => r.json()));
+        fetchKeys.push("roles");
+      }
       if (hasPerm("finance:read")) {
         fetches.push(fetch("/api/finance/summary").then((r) => r.json()));
         fetchKeys.push("finance");
@@ -227,6 +233,9 @@ export function DashboardContent() {
           const response = data as DashboardApiResponse<unknown>;
           const items = response.items ?? response.data?.items ?? [];
           setMembersCount(response.total ?? items.length);
+        } else if (key === "roles") {
+          const response = data as DashboardApiResponse<unknown>;
+          setRolesCount(response.total ?? response.data?.total ?? 0);
         } else if (key === "finance") {
           const response = data as { data?: FinanceSummary };
           if (response.data) {
@@ -314,7 +323,6 @@ export function DashboardContent() {
   }
 
   const orgName = meData?.organization?.name ?? "My Organization";
-  const assignedRoleCount = meData?.roles.length ?? 0;
   const userRole = meData?.roles?.join(", ") || "Member";
   const userName = session?.user?.name || session?.user?.email || "Member";
 
@@ -368,8 +376,8 @@ export function DashboardContent() {
 
             <article className="rounded-3xl border border-border bg-card p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">My Roles</p>
-                <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">{assignedRoleCount}</p>
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">Organization Roles</p>
+                <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">{rolesCount}</p>
               </div>
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-amber-600 bg-amber-50 border-amber-100">
                 <Shield className="h-5 w-5" />

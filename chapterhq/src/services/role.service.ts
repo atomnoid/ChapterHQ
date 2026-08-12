@@ -99,7 +99,7 @@ export class RoleService {
         return role;
       });
 
-    return buildPaginatedResult(filteredRoles, filteredRoles.length, params);
+    return buildPaginatedResult(filteredRoles, total, params);
   }
 
   async getRole(id: string, organizationId: string) {

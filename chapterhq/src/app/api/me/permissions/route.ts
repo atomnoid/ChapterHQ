@@ -57,6 +57,18 @@ export async function GET() {
       })),
     });
 
+    console.log("[dashboard] current userId:", userId);
+    console.log("[dashboard] current memberId:", context.member.id);
+    console.log("[dashboard] current organizationId:", context.organizationId);
+    console.log("[dashboard] assigned roles:", assignedRoles.map((role) => ({
+      id: role.id,
+      name: role.name,
+      organizationId: role.organizationId,
+      deletedAt: role.deletedAt,
+      status: role.status,
+    })));
+    console.log("[dashboard] assigned role count:", assignedRoles.length);
+
     const permissionStrings = permissions.map(
       (p) => `${p.resource}:${p.action}`
     );
@@ -72,6 +84,7 @@ export async function GET() {
           status: context.organization.status,
         },
         roles: roleNames,
+        assignedRoleCount: assignedRoles.length,
         permissions: permissionStrings,
         notificationAudience: {
           isOrganizationAdministrator: assignedRoles.some((role) => role.scope === "ORGANIZATION"),
