@@ -47,7 +47,7 @@ export function Navbar() {
             size="sm"
             className="rounded-full bg-primary px-4 text-sm text-primary-foreground shadow-[0_14px_30px_rgba(92,64,51,0.16)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#4a3228]"
           >
-            <Link href="/signup">Get Started</Link>
+            <Link href="/onboarding">Get Started</Link>
           </Button>
         </div>
       </div>
