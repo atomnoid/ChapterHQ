@@ -8,6 +8,7 @@ import {
   Edit2,
   Eye,
   Filter,
+  Mail,
   MoreHorizontal,
   Plus,
   RefreshCw,
@@ -22,6 +23,7 @@ import { EditMemberDialog } from "./edit-member-dialog";
 import { DeleteMemberDialog } from "./delete-member-dialog";
 import { CreateMemberDialog } from "./create-member-dialog";
 import { ViewMemberDialog } from "./view-member-dialog";
+import { BulkInviteDialog, ManualEmailDialog } from "./member-email-dialogs";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,8 @@ interface PaginatedMembers {
 type DialogState =
   | { type: "none" }
   | { type: "create" }
+  | { type: "bulk-invite" }
+  | { type: "manual-email" }
   | { type: "view"; member: Member }
   | { type: "edit"; member: Member }
   | { type: "delete"; member: Member };
@@ -270,12 +274,28 @@ export function MemberList() {
         </div>
 
         {/* Add Member button */}
-        <Button
-          className="rounded-full shrink-0"
-          onClick={() => setDialog({ type: "create" })}
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add Member
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full shrink-0"
+            onClick={() => setDialog({ type: "manual-email" })}
+          >
+            <Mail className="h-4 w-4 mr-2" /> Email Members
+          </Button>
+          <Button
+            variant="outline"
+            className="rounded-full shrink-0"
+            onClick={() => setDialog({ type: "bulk-invite" })}
+          >
+            <Users className="h-4 w-4 mr-2" /> Bulk Invite
+          </Button>
+          <Button
+            className="rounded-full shrink-0"
+            onClick={() => setDialog({ type: "create" })}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Member
+          </Button>
+        </div>
       </div>
 
       {/* Error state */}
@@ -421,6 +441,19 @@ export function MemberList() {
           if (!open) closeDialog();
         }}
         onSuccess={fetchMembers}
+      />
+      <BulkInviteDialog
+        open={dialog.type === "bulk-invite"}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+        onSuccess={fetchMembers}
+      />
+      <ManualEmailDialog
+        open={dialog.type === "manual-email"}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
       />
       <ViewMemberDialog
         member={dialog.type === "view" ? dialog.member : null}

@@ -99,7 +99,7 @@ export function CreateMemberDialog({ open, onOpenChange, onSuccess }: CreateMemb
       });
       const json = await res.json();
       if (!res.ok) {
-        setServerError(json.message ? `Email could not be sent. ${json.message}` : "Email could not be sent.");
+        setServerError(json.message ?? "Email could not be sent.");
         return;
       }
       onOpenChange(false);

@@ -49,6 +49,8 @@ const getSafeResendResult = (response: { data?: { id?: string | null } | null; e
   error: response.error ? safeErrorMessage(response.error) : null,
 });
 
+const maskInvitationUrl = (url: string) => url.replace(/\/invite\/[^/?#]+/, "/invite/[masked]");
+
 export class EmailService {
   private resend: Resend | null = null;
 
@@ -131,12 +133,13 @@ export class EmailService {
     const recipients = (Array.isArray(params.to) ? params.to : [params.to]).map((recipient) => recipient.trim());
     let logId: string | null = null;
     const from = this.getFromAddress();
+    const debugPrefix = params.sourceType === "INVITATION" ? "[InvitationEmailDebug]" : "[EmailDebug]";
 
-    console.log("[EmailDebug] send started");
-    console.log(`[EmailDebug] recipient: ${recipients.join(", ")}`);
-    console.log(`[EmailDebug] from: ${from}`);
-    console.log(`[EmailDebug] subject: ${params.subject}`);
-    console.log(`[EmailDebug] templateId: ${params.templateId ?? "none"}`);
+    console.log(`${debugPrefix} EmailService started`);
+    console.log(`${debugPrefix} recipient: ${recipients.join(", ")}`);
+    console.log(`${debugPrefix} from: ${from}`);
+    console.log(`${debugPrefix} subject: ${params.subject}`);
+    console.log(`${debugPrefix} templateId: ${params.templateId ?? "none"}`);
 
     try {
       if (recipients.length === 0 || recipients.some((recipient) => !hasEmailLikeShape(recipient))) {
@@ -179,7 +182,7 @@ export class EmailService {
       });
       logId = log.id;
 
-      console.log("[EmailDebug] calling Resend");
+      console.log(`${debugPrefix} calling Resend`);
 
       const response = await this.getResend().emails.send({
         from,
@@ -188,7 +191,7 @@ export class EmailService {
         html: params.html,
       });
 
-      console.log("[EmailDebug] Resend result:", getSafeResendResult(response));
+      console.log(`${debugPrefix} Resend result:`, getSafeResendResult(response));
 
       if (response.error) {
         const message = safeErrorMessage(response.error);
@@ -227,7 +230,7 @@ export class EmailService {
       console.error("[EmailService] send failed", { sourceType: params.sourceType, sourceId: params.sourceId, message });
       return { success: false, error: message };
     } finally {
-      console.log("[EmailDebug] send completed");
+      console.log(`${debugPrefix} send completed`);
     }
   }
 
@@ -235,18 +238,33 @@ export class EmailService {
     const template = params.templateId
       ? await prismaClient.emailTemplate.findFirst({ where: { id: params.templateId, organizationId: params.organizationId } })
       : await this.ensureDefaultTemplate(params.organizationId, params.templateType);
+    const debugPrefix = params.sourceType === "INVITATION" ? "[InvitationEmailDebug]" : "[EmailDebug]";
 
     if (!template || template.deletedAt || template.archivedAt) {
-      console.error("[EmailDebug] template unavailable", { templateId: params.templateId ?? null, templateType: params.templateType });
+      console.error(`${debugPrefix} template unavailable`, { templateId: params.templateId ?? null, templateType: params.templateType });
       return { success: false, error: "Please create or select an email template before sending." };
     }
+
+    console.log(`${debugPrefix} template loaded: ${template.name}`);
+
+    const renderedSubject = renderEmailTemplate(template.subject, params.variables);
+    const renderedHtml = renderEmailTemplate(template.bodyHtml, params.variables);
+
+    if (!renderedSubject.trim()) {
+      return { success: false, error: "Invitation email template subject is empty." };
+    }
+    if (!renderedHtml.trim()) {
+      return { success: false, error: "Invitation email template body is empty." };
+    }
+
+    console.log(`${debugPrefix} template rendered`);
 
     return this.sendEmail({
       ...params,
       templateId: template.id,
       type: params.templateType,
-      subject: renderEmailTemplate(template.subject, params.variables),
-      html: renderEmailTemplate(template.bodyHtml, params.variables),
+      subject: renderedSubject,
+      html: renderedHtml,
     });
   }
 
@@ -258,6 +276,9 @@ export class EmailService {
     templateId?: string | null;
     variables?: EmailTemplateVariables;
   }) {
+    const invitationUrl = `${this.getAppUrl()}/invite/${params.token}`;
+    console.log(`[InvitationEmailDebug] invitation URL: ${maskInvitationUrl(invitationUrl)}`);
+
     return this.sendTemplateEmail({
       organizationId: params.organizationId,
       to: params.email,
@@ -269,7 +290,7 @@ export class EmailService {
       eventType: "INVITATION_SENT",
       variables: {
         memberEmail: params.email,
-        invitationUrl: `${this.getAppUrl()}/invite/${params.token}`,
+        invitationUrl,
         ...params.variables,
       },
     });

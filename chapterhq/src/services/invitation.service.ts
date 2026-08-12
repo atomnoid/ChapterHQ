@@ -61,6 +61,13 @@ export class InvitationService {
     expiresInDays: number;
     actorId: string;
   }) {
+    console.log("[InvitationEmailDebug] invitation request started");
+    console.log(`[InvitationEmailDebug] organizationId: ${params.organizationId}`);
+    console.log(`[InvitationEmailDebug] recipient: ${params.email}`);
+    console.log(`[InvitationEmailDebug] roleId: ${params.roleId ?? "none"}`);
+    console.log(`[InvitationEmailDebug] committeeId: ${params.committeeId ?? "none"}`);
+    console.log(`[InvitationEmailDebug] templateId: ${params.emailTemplateId ?? "active-default"}`);
+
     // Duplicate pending check
     const existing = await this.invitationRepository.findPendingByEmailAndOrg(
       params.email,
@@ -95,7 +102,7 @@ export class InvitationService {
       }
     }
 
-    let emailTemplateId: string | undefined = params.emailTemplateId;
+    const emailTemplateId: string | undefined = params.emailTemplateId;
     if (emailTemplateId) {
       const template = await emailPrisma.emailTemplate.findFirst({
         where: { id: emailTemplateId, organizationId: params.organizationId },
@@ -103,6 +110,7 @@ export class InvitationService {
       if (!template || template.deletedAt || template.archivedAt || template.type !== "ORGANIZATION_INVITATION") {
         throw new EmailTemplateNotFoundError();
       }
+      console.log(`[InvitationEmailDebug] template loaded: ${template.name}`);
     }
 
     const expiresAt = new Date();
@@ -117,6 +125,7 @@ export class InvitationService {
       token: this.generateToken(),
       expiresAt,
     });
+    console.log(`[InvitationEmailDebug] invitation persisted: ${invitation.id}`);
 
     try {
       const [organization, role, committee] = await Promise.all([
@@ -125,6 +134,7 @@ export class InvitationService {
         finalCommitteeId ? prisma.committee.findFirst({ where: { id: finalCommitteeId, organizationId: params.organizationId } }) : null,
       ]);
 
+      console.log("[InvitationEmailDebug] calling EmailService");
       const emailResult = await this.emailService.sendInvitationEmail({
         organizationId: params.organizationId,
         invitationId: invitation.id,
