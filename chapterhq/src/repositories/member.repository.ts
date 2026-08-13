@@ -30,6 +30,15 @@ export class MemberRepository {
     return member;
   }
 
+  async findAnyByOrganizationAndUser(organizationId: string, userId: string) {
+    return prisma.member.findFirst({
+      where: {
+        organizationId,
+        userId,
+      },
+    });
+  }
+
   async findActiveByUserId(userId: string, activeOrganizationId?: string) {
     const whereClause: Prisma.MemberWhereInput = {
       userId,

@@ -59,6 +59,12 @@ export async function POST(
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token");
 
+    console.log("[INVITE ACCEPT] token received", {
+      hasToken: Boolean(token),
+      userId: session.user.id,
+      loggedInEmail: session.user.email ?? null,
+    });
+
     if (!token) {
       return NextResponse.json({ message: "Token is required." }, { status: 400 });
     }
@@ -70,9 +76,26 @@ export async function POST(
       },
     });
 
+    console.log("[INVITE ACCEPT] invitation found", {
+      found: Boolean(invitation),
+      invitationId: invitation?.id ?? null,
+      status: invitation?.status ?? null,
+      email: invitation?.email ?? null,
+      deletedAt: invitation?.deletedAt ?? null,
+    });
+
     if (!invitation || invitation.deletedAt) {
       return NextResponse.json({ message: "Invitation not found." }, { status: 404 });
     }
+
+    console.log("[INVITE ACCEPT] invitation status", { status: invitation.status });
+    console.log("[INVITE ACCEPT] invitation expiry", {
+      expiresAt: invitation.expiresAt.toISOString(),
+      expired: new Date() > new Date(invitation.expiresAt),
+    });
+    console.log("[INVITE ACCEPT] user id", { userId: session.user.id });
+    console.log("[INVITE ACCEPT] organization id", { organizationId: invitation.organizationId });
+    console.log("[INVITE ACCEPT] committee id", { committeeId: invitation.committeeId ?? null });
 
     const isExpired = new Date() > new Date(invitation.expiresAt);
     if (isExpired || invitation.status === "EXPIRED") {
@@ -113,112 +136,142 @@ export async function POST(
       return NextResponse.json({ message: "Invitation rejected successfully." });
     }
 
-    // Check if user is already a member
-    let member = await prisma.member.findUnique({
+    const existingMembership = await prisma.member.findFirst({
       where: {
-        organizationId_userId: {
-          organizationId: invitation.organizationId,
-          userId: session.user.id,
-        },
+        organizationId: invitation.organizationId,
+        userId: session.user.id,
       },
     });
 
-    if (!member) {
-      member = await prisma.member.create({
-        data: {
+    const existingActiveMembership = existingMembership && !existingMembership.deletedAt && existingMembership.status === "ACTIVE" ? existingMembership : null;
+    const existingDeletedMembership = existingMembership && existingMembership.deletedAt ? existingMembership : null;
+
+    console.log("[INVITE ACCEPT] existing active membership", {
+      exists: Boolean(existingActiveMembership),
+      memberId: existingActiveMembership?.id ?? null,
+    });
+    console.log("[INVITE ACCEPT] existing deleted membership", {
+      exists: Boolean(existingDeletedMembership),
+      memberId: existingDeletedMembership?.id ?? null,
+    });
+
+    let finalActiveCommitteeId: string | null = null;
+    let membershipAction = "CREATE";
+    let member = existingActiveMembership;
+
+    const result = await prisma.$transaction(async (tx) => {
+      let targetMember = await tx.member.findFirst({
+        where: {
           organizationId: invitation.organizationId,
           userId: session.user.id,
-          status: "ACTIVE",
         },
       });
-    }
 
-    // Resolve or assign role
-    let roleIdToAssign = invitation.roleId;
-    if (roleIdToAssign) {
-      const roleExists = await prisma.role.findFirst({
-        where: {
-          id: roleIdToAssign,
-          organizationId: invitation.organizationId,
-          status: "ACTIVE",
-        },
-      });
-      if (!roleExists || roleExists.deletedAt) {
-        return NextResponse.json({ message: "The invited role is no longer available." }, { status: 400 });
-      }
-    } else {
-      const defaultRole = await prisma.role.findFirst({
-        where: {
-          organizationId: invitation.organizationId,
-          name: "Volunteer",
-        },
-      });
-      if (defaultRole && !defaultRole.deletedAt && defaultRole.status === "ACTIVE") {
-        roleIdToAssign = defaultRole.id;
-      }
-    }
-
-    if (roleIdToAssign) {
-      const existingUserRole = await prisma.userRole.findUnique({
-        where: {
-          memberId_roleId: {
-            memberId: member.id,
-            roleId: roleIdToAssign,
-          },
-        },
-      });
-      if (!existingUserRole) {
-        await prisma.userRole.create({
+      if (targetMember && !targetMember.deletedAt && targetMember.status === "ACTIVE") {
+        membershipAction = "EXISTING";
+        member = targetMember;
+      } else if (targetMember && (targetMember.deletedAt || targetMember.status !== "ACTIVE")) {
+        membershipAction = "RESTORE";
+        targetMember = await tx.member.update({
+          where: { id: targetMember.id },
+          data: { deletedAt: null, status: "ACTIVE" },
+        });
+        member = targetMember;
+      } else {
+        membershipAction = "CREATE";
+        targetMember = await tx.member.create({
           data: {
+            organizationId: invitation.organizationId,
+            userId: session.user.id,
+            status: "ACTIVE",
+          },
+        });
+        member = targetMember;
+      }
+
+      console.log("[INVITE ACCEPT] membership action", { action: membershipAction, memberId: member.id });
+
+      const roleIdToAssign = invitation.roleId;
+      if (roleIdToAssign) {
+        const roleExists = await tx.role.findFirst({
+          where: {
+            id: roleIdToAssign,
+            organizationId: invitation.organizationId,
+            status: "ACTIVE",
+          },
+        });
+        if (!roleExists || roleExists.deletedAt) {
+          throw new Error("The invited role is no longer available.");
+        }
+
+        await tx.userRole.upsert({
+          where: {
+            memberId_roleId: {
+              memberId: member.id,
+              roleId: roleIdToAssign,
+            },
+          },
+          update: {},
+          create: {
             memberId: member.id,
             roleId: roleIdToAssign,
           },
         });
+        console.log("[INVITE ACCEPT] role assignment", {
+          memberId: member.id,
+          roleId: roleIdToAssign,
+        });
+      } else {
+        console.log("[INVITE ACCEPT] role assignment", {
+          memberId: member.id,
+          roleId: null,
+          reason: "no role assigned to invitation",
+        });
       }
-    }
 
-    // Assign member to committee if invited to one
-    let finalActiveCommitteeId: string | null = null;
-    if (invitation.committeeId) {
-      const committee = await prisma.committee.findFirst({
-        where: {
-          id: invitation.committeeId,
-          organizationId: invitation.organizationId,
-        },
-      });
-      if (committee && !committee.deletedAt) {
-        finalActiveCommitteeId = invitation.committeeId;
-        const existingCM = await prisma.committeeMember.findFirst({
+      if (invitation.committeeId) {
+        const committee = await tx.committee.findFirst({
           where: {
-            committeeId: invitation.committeeId,
-            memberId: member.id,
+            id: invitation.committeeId,
+            organizationId: invitation.organizationId,
           },
         });
-        if (existingCM) {
-          if (existingCM.deletedAt) {
-            await prisma.committeeMember.update({
-              where: { id: existingCM.id },
-              data: { deletedAt: null, assignedAt: new Date() },
-            });
-          }
-        } else {
-          await prisma.committeeMember.create({
-            data: {
+        if (committee && !committee.deletedAt) {
+          finalActiveCommitteeId = invitation.committeeId;
+          await tx.committeeMember.upsert({
+            where: {
+              committeeId_memberId: {
+                committeeId: invitation.committeeId,
+                memberId: member.id,
+              },
+            },
+            update: {
+              deletedAt: null,
+              assignedAt: new Date(),
+            },
+            create: {
               committeeId: invitation.committeeId,
               memberId: member.id,
             },
           });
         }
       }
-    }
 
-    // Mark invitation accepted
-    await prisma.invitation.update({
-      where: { id: invitation.id },
-      data: { status: "ACCEPTED" },
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: { status: "ACCEPTED" },
+      });
+
+      console.log("[INVITE ACCEPT] invitation marked accepted", { invitationId: invitation.id });
+      return member;
     });
 
-    // Create Audit Log
+    console.log("[INVITE ACCEPT] transaction completed", {
+      memberId: result.id,
+      organizationId: invitation.organizationId,
+      committeeId: finalActiveCommitteeId,
+    });
+
     await logActivity(
       { userId: session.user.id, organizationId: invitation.organizationId },
       "accept",
@@ -227,7 +280,6 @@ export async function POST(
       `Invitation accepted by ${session.user.email}`
     );
 
-    // Create Notification
     await prisma.notification.create({
       data: {
         organizationId: invitation.organizationId,
@@ -242,8 +294,12 @@ export async function POST(
       message: "Invitation accepted successfully.",
       activeOrganizationId: invitation.organizationId,
       activeCommitteeId: finalActiveCommitteeId,
+      membershipAction,
     });
   } catch (error) {
+    console.error("[INVITE ACCEPT] transaction failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json({ message: "Internal server error." }, { status: 500 });
   }
 }

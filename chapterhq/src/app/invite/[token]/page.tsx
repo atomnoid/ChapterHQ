@@ -229,7 +229,7 @@ export default function InviteTokenPage() {
           <div className="flex justify-between">
             <span className="text-secondary-foreground font-medium">Assigned Role</span>
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-              {role?.name || "Volunteer"}
+              {role?.name || "None"}
             </span>
           </div>
           <div className="flex justify-between">

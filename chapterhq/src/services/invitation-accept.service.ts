@@ -52,25 +52,47 @@ export class InvitationAcceptService {
 
     const { organizationId, roleId, id: invitationId } = invitation;
 
-    // 2. Check existing membership
-    const existing = await this.memberRepository.findByOrganizationAndUser(
+    // 2. Check for an existing membership, but never treat a soft-deleted row as active.
+    const existing = await this.memberRepository.findAnyByOrganizationAndUser(
       organizationId,
       userId
     );
-    if (existing) {
-      throw new AlreadyMemberError();
+
+    if (existing && !existing.deletedAt && existing.status === "ACTIVE") {
+      return { member: existing, organizationId, activeCommitteeId: invitation.committeeId ?? null, alreadyActive: true };
     }
 
-    // 3–5. Create member, assign role, mark invitation accepted — atomically
+    // 3–5. Restore the deleted member if needed, otherwise create a new active member.
     let finalActiveCommitteeId: string | null = null;
     const member = await prisma.$transaction(async (tx) => {
-      const newMember = await tx.member.create({
-        data: { organizationId, userId },
+      let targetMember = await tx.member.findFirst({
+        where: { organizationId, userId },
       });
 
+      if (targetMember && (targetMember.deletedAt || targetMember.status !== "ACTIVE")) {
+        targetMember = await tx.member.update({
+          where: { id: targetMember.id },
+          data: { deletedAt: null, status: "ACTIVE" },
+        });
+      } else if (!targetMember) {
+        targetMember = await tx.member.create({
+          data: { organizationId, userId, status: "ACTIVE" },
+        });
+      }
+
       if (roleId) {
-        await tx.userRole.create({
-          data: { memberId: newMember.id, roleId },
+        await tx.userRole.upsert({
+          where: {
+            memberId_roleId: {
+              memberId: targetMember.id,
+              roleId,
+            },
+          },
+          update: {},
+          create: {
+            memberId: targetMember.id,
+            roleId,
+          },
         });
       }
 
@@ -83,27 +105,22 @@ export class InvitationAcceptService {
         });
         if (committee && !committee.deletedAt) {
           finalActiveCommitteeId = invitation.committeeId;
-          const existingCM = await tx.committeeMember.findFirst({
+          await tx.committeeMember.upsert({
             where: {
+              committeeId_memberId: {
+                committeeId: invitation.committeeId,
+                memberId: targetMember.id,
+              },
+            },
+            update: {
+              deletedAt: null,
+              assignedAt: new Date(),
+            },
+            create: {
               committeeId: invitation.committeeId,
-              memberId: newMember.id,
+              memberId: targetMember.id,
             },
           });
-          if (existingCM) {
-            if (existingCM.deletedAt) {
-              await tx.committeeMember.update({
-                where: { id: existingCM.id },
-                data: { deletedAt: null, assignedAt: new Date() },
-              });
-            }
-          } else {
-            await tx.committeeMember.create({
-              data: {
-                committeeId: invitation.committeeId,
-                memberId: newMember.id,
-              },
-            });
-          }
         }
       }
 
@@ -112,7 +129,7 @@ export class InvitationAcceptService {
         data: { status: "ACCEPTED" },
       });
 
-      return newMember;
+      return targetMember;
     });
 
     return { member, organizationId, activeCommitteeId: finalActiveCommitteeId };
