@@ -116,8 +116,10 @@ export async function POST(
       );
     }
 
+    console.log("[invitation/accept] reading request body");
     const body = await request.json();
     const { action } = body as { action: "accept" | "reject" };
+    console.log("[invitation/accept] requested action", { action });
 
     if (action === "reject") {
       await prisma.invitation.update({
@@ -136,11 +138,21 @@ export async function POST(
       return NextResponse.json({ message: "Invitation rejected successfully." });
     }
 
+    console.log("[invitation/accept] existing member lookup", {
+      organizationId: invitation.organizationId,
+      userId: session.user.id,
+    });
     const existingMembership = await prisma.member.findFirst({
       where: {
         organizationId: invitation.organizationId,
         userId: session.user.id,
       },
+    });
+
+    console.log("[invitation/accept] existing member status", {
+      exists: Boolean(existingMembership),
+      status: existingMembership?.status ?? null,
+      deletedAt: existingMembership?.deletedAt ?? null,
     });
 
     const existingActiveMembership = existingMembership && !existingMembership.deletedAt && existingMembership.status === "ACTIVE" ? existingMembership : null;
@@ -158,6 +170,9 @@ export async function POST(
     let finalActiveCommitteeId: string | null = null;
     let membershipAction = "CREATE";
     let member = existingActiveMembership;
+
+    console.log("[invitation/accept] invitation role ID", { roleId: invitation.roleId ?? null });
+    console.log("[invitation/accept] starting acceptance transaction");
 
     const result = await prisma.$transaction(async (tx) => {
       let targetMember = await tx.member.findFirst({
@@ -193,6 +208,10 @@ export async function POST(
 
       const roleIdToAssign = invitation.roleId;
       if (roleIdToAssign) {
+        console.log("[invitation/accept] role lookup", {
+          roleId: roleIdToAssign,
+          organizationId: invitation.organizationId,
+        });
         const roleExists = await tx.role.findFirst({
           where: {
             id: roleIdToAssign,
@@ -257,6 +276,7 @@ export async function POST(
         }
       }
 
+      console.log("[invitation/accept] invitation update", { invitationId: invitation.id, newStatus: "ACCEPTED" });
       await tx.invitation.update({
         where: { id: invitation.id },
         data: { status: "ACCEPTED" },
@@ -297,9 +317,17 @@ export async function POST(
       membershipAction,
     });
   } catch (error) {
-    console.error("[INVITE ACCEPT] transaction failed", {
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    console.error("[invitation/accept] TRANSACTION ERROR:", error);
+    console.error("[invitation/accept] ERROR NAME:", error instanceof Error ? error.name : typeof error);
+    console.error("[invitation/accept] ERROR MESSAGE:", error instanceof Error ? error.message : error);
+    console.error("[invitation/accept] ERROR STACK:", error instanceof Error ? error.stack : undefined);
+
+    const isDev = process.env.NODE_ENV !== "production";
+    return NextResponse.json({
+      message: "Internal server error.",
+      ...(isDev && {
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    }, { status: 500 });
   }
 }

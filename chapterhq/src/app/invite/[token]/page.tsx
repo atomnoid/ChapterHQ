@@ -46,10 +46,19 @@ export default function InviteTokenPage() {
   useEffect(() => {
     if (!token) return;
 
+    const readErrorMessage = async (res: Response) => {
+      try {
+        const data = await res.json();
+        return typeof data?.message === "string" ? data.message : "Invitation not found or has been revoked.";
+      } catch {
+        return "Invitation not found or has been revoked.";
+      }
+    };
+
     fetch(`/api/invitations/accept?token=${token}`)
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) {
-          throw new Error("Invitation not found or has been revoked.");
+          throw new Error(await readErrorMessage(res));
         }
         return res.json();
       })
@@ -57,8 +66,8 @@ export default function InviteTokenPage() {
         setInvitation(data.invitation);
         setRole(data.role);
       })
-      .catch((err) => {
-        setError(err.message);
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Invitation not found or has been revoked.");
       })
       .finally(() => {
         setLoading(false);
