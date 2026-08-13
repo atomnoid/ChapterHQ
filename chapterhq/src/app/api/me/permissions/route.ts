@@ -73,7 +73,9 @@ export async function GET() {
       (p) => `${p.resource}:${p.action}`
     );
 
-    const roleNames = assignedRoles.map((r) => r.name);
+    const roleNames = assignedRoles.map((r) =>
+      r.name.replace(/^\[committeeId:[^\]]+\]\s*/, "")
+    );
 
     return NextResponse.json(
       {
