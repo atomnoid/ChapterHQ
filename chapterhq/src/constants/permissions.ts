@@ -21,7 +21,7 @@ export const RESOURCES = [
   "settings"
 ] as const;
 
-export const ACTIONS = ["create", "read", "update", "delete"] as const;
+export const ACTIONS = ["create", "read", "update", "delete", "assign", "remove"] as const;
 
 export type Resource = typeof RESOURCES[number];
 export type Action = typeof ACTIONS[number];

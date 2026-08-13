@@ -17,6 +17,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { CreateRoleDialog } from "./create-role-dialog";
 import { EditRoleDialog } from "./edit-role-dialog";
 import { DeleteRoleDialog } from "./delete-role-dialog";
@@ -47,16 +54,19 @@ type DialogState =
   | { type: "none" }
   | { type: "create" }
   | { type: "edit"; role: Role }
-  | { type: "delete"; role: Role };
+  | { type: "delete"; role: Role }
+  | { type: "assign-members"; role: Role };
 
 function RoleCard({
   role,
   onEdit,
   onDelete,
+  onManageMembers,
 }: {
   role: Role;
   onEdit: (r: Role) => void;
   onDelete: (r: Role) => void;
+  onManageMembers: (r: Role) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isPresident = role.name.toLowerCase() === "admin" || role.name.toLowerCase() === "president";
@@ -108,6 +118,16 @@ function RoleCard({
                     <Edit2 className="h-3.5 w-3.5" />
                     Edit
                   </button>
+                  <button
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onManageMembers(role);
+                    }}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Add Members
+                  </button>
                   {!isPresident && (
                     <button
                       className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
@@ -143,11 +163,294 @@ function RoleCard({
         <span className="font-medium bg-secondary rounded-full px-2.5 py-0.5">
           {role.scope === "ORGANIZATION" ? "Organization" : "Committee"}
         </span>
-        <span>
-          Created {new Date(role.createdAt).toLocaleDateString()}
-        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 rounded-full px-2.5"
+            onClick={() => onManageMembers(role)}
+          >
+            <Users className="mr-1.5 h-3.5 w-3.5" />
+            Add Members
+          </Button>
+          <span>
+            Created {new Date(role.createdAt).toLocaleDateString()}
+          </span>
+        </div>
       </div>
     </article>
+  );
+}
+
+function RoleMembersDialog({
+  role,
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  role: Role | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}) {
+  const [members, setMembers] = useState<Array<{ id: string; user: { name: string | null; email: string | null } }>>([]);
+  const [assignedMemberIds, setAssignedMemberIds] = useState<Set<string>>(new Set());
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !role) return;
+
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [assignedRes, membersRes] = await Promise.all([
+          fetch(`/api/roles/${role.id}/members`),
+          fetch(`/api/members?limit=200`),
+        ]);
+
+        if (!assignedRes.ok || !membersRes.ok) {
+          throw new Error("Failed to load role member data.");
+        }
+
+        const assigned = await assignedRes.json();
+        const memberResponse = await membersRes.json();
+        const allMembers = memberResponse.items ?? [];
+        const assignedIds = new Set<string>((assigned ?? []).map((member: { id: string }) => member.id));
+
+        setMembers(allMembers);
+        setAssignedMemberIds(assignedIds);
+        setSelectedMemberIds(new Set());
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [open, role]);
+
+  const filteredMembers = members.filter((member) => {
+    const haystack = `${member.user.name ?? ""} ${member.user.email ?? ""}`.toLowerCase();
+    return haystack.includes(search.toLowerCase());
+  });
+
+  const assignableIds = filteredMembers
+    .filter((member) => !assignedMemberIds.has(member.id))
+    .map((member) => member.id);
+  const removableIds = filteredMembers
+    .filter((member) => assignedMemberIds.has(member.id))
+    .map((member) => member.id);
+
+  const toggleSelection = (memberId: string) => {
+    setSelectedMemberIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  };
+
+  const handleAssignSelected = async () => {
+    if (!role || selectedMemberIds.size === 0) return;
+    const memberIds = [...selectedMemberIds].filter((id) => !assignedMemberIds.has(id));
+    if (!memberIds.length) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/roles/${role.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberIds }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.message ?? "Failed to assign members.");
+      }
+
+      const assigned = new Set(assignedMemberIds);
+      memberIds.forEach((id) => assigned.add(id));
+      setAssignedMemberIds(assigned);
+      setSelectedMemberIds(new Set());
+      onSuccess?.();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to assign members.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRemoveSelected = async () => {
+    if (!role || selectedMemberIds.size === 0) return;
+    const memberIds = [...selectedMemberIds].filter((id) => assignedMemberIds.has(id));
+    if (!memberIds.length) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/roles/${role.id}/members`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberIds }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.message ?? "Failed to remove members.");
+      }
+
+      const assigned = new Set(assignedMemberIds);
+      memberIds.forEach((id) => assigned.delete(id));
+      setAssignedMemberIds(assigned);
+      setSelectedMemberIds(new Set());
+      onSuccess?.();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to remove members.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!role) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>Manage Members for {role.name}</DialogTitle>
+          <DialogDescription>
+            Add or remove members for this role without disturbing their other assignments.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search members by name or email"
+              className="pl-9"
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex min-h-[220px] items-center justify-center text-sm text-secondary-foreground">
+              Loading members...
+            </div>
+          ) : (
+            <div className="max-h-[380px] space-y-4 overflow-y-auto pr-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">Assigned members</p>
+                  <span className="text-xs text-secondary-foreground">{removableIds.length}</span>
+                </div>
+                {removableIds.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-border bg-secondary/20 px-3 py-4 text-sm text-secondary-foreground">
+                    No members currently assigned to this role.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredMembers
+                      .filter((member) => assignedMemberIds.has(member.id))
+                      .map((member) => (
+                        <label
+                          key={member.id}
+                          className="flex cursor-pointer items-center justify-between rounded-xl border border-border bg-secondary/20 px-3 py-2"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-foreground">
+                              {member.user.name ?? "Unnamed member"}
+                            </span>
+                            <span className="block truncate text-xs text-secondary-foreground">
+                              {member.user.email ?? "No email"}
+                            </span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={selectedMemberIds.has(member.id)}
+                            onChange={() => toggleSelection(member.id)}
+                            className="h-4 w-4 accent-primary"
+                          />
+                        </label>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">Available members</p>
+                  <span className="text-xs text-secondary-foreground">{assignableIds.length}</span>
+                </div>
+                {assignableIds.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-border bg-secondary/20 px-3 py-4 text-sm text-secondary-foreground">
+                    All members in this organization are already assigned to this role.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredMembers
+                      .filter((member) => !assignedMemberIds.has(member.id))
+                      .map((member) => (
+                        <label
+                          key={member.id}
+                          className="flex cursor-pointer items-center justify-between rounded-xl border border-border bg-card px-3 py-2"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-foreground">
+                              {member.user.name ?? "Unnamed member"}
+                            </span>
+                            <span className="block truncate text-xs text-secondary-foreground">
+                              {member.user.email ?? "No email"}
+                            </span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={selectedMemberIds.has(member.id)}
+                            onChange={() => toggleSelection(member.id)}
+                            className="h-4 w-4 accent-primary"
+                          />
+                        </label>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+            <Button
+              variant="outline"
+              className="rounded-full"
+              disabled={submitting || selectedMemberIds.size === 0}
+              onClick={handleRemoveSelected}
+            >
+              Remove selected
+            </Button>
+            <Button
+              className="rounded-full"
+              disabled={submitting || selectedMemberIds.size === 0}
+              onClick={handleAssignSelected}
+            >
+              {submitting ? "Updating..." : "Assign selected"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -287,6 +590,7 @@ export function RoleList() {
                 role={role}
                 onEdit={(r) => setDialog({ type: "edit", role: r })}
                 onDelete={(r) => setDialog({ type: "delete", role: r })}
+                onManageMembers={(r) => setDialog({ type: "assign-members", role: r })}
               />
             ))}
           </div>
@@ -344,6 +648,14 @@ export function RoleList() {
       <DeleteRoleDialog
         role={dialog.type === "delete" ? dialog.role : null}
         open={dialog.type === "delete"}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+        onSuccess={fetchRoles}
+      />
+      <RoleMembersDialog
+        role={dialog.type === "assign-members" ? dialog.role : null}
+        open={dialog.type === "assign-members"}
         onOpenChange={(open) => {
           if (!open) closeDialog();
         }}

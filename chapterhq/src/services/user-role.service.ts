@@ -148,7 +148,38 @@ export class UserRoleService {
       throw new RoleNotFoundError(roleId);
     }
 
-    return this.userRoleRepository.findMembersWithRole(roleId);
+    const assignments = await this.userRoleRepository.findMembersWithRole(roleId);
+    return assignments
+      .map((assignment) => assignment.member)
+      .filter((member) => !member.deletedAt && member.organizationId === organizationId);
+  }
+
+  async assignMembersToRole(organizationId: string, roleId: string, memberIds: string[]) {
+    const uniqueMemberIds = [...new Set(memberIds)];
+
+    if (uniqueMemberIds.length === 0) {
+      return [];
+    }
+
+    for (const memberId of uniqueMemberIds) {
+      await this.assignRole(organizationId, memberId, roleId);
+    }
+
+    return this.getRoleMembers(organizationId, roleId);
+  }
+
+  async removeMembersFromRole(organizationId: string, roleId: string, memberIds: string[]) {
+    const uniqueMemberIds = [...new Set(memberIds)];
+
+    if (uniqueMemberIds.length === 0) {
+      return [];
+    }
+
+    for (const memberId of uniqueMemberIds) {
+      await this.removeRole(organizationId, memberId, roleId);
+    }
+
+    return this.getRoleMembers(organizationId, roleId);
   }
 
   /**
