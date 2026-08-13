@@ -15,6 +15,7 @@ import {
   Search,
   Trash2,
   Users,
+  ShieldAlert,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import { EditMemberDialog } from "./edit-member-dialog";
 import { DeleteMemberDialog } from "./delete-member-dialog";
 import { CreateMemberDialog } from "./create-member-dialog";
 import { ViewMemberDialog } from "./view-member-dialog";
+import { ManageMemberRolesModal } from "./manage-member-roles-modal";
 import { BulkInviteDialog, ManualEmailDialog } from "./member-email-dialogs";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -51,7 +53,8 @@ type DialogState =
   | { type: "manual-email" }
   | { type: "view"; member: Member }
   | { type: "edit"; member: Member }
-  | { type: "delete"; member: Member };
+  | { type: "delete"; member: Member }
+  | { type: "manage-roles"; member: Member };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -461,6 +464,10 @@ export function MemberList() {
         onOpenChange={(open) => {
           if (!open) closeDialog();
         }}
+        onManageRoles={(member) => {
+          closeDialog();
+          setDialog({ type: "manage-roles", member });
+        }}
       />
       <EditMemberDialog
         member={dialog.type === "edit" ? dialog.member : null}
@@ -473,6 +480,14 @@ export function MemberList() {
       <DeleteMemberDialog
         member={dialog.type === "delete" ? dialog.member : null}
         open={dialog.type === "delete"}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+        onSuccess={fetchMembers}
+      />
+      <ManageMemberRolesModal
+        member={dialog.type === "manage-roles" ? dialog.member : null}
+        open={dialog.type === "manage-roles"}
         onOpenChange={(open) => {
           if (!open) closeDialog();
         }}

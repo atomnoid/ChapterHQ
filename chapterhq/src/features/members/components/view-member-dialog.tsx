@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { User } from "lucide-react";
+import { User, ShieldAlert } from "lucide-react";
 
 type MemberStatus = "ACTIVE" | "PENDING" | "LEFT" | "BLOCKED";
 
@@ -24,6 +25,7 @@ interface ViewMemberDialogProps {
   member: Member | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onManageRoles?: (member: Member) => void;
 }
 
 const STATUS_STYLES: Record<MemberStatus, string> = {
@@ -33,8 +35,19 @@ const STATUS_STYLES: Record<MemberStatus, string> = {
   BLOCKED: "bg-destructive/10 text-destructive",
 };
 
-export function ViewMemberDialog({ member, open, onOpenChange }: ViewMemberDialogProps) {
+export function ViewMemberDialog({ member, open, onOpenChange, onManageRoles }: ViewMemberDialogProps) {
+  const [loadingRoles, setLoadingRoles] = useState(false);
+
   if (!member) return null;
+
+  const handleManageRoles = async () => {
+    setLoadingRoles(true);
+    try {
+      onManageRoles?.(member);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,9 +110,21 @@ export function ViewMemberDialog({ member, open, onOpenChange }: ViewMemberDialo
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" className="rounded-full w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            variant="outline"
+            className="rounded-full sm:flex-1"
+            onClick={() => onOpenChange(false)}
+          >
             Close
+          </Button>
+          <Button
+            onClick={handleManageRoles}
+            disabled={loadingRoles}
+            className="rounded-full gap-2 sm:flex-1"
+          >
+            <ShieldAlert className="h-4 w-4" />
+            Manage Roles
           </Button>
         </DialogFooter>
       </DialogContent>

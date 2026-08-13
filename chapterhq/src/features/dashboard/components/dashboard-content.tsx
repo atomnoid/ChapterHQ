@@ -383,6 +383,16 @@ export function DashboardContent() {
                 <Shield className="h-5 w-5" />
               </span>
             </article>
+
+            <article className="rounded-3xl border border-border bg-card p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-secondary-foreground">My Roles</p>
+                <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">{meData?.assignedRoleCount ?? 0}</p>
+              </div>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border text-purple-600 bg-purple-50 border-purple-100">
+                <Shield className="h-5 w-5" />
+              </span>
+            </article>
           </>
         )}
 
