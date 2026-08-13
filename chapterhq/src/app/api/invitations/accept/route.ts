@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/audit-logger";
@@ -59,11 +60,9 @@ export async function POST(
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token");
 
-    console.log("[INVITE ACCEPT] token received", {
-      hasToken: Boolean(token),
-      userId: session.user.id,
-      loggedInEmail: session.user.email ?? null,
-    });
+    console.log("[INVITE_ACCEPT_DEBUG] authenticatedUserId", session.user.id);
+    console.log("[INVITE_ACCEPT_DEBUG] authenticatedUserEmail", session.user.email ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] tokenPresent", Boolean(token));
 
     if (!token) {
       return NextResponse.json({ message: "Token is required." }, { status: 400 });
@@ -76,26 +75,21 @@ export async function POST(
       },
     });
 
-    console.log("[INVITE ACCEPT] invitation found", {
-      found: Boolean(invitation),
-      invitationId: invitation?.id ?? null,
-      status: invitation?.status ?? null,
-      email: invitation?.email ?? null,
-      deletedAt: invitation?.deletedAt ?? null,
-    });
+    console.log("[INVITE_ACCEPT_DEBUG] invitationFound", Boolean(invitation));
+    console.log("[INVITE_ACCEPT_DEBUG] invitationStatus", invitation?.status ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] invitationEmail", invitation?.email ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] invitationExpiresAt", invitation?.expiresAt ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] invitationAcceptedAt", invitation?.updatedAt ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] organizationId", invitation?.organizationId ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] invitationRoleId", invitation?.roleId ?? null);
 
     if (!invitation || invitation.deletedAt) {
       return NextResponse.json({ message: "Invitation not found." }, { status: 404 });
     }
 
-    console.log("[INVITE ACCEPT] invitation status", { status: invitation.status });
-    console.log("[INVITE ACCEPT] invitation expiry", {
-      expiresAt: invitation.expiresAt.toISOString(),
-      expired: new Date() > new Date(invitation.expiresAt),
-    });
-    console.log("[INVITE ACCEPT] user id", { userId: session.user.id });
-    console.log("[INVITE ACCEPT] organization id", { organizationId: invitation.organizationId });
-    console.log("[INVITE ACCEPT] committee id", { committeeId: invitation.committeeId ?? null });
+    console.log("[INVITE_ACCEPT_DEBUG] invitationDeletedAt", invitation.deletedAt ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] invitationCommitteeId", invitation.committeeId ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] invitationOrganizationExists", Boolean(invitation.organization));
 
     const isExpired = new Date() > new Date(invitation.expiresAt);
     if (isExpired || invitation.status === "EXPIRED") {
@@ -104,6 +98,14 @@ export async function POST(
 
     if (invitation.status === "ACCEPTED") {
       return NextResponse.json({ message: "Invitation already accepted.", alreadyAccepted: true }, { status: 200 });
+    }
+
+    if (invitation.status === "CANCELLED") {
+      return NextResponse.json({ message: "Invitation is no longer valid." }, { status: 410 });
+    }
+
+    if (invitation.status !== "PENDING") {
+      return NextResponse.json({ message: "Invitation is not pending." }, { status: 400 });
     }
 
     const loggedInEmail = session.user.email?.toLowerCase();
@@ -138,10 +140,6 @@ export async function POST(
       return NextResponse.json({ message: "Invitation rejected successfully." });
     }
 
-    console.log("[invitation/accept] existing member lookup", {
-      organizationId: invitation.organizationId,
-      userId: session.user.id,
-    });
     const existingMembership = await prisma.member.findFirst({
       where: {
         organizationId: invitation.organizationId,
@@ -149,11 +147,9 @@ export async function POST(
       },
     });
 
-    console.log("[invitation/accept] existing member status", {
-      exists: Boolean(existingMembership),
-      status: existingMembership?.status ?? null,
-      deletedAt: existingMembership?.deletedAt ?? null,
-    });
+    console.log("[INVITE_ACCEPT_DEBUG] existingMemberId", existingMembership?.id ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] existingMemberStatus", existingMembership?.status ?? null);
+    console.log("[INVITE_ACCEPT_DEBUG] existingMemberDeletedAt", existingMembership?.deletedAt ?? null);
 
     const existingActiveMembership = existingMembership && !existingMembership.deletedAt && existingMembership.status === "ACTIVE" ? existingMembership : null;
     const existingDeletedMembership = existingMembership && existingMembership.deletedAt ? existingMembership : null;
@@ -204,11 +200,19 @@ export async function POST(
         member = targetMember;
       }
 
-      console.log("[INVITE ACCEPT] membership action", { action: membershipAction, memberId: member.id });
+      console.log("[INVITE_ACCEPT_DEBUG] membershipAction", membershipAction);
+      console.log("[INVITE_ACCEPT_DEBUG] resolvedMemberId", member.id);
 
       const roleIdToAssign = invitation.roleId;
+      await tx.userRole.deleteMany({
+        where: {
+          memberId: member.id,
+        },
+      });
+
       if (roleIdToAssign) {
-        console.log("[invitation/accept] role lookup", {
+        console.log("[INVITE_ACCEPT_DEBUG] validatingInvitationRole", {
+          memberId: member.id,
           roleId: roleIdToAssign,
           organizationId: invitation.organizationId,
         });
@@ -223,27 +227,19 @@ export async function POST(
           throw new Error("The invited role is no longer available.");
         }
 
-        await tx.userRole.upsert({
-          where: {
-            memberId_roleId: {
-              memberId: member.id,
-              roleId: roleIdToAssign,
-            },
-          },
-          update: {},
-          create: {
+        await tx.userRole.create({
+          data: {
             memberId: member.id,
             roleId: roleIdToAssign,
           },
         });
-        console.log("[INVITE ACCEPT] role assignment", {
+        console.log("[INVITE_ACCEPT_DEBUG] roleAssignmentApplied", {
           memberId: member.id,
           roleId: roleIdToAssign,
         });
       } else {
-        console.log("[INVITE ACCEPT] role assignment", {
+        console.log("[INVITE_ACCEPT_DEBUG] noRoleAssignedToInvitation", {
           memberId: member.id,
-          roleId: null,
           reason: "no role assigned to invitation",
         });
       }
@@ -274,6 +270,31 @@ export async function POST(
             },
           });
         }
+      }
+
+      const conflictingAcceptedInvitation = await tx.invitation.findFirst({
+        where: {
+          organizationId: invitation.organizationId,
+          email: invitation.email,
+          status: "ACCEPTED",
+          id: { not: invitation.id },
+        },
+      });
+
+      if (conflictingAcceptedInvitation) {
+        console.log("[INVITE_ACCEPT_DEBUG] cancellingConflictingAcceptedInvitation", {
+          invitationId: conflictingAcceptedInvitation.id,
+          email: conflictingAcceptedInvitation.email,
+          organizationId: conflictingAcceptedInvitation.organizationId,
+        });
+
+        await tx.invitation.update({
+          where: { id: conflictingAcceptedInvitation.id },
+          data: {
+            status: "CANCELLED",
+            deletedAt: new Date(),
+          },
+        });
       }
 
       console.log("[invitation/accept] invitation update", { invitationId: invitation.id, newStatus: "ACCEPTED" });
@@ -317,10 +338,13 @@ export async function POST(
       membershipAction,
     });
   } catch (error) {
-    console.error("[invitation/accept] TRANSACTION ERROR:", error);
-    console.error("[invitation/accept] ERROR NAME:", error instanceof Error ? error.name : typeof error);
-    console.error("[invitation/accept] ERROR MESSAGE:", error instanceof Error ? error.message : error);
-    console.error("[invitation/accept] ERROR STACK:", error instanceof Error ? error.stack : undefined);
+    console.error("[INVITE_ACCEPT_ERROR] errorName", error instanceof Error ? error.name : typeof error);
+    console.error("[INVITE_ACCEPT_ERROR] errorMessage", error instanceof Error ? error.message : String(error));
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error("[INVITE_ACCEPT_ERROR] prismaErrorCode", error.code);
+      console.error("[INVITE_ACCEPT_ERROR] prismaMeta", error.meta ?? null);
+    }
+    console.error("[INVITE_ACCEPT_ERROR] stack", error instanceof Error ? error.stack : undefined);
 
     const isDev = process.env.NODE_ENV !== "production";
     return NextResponse.json({

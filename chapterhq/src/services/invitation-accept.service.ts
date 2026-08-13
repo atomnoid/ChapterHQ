@@ -80,16 +80,13 @@ export class InvitationAcceptService {
         });
       }
 
+      await tx.userRole.deleteMany({
+        where: { memberId: targetMember.id },
+      });
+
       if (roleId) {
-        await tx.userRole.upsert({
-          where: {
-            memberId_roleId: {
-              memberId: targetMember.id,
-              roleId,
-            },
-          },
-          update: {},
-          create: {
+        await tx.userRole.create({
+          data: {
             memberId: targetMember.id,
             roleId,
           },
