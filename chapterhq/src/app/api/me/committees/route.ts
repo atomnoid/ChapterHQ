@@ -174,14 +174,15 @@ export async function GET() {
       committees: committees.map((c) => ({ id: c.id, name: c.name })),
     });
 
-    // Shape: { id, name, description }
-    return apiResponse.success(
-      committees.map((c) => ({
+    // Shape: { isAdmin, committees: [...] }
+    return apiResponse.success({
+      isAdmin: isOrgAdmin,
+      committees: committees.map((c) => ({
         id: c.id,
         name: c.name,
         description: c.description ?? null,
-      }))
-    );
+      })),
+    });
   } catch (error) {
     console.error("[GET /api/me/committees] Error:", error);
     return apiResponse.serverError();

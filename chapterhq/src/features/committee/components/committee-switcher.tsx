@@ -27,7 +27,7 @@ export function CommitteeSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   const activeOrganizationId = session?.activeOrganizationId ?? null;
   const activeCommitteeId = session?.activeCommitteeId ?? null;
 
-  const { committees, loading } = useMyCommittees(activeOrganizationId);
+  const { committees, isAdmin, loading } = useMyCommittees(activeOrganizationId);
 
   const activeCommittee = committees.find((c) => c.id === activeCommitteeId) ?? null;
 
@@ -166,32 +166,34 @@ export function CommitteeSwitcher({ onNavigate }: { onNavigate?: () => void }) {
             "bg-card shadow-[0_12px_40px_rgba(77,54,37,0.12)]"
           )}
         >
-          {/* "All committees" / clear option */}
-          <button
-            type="button"
-            role="option"
-            aria-selected={activeCommitteeId === null}
-            onClick={() => switchCommittee(null)}
-            disabled={switching}
-            className={cn(
-              "flex w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left text-xs font-medium transition-colors",
-              activeCommitteeId === null
-                ? "bg-primary/10 text-primary"
-                : "text-secondary-foreground hover:bg-secondary hover:text-foreground"
-            )}
-          >
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-              {activeCommitteeId === null ? (
-                <Check className="h-3.5 w-3.5 text-primary" />
-              ) : (
-                <X className="h-3 w-3 opacity-30" />
+          {/* "All committees" / clear option — only for admins */}
+          {isAdmin && (
+            <button
+              type="button"
+              role="option"
+              aria-selected={activeCommitteeId === null}
+              onClick={() => switchCommittee(null)}
+              disabled={switching}
+              className={cn(
+                "flex w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left text-xs font-medium transition-colors",
+                activeCommitteeId === null
+                  ? "bg-primary/10 text-primary"
+                  : "text-secondary-foreground hover:bg-secondary hover:text-foreground"
               )}
-            </span>
-            <span>All committees</span>
-            <span className="ml-auto text-[10px] text-secondary-foreground/60">
-              org-wide
-            </span>
-          </button>
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                {activeCommitteeId === null ? (
+                  <Check className="h-3.5 w-3.5 text-primary" />
+                ) : (
+                  <X className="h-3 w-3 opacity-30" />
+                )}
+              </span>
+              <span>All committees</span>
+              <span className="ml-auto text-[10px] text-secondary-foreground/60">
+                org-wide
+              </span>
+            </button>
+          )}
 
           {/* Individual committees */}
           <div className="max-h-56 overflow-y-auto py-1">

@@ -16,11 +16,13 @@ export interface Committee {
  */
 export function useMyCommittees(activeOrganizationId: string | null | undefined) {
   const [committees, setCommittees] = useState<Committee[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!activeOrganizationId) {
       setCommittees([]);
+      setIsAdmin(false);
       return;
     }
 
@@ -32,13 +34,18 @@ export function useMyCommittees(activeOrganizationId: string | null | undefined)
       .then((json) => {
         if (cancelled) return;
         console.log("[useMyCommittees] API response:", json);
-        const items: Committee[] = json?.data ?? json ?? [];
-        console.log("[useMyCommittees] Parsed items:", items.length, "committees");
+        const isAdminFlag = json?.isAdmin ?? false;
+        const items: Committee[] = json?.committees ?? json?.data ?? json ?? [];
+        console.log("[useMyCommittees] Parsed items:", items.length, "committees, isAdmin:", isAdminFlag);
+        setIsAdmin(isAdminFlag);
         setCommittees(Array.isArray(items) ? items : []);
       })
       .catch((err) => {
         console.error("[useMyCommittees] Fetch error:", err);
-        if (!cancelled) setCommittees([]);
+        if (!cancelled) {
+          setCommittees([]);
+          setIsAdmin(false);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -49,5 +56,5 @@ export function useMyCommittees(activeOrganizationId: string | null | undefined)
     };
   }, [activeOrganizationId]);
 
-  return { committees, loading };
+  return { committees, isAdmin, loading };
 }
