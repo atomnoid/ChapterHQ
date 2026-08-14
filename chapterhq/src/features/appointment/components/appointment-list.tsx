@@ -207,7 +207,7 @@ export function AppointmentList({
           <div className="relative flex-1 max-w-sm min-w-[200px]">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
             <Input
-              placeholder="Search by designationâ€¦"
+              placeholder="Search by designation..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"

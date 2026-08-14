@@ -184,7 +184,7 @@ export function CreateAppointmentDialog({
               {...register("committeeId")}
               className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Select committeeâ€¦</option>
+              <option value="">Select committee...</option>
               {committees.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -204,7 +204,7 @@ export function CreateAppointmentDialog({
               {...register("memberId")}
               className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Select memberâ€¦</option>
+              <option value="">Select member...</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.user.name ?? m.user.email ?? m.id}

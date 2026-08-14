@@ -303,7 +303,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             const name = member.user.name ?? member.user.email ?? "Unknown Member";
             const record = attendance.find((att) => att.memberId === member.id);
             const status = record?.status ?? "ABSENT";
-            const notes = record?.notes ?? "â€”";
+            const notes = record?.notes ?? "";
 
             return (
               <div
