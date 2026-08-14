@@ -185,6 +185,7 @@ model Committee {
   documents        Document[]
   inventoryItems   InventoryItem[]
   notifications    Notification[]
+  roleAccess       RoleCommitteeAccess[]
 
   @@unique([organizationId, name])
 
@@ -371,10 +372,34 @@ model Role {
 
   userRoles UserRole[]
   rolePermissions RolePermission[]
+  committeeAccess RoleCommitteeAccess[]
 
   @@index([organizationId, name])
 
   @@map("roles")
+}
+
+//////////////////////////////////////////////////////
+// ROLE COMMITTEE ACCESS
+//////////////////////////////////////////////////////
+
+model RoleCommitteeAccess {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  roleId String @db.ObjectId
+  committeeId String @db.ObjectId
+
+  role Role @relation(fields: [roleId], references: [id])
+  committee Committee @relation(fields: [committeeId], references: [id])
+
+  grantedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roleId, committeeId])
+
+  @@map("role_committee_access")
 }
 
 //////////////////////////////////////////////////////
