@@ -28,13 +28,17 @@ export async function GET(
 
     return NextResponse.json(members, { status: 200 });
   } catch (error: unknown) {
+    console.error("[GET /api/roles/[id]/members] Error:", error instanceof Error ? error.message : String(error));
     if (error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     if (error instanceof RoleNotFoundError) {
       return NextResponse.json({ message: error.message }, { status: 404 });
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Internal server error." },
+      { status: 500 }
+    );
   }
 }
 
@@ -48,13 +52,16 @@ export async function POST(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context: authContext } = await requirePermission(session.user.id, "roles:assign");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:assign").catch(async () => {
+      return requirePermission(session.user.id, "roles:update");
+    });
     const { id } = await params;
     const { memberIds } = memberIdsSchema.parse(await request.json());
 
     const result = await userRoleService.assignMembersToRole(authContext.organizationId, id, memberIds);
     return NextResponse.json({ message: "Members assigned successfully.", data: result }, { status: 201 });
   } catch (error: unknown) {
+    console.error("[POST /api/roles/[id]/members] Error:", error instanceof Error ? error.message : String(error));
     if (error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
@@ -67,7 +74,10 @@ export async function POST(
     if (error instanceof UserRoleAlreadyExistsError || error instanceof InactiveRoleAssignmentError) {
       return NextResponse.json({ message: (error as Error).message }, { status: 409 });
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Internal server error." },
+      { status: 500 }
+    );
   }
 }
 
@@ -81,13 +91,16 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context: authContext } = await requirePermission(session.user.id, "roles:remove");
+    const { context: authContext } = await requirePermission(session.user.id, "roles:remove").catch(async () => {
+      return requirePermission(session.user.id, "roles:update");
+    });
     const { id } = await params;
     const { memberIds } = memberIdsSchema.parse(await request.json());
 
     const result = await userRoleService.removeMembersFromRole(authContext.organizationId, id, memberIds);
     return NextResponse.json({ message: "Members removed successfully.", data: result }, { status: 200 });
   } catch (error: unknown) {
+    console.error("[DELETE /api/roles/[id]/members] Error:", error instanceof Error ? error.message : String(error));
     if (error instanceof Error && error.name === "PermissionDeniedError") {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
@@ -97,6 +110,9 @@ export async function DELETE(
     if (error instanceof MemberNotFoundError || error instanceof UserRoleNotFoundError) {
       return NextResponse.json({ message: (error as Error).message }, { status: 404 });
     }
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Internal server error." },
+      { status: 500 }
+    );
   }
 }

@@ -210,11 +210,17 @@ function RoleMembersDialog({
       try {
         const [assignedRes, membersRes] = await Promise.all([
           fetch(`/api/roles/${role.id}/members`),
-          fetch(`/api/members?limit=200`),
+          fetch(`/api/members?limit=100`),
         ]);
 
-        if (!assignedRes.ok || !membersRes.ok) {
-          throw new Error("Failed to load role member data.");
+        if (!assignedRes.ok) {
+          const errData = await assignedRes.json().catch(() => ({ message: `HTTP ${assignedRes.status}` }));
+          throw new Error(`Failed to load role members: ${errData.message || "Unknown error"}`);
+        }
+
+        if (!membersRes.ok) {
+          const errData = await membersRes.json().catch(() => ({ message: `HTTP ${membersRes.status}` }));
+          throw new Error(`Failed to load members: ${errData.message || "Unknown error"}`);
         }
 
         const assigned = await assignedRes.json();
@@ -226,7 +232,9 @@ function RoleMembersDialog({
         setAssignedMemberIds(assignedIds);
         setSelectedMemberIds(new Set());
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to load data.");
+        const msg = err instanceof Error ? err.message : "Failed to load data.";
+        setError(msg);
+        console.error("[RoleMembersDialog]", msg);
       } finally {
         setLoading(false);
       }
@@ -322,7 +330,7 @@ function RoleMembersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Manage Members for {role.name}</DialogTitle>
           <DialogDescription>
@@ -330,8 +338,8 @@ function RoleMembersDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="relative">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-4">
+          <div className="relative flex-shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
             <Input
               value={search}
@@ -342,19 +350,19 @@ function RoleMembersDialog({
           </div>
 
           {error && (
-            <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive flex-shrink-0">
               {error}
             </div>
           )}
 
           {loading ? (
-            <div className="flex min-h-[220px] items-center justify-center text-sm text-secondary-foreground">
+            <div className="flex flex-1 items-center justify-center text-sm text-secondary-foreground">
               Loading members...
             </div>
           ) : (
-            <div className="max-h-[380px] space-y-4 overflow-y-auto pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between sticky top-0 bg-card">
                   <p className="text-sm font-semibold text-foreground">Assigned members</p>
                   <span className="text-xs text-secondary-foreground">{removableIds.length}</span>
                 </div>
@@ -383,7 +391,7 @@ function RoleMembersDialog({
                             type="checkbox"
                             checked={selectedMemberIds.has(member.id)}
                             onChange={() => toggleSelection(member.id)}
-                            className="h-4 w-4 accent-primary"
+                            className="h-4 w-4 accent-primary flex-shrink-0"
                           />
                         </label>
                       ))}
@@ -392,7 +400,7 @@ function RoleMembersDialog({
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between sticky top-0 bg-card">
                   <p className="text-sm font-semibold text-foreground">Available members</p>
                   <span className="text-xs text-secondary-foreground">{assignableIds.length}</span>
                 </div>
@@ -421,7 +429,7 @@ function RoleMembersDialog({
                             type="checkbox"
                             checked={selectedMemberIds.has(member.id)}
                             onChange={() => toggleSelection(member.id)}
-                            className="h-4 w-4 accent-primary"
+                            className="h-4 w-4 accent-primary flex-shrink-0"
                           />
                         </label>
                       ))}
@@ -430,24 +438,24 @@ function RoleMembersDialog({
               </div>
             </div>
           )}
+        </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-            <Button
-              variant="outline"
-              className="rounded-full"
-              disabled={submitting || selectedMemberIds.size === 0}
-              onClick={handleRemoveSelected}
-            >
-              Remove selected
-            </Button>
-            <Button
-              className="rounded-full"
-              disabled={submitting || selectedMemberIds.size === 0}
-              onClick={handleAssignSelected}
-            >
-              {submitting ? "Updating..." : "Assign selected"}
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-2 border-t border-border pt-4 flex-shrink-0">
+          <Button
+            variant="outline"
+            className="rounded-full"
+            disabled={submitting || selectedMemberIds.size === 0}
+            onClick={handleRemoveSelected}
+          >
+            Remove selected
+          </Button>
+          <Button
+            className="rounded-full"
+            disabled={submitting || selectedMemberIds.size === 0}
+            onClick={handleAssignSelected}
+          >
+            {submitting ? "Updating..." : "Assign selected"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
