@@ -184,7 +184,7 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!submitting) onOpenChange(v); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -259,8 +259,10 @@ function CreateNotificationDialog({ open, onOpenChange, onSuccess }: CreateNotif
                       : "border-border text-secondary-foreground hover:border-primary/50 hover:text-foreground"
                   }`}
                 >
-                  {targetScope === scope ? "● " : "○ "}{scope === "MEMBERS" ? "Selected Members" : ""}
-                  {scope === "ORGANIZATION" ? "🏢 Organization" : "👥 Committee"}
+                  {targetScope === scope ? "● " : "○ "}
+                  {scope === "ORGANIZATION" && "🏢 Organization"}
+                  {scope === "COMMITTEE" && "👥 Committee"}
+                  {scope === "MEMBERS" && "👥 Selected Members"}
                 </button>
               ))}
             </div>
