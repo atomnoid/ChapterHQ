@@ -19,6 +19,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { AttendanceList } from "@/features/attendance/components/attendance-list";
 
 interface Event {
@@ -82,6 +91,9 @@ export function EventDetails({ eventId }: EventDetailsProps) {
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [selectedRegIds, setSelectedRegIds] = useState<string[]>([]);
   const [deletingBulk, setDeletingBulk] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedAddMemberIds, setSelectedAddMemberIds] = useState<string[]>([]);
+  const [addSearchQuery, setAddSearchQuery] = useState("");
 
   const fetchDetails = useCallback(async () => {
     setLoading(true);
@@ -144,6 +156,47 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     }
   }
 
+  // Handle bulk adding member registrations
+  async function handleBulkRegisterMembers() {
+    if (selectedAddMemberIds.length === 0) return;
+    setRegistering(true);
+    setRegisterError(null);
+    try {
+      let succeededCount = 0;
+      let lastError = null;
+      for (const memberId of selectedAddMemberIds) {
+        try {
+          const res = await fetch(`/api/events/${eventId}/registrations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ memberId }),
+          });
+          if (!res.ok) {
+            const json = await res.json();
+            lastError = json.message ?? `Failed to register member.`;
+          } else {
+            succeededCount++;
+          }
+        } catch {
+          lastError = "An error occurred during registration.";
+        }
+      }
+      setSelectedAddMemberIds([]);
+      setAddSearchQuery("");
+      setIsAddDialogOpen(false);
+      await fetchDetails();
+      if (lastError && succeededCount === 0) {
+        setRegisterError(lastError);
+      } else if (lastError) {
+        alert(`Registered ${succeededCount} member(s). Some registrations failed: ${lastError}`);
+      }
+    } catch {
+      setRegisterError("An error occurred during registration.");
+    } finally {
+      setRegistering(false);
+    }
+  }
+
   // Handle removing member registration
   async function handleCancelRegistration(memberId: string) {
     if (!confirm("Are you sure you want to remove this member from the attendee list?")) return;
@@ -170,7 +223,9 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     setDeletingBulk(true);
     try {
       for (const regId of selectedRegIds) {
-        const res = await fetch(`/api/events/${eventId}/registrations/${regId}`, {
+        const reg = registrations.find((r) => r.id === regId);
+        if (!reg) continue;
+        const res = await fetch(`/api/events/${eventId}/registrations/${reg.memberId}`, {
           method: "DELETE",
         });
         if (!res.ok) {
@@ -239,6 +294,16 @@ export function EventDetails({ eventId }: EventDetailsProps) {
   const availableMembers = allMembers.filter(
     (m) => !registrations.some((r) => r.memberId === m.id)
   );
+
+  // Filter and search available members
+  const filteredAvailableMembers = availableMembers.filter((m) => {
+    const name = m.user.name ?? "";
+    const email = m.user.email ?? "";
+    return (
+      name.toLowerCase().includes(addSearchQuery.toLowerCase()) ||
+      email.toLowerCase().includes(addSearchQuery.toLowerCase())
+    );
+  });
 
   // Search registrations
   const filteredRegistrations = registrations.filter((reg) => {
@@ -379,25 +444,10 @@ export function EventDetails({ eventId }: EventDetailsProps) {
               </div>
 
               {availableMembers.length > 0 && (
-                <form onSubmit={handleRegisterMember} className="flex items-center gap-2">
-                  <select
-                    value={selectedMemberToAdd}
-                    onChange={(e) => setSelectedMemberToAdd(e.target.value)}
-                    className="h-10 rounded-2xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    aria-label="Select member to register"
-                  >
-                    <option value="">Add member…</option>
-                    {availableMembers.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.user.name ?? m.user.email}
-                      </option>
-                    ))}
-                  </select>
-                  <Button type="submit" disabled={registering || !selectedMemberToAdd} className="rounded-full">
-                    {registering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
-                    Add
-                  </Button>
-                </form>
+                <Button onClick={() => setIsAddDialogOpen(true)} className="rounded-full">
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Add Attendees
+                </Button>
               )}
             </div>
 
@@ -494,6 +544,109 @@ export function EventDetails({ eventId }: EventDetailsProps) {
               })}
             </div>
           )}
+
+          {/* Add Attendees Dialog */}
+          <Dialog open={isAddDialogOpen} onOpenChange={(v) => !registering && setIsAddDialogOpen(v)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add Attendees</DialogTitle>
+                <DialogDescription>
+                  Select members to register for this event.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
+                  <Input
+                    placeholder="Search members..."
+                    value={addSearchQuery}
+                    onChange={(e) => setAddSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <div className="max-h-[300px] overflow-y-auto border border-border rounded-2xl p-2 space-y-1 bg-card">
+                  {filteredAvailableMembers.length === 0 ? (
+                    <p className="text-sm text-secondary-foreground text-center py-4">No members available to add.</p>
+                  ) : (
+                    <>
+                      <label className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#fcf8f1] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedAddMemberIds.length === filteredAvailableMembers.length &&
+                            filteredAvailableMembers.length > 0
+                          }
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAddMemberIds(filteredAvailableMembers.map((m) => m.id));
+                            } else {
+                              setSelectedAddMemberIds([]);
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
+                        />
+                        <span className="text-sm font-semibold text-foreground">Select All</span>
+                      </label>
+                      <div className="border-t border-border my-1" />
+                      {filteredAvailableMembers.map((m) => {
+                        const name = m.user.name ?? m.user.email ?? "Unknown Member";
+                        return (
+                          <label
+                            key={m.id}
+                            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#fcf8f1] cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedAddMemberIds.includes(m.id)}
+                              onChange={() => {
+                                setSelectedAddMemberIds((prev) =>
+                                  prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id]
+                                );
+                              }}
+                              className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-semibold text-foreground truncate">{name}</span>
+                              {m.user.name && (
+                                <span className="text-xs text-secondary-foreground truncate">{m.user.email}</span>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => {
+                    setIsAddDialogOpen(false);
+                    setSelectedAddMemberIds([]);
+                    setAddSearchQuery("");
+                  }}
+                  disabled={registering}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="rounded-full"
+                  onClick={handleBulkRegisterMembers}
+                  disabled={registering || selectedAddMemberIds.length === 0}
+                >
+                  {registering && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Add Selected ({selectedAddMemberIds.length})
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
