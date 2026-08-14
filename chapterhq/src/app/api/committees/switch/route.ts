@@ -2,7 +2,6 @@ import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { OrganizationContextService } from "@/services/session/organization-context.service";
 import { prisma } from "@/lib/prisma";
-import { isPresident } from "@/lib/committee-auth";
 
 const contextService = new OrganizationContextService();
 
@@ -46,8 +45,7 @@ export async function POST(request: Request) {
       return apiResponse.notFound("Committee not found in the active organization.");
     }
 
-    // 2. Verify user has access to that committee
-    // Either is active CommitteeMember OR has organization-owner permissions.
+    // 2. Committee switching is allowed only for members directly assigned to that committee.
     const committeeMember = await prisma.committeeMember.findFirst({
       where: {
         committeeId,
@@ -55,33 +53,7 @@ export async function POST(request: Request) {
       },
     });
 
-    let hasAccess = !!(committeeMember && !committeeMember.deletedAt);
-
-    if (!hasAccess) {
-      const hasOwnerAccess = await isPresident(session.user.id, organizationId);
-      if (hasOwnerAccess) {
-        hasAccess = true;
-      }
-    }
-
-    if (!hasAccess) {
-      const appointments = await prisma.appointment.findMany({
-        where: {
-          committeeId,
-          memberId: member.id,
-          status: "ACTIVE",
-          designation: {
-            in: ["Committee Head", "Head", "Chairman", "Chair", "Committee Lead", "Lead"],
-          },
-        },
-      });
-      const hasActiveApp = appointments.some((a) => !a.deletedAt);
-      if (hasActiveApp) {
-        hasAccess = true;
-      }
-    }
-
-    if (!hasAccess) {
+    if (!committeeMember || committeeMember.deletedAt) {
       return apiResponse.forbidden("You do not have access to this committee.");
     }
 

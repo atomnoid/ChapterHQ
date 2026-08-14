@@ -72,8 +72,15 @@ export function RoleCommitteeAccessDialog({
         const committeesData = await committeesRes.json();
         const accessData = await accessRes.json();
 
-        const allCommittees = committeesData.data ?? committeesData ?? [];
-        const grantedCommittees = accessData.data ?? accessData ?? [];
+        // Extract committees - handle paginated response
+        const allCommittees = Array.isArray(committeesData) 
+          ? committeesData 
+          : committeesData.data?.items ?? committeesData.items ?? [];
+        
+        // Extract granted committees - should be an array
+        const grantedCommittees = Array.isArray(accessData) 
+          ? accessData 
+          : accessData.data ?? [];
         const grantedIds = new Set<string>(
           grantedCommittees.map((c: Committee) => c.id)
         );

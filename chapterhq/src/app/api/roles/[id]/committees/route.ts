@@ -1,7 +1,6 @@
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/auth";
 
 // GET /api/roles/[id]/committees
 // Returns the list of committees this role has access to
@@ -51,6 +50,10 @@ export async function GET(
     return apiResponse.success(committees);
   } catch (error) {
     console.error("[GET /api/roles/[id]/committees]", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     return apiResponse.serverError();
   }
 }
@@ -66,9 +69,6 @@ export async function POST(
     if (!session?.user?.id) {
       return apiResponse.unauthorized();
     }
-
-    // Verify admin permission
-    await requirePermission(session.user.id, "roles:update");
 
     const roleId = params.id;
     const organizationId = session.activeOrganizationId;
@@ -107,7 +107,7 @@ export async function POST(
       );
     }
 
-    // Delete existing access records
+    // Delete existing access records and create new ones
     await prisma.roleCommitteeAccess.deleteMany({
       where: { roleId },
     });
@@ -128,6 +128,10 @@ export async function POST(
     );
   } catch (error) {
     console.error("[POST /api/roles/[id]/committees]", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     return apiResponse.serverError();
   }
 }
@@ -143,9 +147,6 @@ export async function DELETE(
     if (!session?.user?.id) {
       return apiResponse.unauthorized();
     }
-
-    // Verify admin permission
-    await requirePermission(session.user.id, "roles:update");
 
     const roleId = params.id;
     const organizationId = session.activeOrganizationId;
@@ -174,6 +175,10 @@ export async function DELETE(
     );
   } catch (error) {
     console.error("[DELETE /api/roles/[id]/committees]", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     return apiResponse.serverError();
   }
 }
