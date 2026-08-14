@@ -273,7 +273,7 @@ function AuditPagination({
     <div className="flex items-center justify-between gap-4 pt-2">
       <p className="text-xs text-secondary-foreground">
         Showing{" "}
-        <span className="font-medium text-foreground">{start}â€“{end}</span> of{" "}
+        <span className="font-medium text-foreground">{start}-{end}</span> of{" "}
         <span className="font-medium text-foreground">{total}</span> entries
       </p>
       <div className="flex items-center gap-1.5">
@@ -322,12 +322,10 @@ export function AuditLogList() {
   // Filter state
   const [search, setSearch] = useState("");
   const [action, setAction] = useState("");
-  const [resource, setResource] = useState("");
 
   // Debounced values
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedAction, setDebouncedAction] = useState("");
-  const [debouncedResource, setDebouncedResource] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
@@ -339,15 +337,10 @@ export function AuditLogList() {
     return () => clearTimeout(t);
   }, [action]);
 
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedResource(resource), 350);
-    return () => clearTimeout(t);
-  }, [resource]);
-
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, debouncedAction, debouncedResource]);
+  }, [debouncedSearch, debouncedAction]);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -360,7 +353,6 @@ export function AuditLogList() {
       });
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (debouncedAction) params.set("action", debouncedAction);
-      if (debouncedResource) params.set("resource", debouncedResource);
 
       const res = await fetch(`/api/audit-logs?${params.toString()}`);
       if (!res.ok) throw new Error("Failed");
@@ -373,31 +365,30 @@ export function AuditLogList() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, debouncedAction, debouncedResource]);
+  }, [page, debouncedSearch, debouncedAction]);
 
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
 
-  const hasFilters = !!(debouncedSearch || debouncedAction || debouncedResource);
+  const hasFilters = !!(debouncedSearch || debouncedAction);
 
   const clearFilters = () => {
     setSearch("");
     setAction("");
-    setResource("");
     setPage(1);
   };
 
   return (
     <div className="space-y-5">
-      {/* â”€â”€ Filters bar â”€â”€ */}
+      {/* ── Filters bar ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1 min-w-0">
           <FilterInput
             id="audit-search"
             value={search}
             onChange={setSearch}
-            placeholder="Search by actor or targetâ€¦"
+            placeholder="Search by actor or target..."
             icon={Search}
           />
         </div>
@@ -407,16 +398,7 @@ export function AuditLogList() {
               id="audit-action-filter"
               value={action}
               onChange={setAction}
-              placeholder="Actionâ€¦"
-              icon={Filter}
-            />
-          </div>
-          <div className="min-w-[130px] flex-1 sm:flex-none">
-            <FilterInput
-              id="audit-resource-filter"
-              value={resource}
-              onChange={setResource}
-              placeholder="Resourceâ€¦"
+              placeholder="Action..."
               icon={Filter}
             />
           </div>
@@ -448,7 +430,7 @@ export function AuditLogList() {
         </div>
       </div>
 
-      {/* â”€â”€ Result count â”€â”€ */}
+      {/* ── Result count ── */}
       {!loading && !error && data && (
         <p className="text-xs text-secondary-foreground">
           {data.total === 0 ? (
