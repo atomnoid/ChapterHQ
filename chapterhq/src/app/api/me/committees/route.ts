@@ -43,6 +43,20 @@ export async function GET() {
         (ur.role.name === "Admin" || ur.role.name === "President")
     );
 
+    console.log("[GET /api/me/committees]", {
+      userId,
+      organizationId,
+      memberId: member.id,
+      userRolesCount: userRoles.length,
+      userRoles: userRoles.map((ur) => ({
+        roleId: ur.roleId,
+        roleName: ur.role.name,
+        roleStatus: ur.role.status,
+        roleDeleted: ur.role.deletedAt,
+      })),
+      isOrgAdmin,
+    });
+
     let committees: Array<{
       id: string;
       name: string;
@@ -51,22 +65,31 @@ export async function GET() {
 
     if (isOrgAdmin) {
       // Admins can access all committees in the organization
+      // Note: MongoDB Prisma bug with deletedAt: null, so we fetch all and filter in JS
       const allCommittees = await prisma.committee.findMany({
         where: {
           organizationId,
-          deletedAt: null,
         },
         select: {
           id: true,
           name: true,
           description: true,
+          deletedAt: true,
         },
       });
-      committees = allCommittees.map((c) => ({
-        id: c.id,
-        name: c.name,
-        description: c.description ?? null,
-      }));
+      // Filter out deleted committees in JavaScript
+      committees = allCommittees
+        .filter((c) => !c.deletedAt)
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description ?? null,
+        }));
+      console.log("[GET /api/me/committees] Admin - all committees:", {
+        totalFetched: allCommittees.length,
+        notDeleted: committees.length,
+        committees: committees.map((c) => ({ id: c.id, name: c.name })),
+      });
     } else {
       // For non-admins, fetch committees via:
       // 1. Direct committee membership
@@ -110,7 +133,7 @@ export async function GET() {
         { id: string; name: string; description: string | null }
       >();
 
-      // Add direct memberships
+      // Add direct memberships (filter out deleted)
       memberships.forEach((cm) => {
         if (
           !cm.deletedAt &&
@@ -125,7 +148,7 @@ export async function GET() {
         }
       });
 
-      // Add role-based access
+      // Add role-based access (filter out deleted)
       roleAccessList.forEach((ra) => {
         if (
           ra.committee.organizationId === organizationId &&
@@ -145,6 +168,12 @@ export async function GET() {
     // Sort by name
     committees.sort((a, b) => a.name.localeCompare(b.name));
 
+    console.log("[GET /api/me/committees] Final response:", {
+      isOrgAdmin,
+      committeeCount: committees.length,
+      committees: committees.map((c) => ({ id: c.id, name: c.name })),
+    });
+
     // Shape: { id, name, description }
     return apiResponse.success(
       committees.map((c) => ({
@@ -153,7 +182,8 @@ export async function GET() {
         description: c.description ?? null,
       }))
     );
-  } catch {
+  } catch (error) {
+    console.error("[GET /api/me/committees] Error:", error);
     return apiResponse.serverError();
   }
 }

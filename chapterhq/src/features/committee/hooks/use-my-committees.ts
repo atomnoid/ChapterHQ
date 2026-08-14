@@ -31,10 +31,13 @@ export function useMyCommittees(activeOrganizationId: string | null | undefined)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (cancelled) return;
+        console.log("[useMyCommittees] API response:", json);
         const items: Committee[] = json?.data ?? json ?? [];
+        console.log("[useMyCommittees] Parsed items:", items.length, "committees");
         setCommittees(Array.isArray(items) ? items : []);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[useMyCommittees] Fetch error:", err);
         if (!cancelled) setCommittees([]);
       })
       .finally(() => {
