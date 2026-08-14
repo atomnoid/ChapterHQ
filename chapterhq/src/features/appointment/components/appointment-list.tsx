@@ -368,7 +368,7 @@ export function AppointmentList({
                   <div className="hidden lg:block">
                     <p className="text-xs text-foreground">{formatDate(apt.startDate)}</p>
                     {apt.endDate && (
-                      <p className="text-xs text-secondary-foreground">â†’ {formatDate(apt.endDate)}</p>
+                      <p className="text-xs text-secondary-foreground">to {formatDate(apt.endDate)}</p>
                     )}
                   </div>
 
