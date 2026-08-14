@@ -101,8 +101,8 @@ export function CommitteeSwitcher({ onNavigate }: { onNavigate?: () => void }) {
     [activeCommitteeId, switching, update, router, onNavigate]
   );
 
-  // Don't render if there are no accessible committees.
-  if (!loading && committees.length === 0) return null;
+  // The component always renders because the "All committees" option is always valid.
+  // Users can switch context even if no individual committees exist yet.
 
   const label = activeCommittee?.name ?? "All committees";
 

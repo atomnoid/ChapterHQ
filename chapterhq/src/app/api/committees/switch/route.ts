@@ -45,7 +45,33 @@ export async function POST(request: Request) {
       return apiResponse.notFound("Committee not found in the active organization.");
     }
 
-    // 2. Committee switching is allowed only for members directly assigned to that committee.
+    // 2. Check if user has access to this committee via:
+    //    a. Direct committee membership
+    //    b. Role-based committee access
+    //    c. Organization-level admin role
+
+    const userRoles = await prisma.userRole.findMany({
+      where: { memberId: member.id },
+      include: { role: true },
+    });
+
+    // Check if user is an organization-level admin
+    const isOrgAdmin = userRoles.some(
+      (ur) =>
+        !ur.role.deletedAt &&
+        ur.role.status === "ACTIVE" &&
+        (ur.role.name === "Admin" || ur.role.name === "President")
+    );
+
+    if (isOrgAdmin) {
+      // Admin can switch to any committee in the organization
+      return apiResponse.success(
+        { activeCommitteeId: committeeId },
+        "Active committee switched successfully."
+      );
+    }
+
+    // Check direct committee membership
     const committeeMember = await prisma.committeeMember.findFirst({
       where: {
         committeeId,
@@ -53,14 +79,32 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!committeeMember || committeeMember.deletedAt) {
-      return apiResponse.forbidden("You do not have access to this committee.");
+    if (committeeMember && !committeeMember.deletedAt) {
+      return apiResponse.success(
+        { activeCommitteeId: committeeId },
+        "Active committee switched successfully."
+      );
     }
 
-    return apiResponse.success(
-      { activeCommitteeId: committeeId },
-      "Active committee switched successfully."
-    );
+    // Check role-based committee access
+    const roleIds = userRoles.map((ur) => ur.roleId);
+    if (roleIds.length > 0) {
+      const roleAccess = await prisma.roleCommitteeAccess.findFirst({
+        where: {
+          roleId: { in: roleIds },
+          committeeId,
+        },
+      });
+
+      if (roleAccess) {
+        return apiResponse.success(
+          { activeCommitteeId: committeeId },
+          "Active committee switched successfully."
+        );
+      }
+    }
+
+    return apiResponse.forbidden("You do not have access to this committee.");
   } catch (error) {
     return apiResponse.serverError();
   }
