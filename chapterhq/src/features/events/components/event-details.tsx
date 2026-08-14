@@ -80,6 +80,8 @@ export function EventDetails({ eventId }: EventDetailsProps) {
   const [selectedMemberToAdd, setSelectedMemberToAdd] = useState("");
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [selectedRegIds, setSelectedRegIds] = useState<string[]>([]);
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     setLoading(true);
@@ -159,6 +161,48 @@ export function EventDetails({ eventId }: EventDetailsProps) {
       alert("An unexpected error occurred.");
     }
   }
+
+  // Handle bulk deletion
+  async function handleBulkDeleteRegistrations() {
+    if (selectedRegIds.length === 0) return;
+    if (!confirm(`Are you sure you want to remove ${selectedRegIds.length} member(s) from the attendee list? This cannot be undone.`)) return;
+    
+    setDeletingBulk(true);
+    try {
+      for (const regId of selectedRegIds) {
+        const res = await fetch(`/api/events/${eventId}/registrations/${regId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const json = await res.json();
+          alert(json.message ?? "Failed to remove some attendees.");
+          break;
+        }
+      }
+      setSelectedRegIds([]);
+      await fetchDetails();
+    } catch {
+      alert("An unexpected error occurred during bulk deletion.");
+    } finally {
+      setDeletingBulk(false);
+    }
+  }
+
+  // Handle checkbox selection
+  const handleSelectReg = (regId: string) => {
+    setSelectedRegIds((prev) =>
+      prev.includes(regId) ? prev.filter((id) => id !== regId) : [...prev, regId]
+    );
+  };
+
+  // Handle select all
+  const handleSelectAllRegs = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedRegIds(filteredRegistrations.map((r) => r.id));
+    } else {
+      setSelectedRegIds([]);
+    }
+  };
 
   if (loading) {
     return (
@@ -323,36 +367,52 @@ export function EventDetails({ eventId }: EventDetailsProps) {
         <div className="space-y-6">
           {/* Toolbar & Register Member form */}
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
-              <Input
-                placeholder="Search registered attendees…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex flex-wrap items-center gap-3 flex-1">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
+                <Input
+                  placeholder="Search registered attendees…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {availableMembers.length > 0 && (
+                <form onSubmit={handleRegisterMember} className="flex items-center gap-2">
+                  <select
+                    value={selectedMemberToAdd}
+                    onChange={(e) => setSelectedMemberToAdd(e.target.value)}
+                    className="h-10 rounded-2xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    aria-label="Select member to register"
+                  >
+                    <option value="">Add member…</option>
+                    {availableMembers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.user.name ?? m.user.email}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" disabled={registering || !selectedMemberToAdd} className="rounded-full">
+                    {registering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
+                    Add
+                  </Button>
+                </form>
+              )}
             </div>
 
-            {availableMembers.length > 0 && (
-              <form onSubmit={handleRegisterMember} className="flex items-center gap-2">
-                <select
-                  value={selectedMemberToAdd}
-                  onChange={(e) => setSelectedMemberToAdd(e.target.value)}
-                  className="h-10 rounded-2xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  aria-label="Select member to register"
-                >
-                  <option value="">Choose member to add…</option>
-                  {availableMembers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.user.name ?? m.user.email}
-                    </option>
-                  ))}
-                </select>
-                <Button type="submit" disabled={registering || !selectedMemberToAdd} className="rounded-full">
-                  {registering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
-                  Register Member
-                </Button>
-              </form>
+            {selectedRegIds.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="rounded-full shrink-0"
+                disabled={deletingBulk}
+                onClick={handleBulkDeleteRegistrations}
+              >
+                {deletingBulk && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Delete ({selectedRegIds.length})
+              </Button>
             )}
           </div>
 
@@ -373,7 +433,14 @@ export function EventDetails({ eventId }: EventDetailsProps) {
             </div>
           ) : (
             <div className="overflow-hidden rounded-[1.75rem] border border-border">
-              <div className="hidden grid-cols-[minmax(0,1fr)_200px_100px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
+              <div className="hidden grid-cols-[40px_minmax(0,1fr)_200px_100px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
+                <input
+                  type="checkbox"
+                  onChange={handleSelectAllRegs}
+                  checked={selectedRegIds.length === filteredRegistrations.length && filteredRegistrations.length > 0}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
+                  aria-label="Select all attendees"
+                />
                 <span>Member Info</span>
                 <span>Registered At</span>
                 <span className="text-right">Actions</span>
@@ -384,8 +451,15 @@ export function EventDetails({ eventId }: EventDetailsProps) {
                 return (
                   <div
                     key={reg.id}
-                    className="grid grid-cols-2 items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors sm:grid-cols-[minmax(0,1fr)_200px_100px]"
+                    className="grid grid-cols-2 items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors sm:grid-cols-[40px_minmax(0,1fr)_200px_100px]"
                   >
+                    <input
+                      type="checkbox"
+                      checked={selectedRegIds.includes(reg.id)}
+                      onChange={() => handleSelectReg(reg.id)}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
+                      aria-label={`Select ${name}`}
+                    />
                     <div className="flex items-center gap-3 min-w-0">
                       {reg.member.user.image ? (
                         <img src={reg.member.user.image} alt={name} className="h-9 w-9 rounded-full object-cover shrink-0" />

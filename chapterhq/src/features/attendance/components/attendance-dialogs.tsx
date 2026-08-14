@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, CheckSquare } from "lucide-react";
+import { Loader2, CheckSquare, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -272,6 +272,102 @@ export function BulkMarkAttendanceDialog({
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface BulkDeleteAttendanceDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+  eventId: string;
+  memberIds: string[];
+  memberCount: number;
+}
+
+export function BulkDeleteAttendanceDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  eventId,
+  memberIds,
+  memberCount,
+}: BulkDeleteAttendanceDialogProps) {
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setServerError(null);
+    }
+  }, [open]);
+
+  async function handleDelete() {
+    setServerError(null);
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/attendance`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberIds }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setServerError(json.message ?? "Failed to delete attendance records.");
+        setIsDeleting(false);
+        return;
+      }
+      onOpenChange(false);
+      onSuccess();
+    } catch {
+      setServerError("An unexpected error occurred. Please try again.");
+      setIsDeleting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !isDeleting && onOpenChange(v)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+              <Trash2 className="h-5 w-5 text-destructive" />
+            </span>
+            <DialogTitle>Delete Attendance Records</DialogTitle>
+          </div>
+          <DialogDescription>
+            Are you sure you want to remove attendance records for <strong>{memberCount} member{memberCount !== 1 ? 's' : ''}</strong>? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+
+        {serverError && (
+          <div className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {serverError}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => onOpenChange(false)}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            className="rounded-full"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Delete Records
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

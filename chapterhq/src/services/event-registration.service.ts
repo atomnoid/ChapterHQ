@@ -231,6 +231,32 @@ export class EventRegistrationService {
     return results;
   }
 
+  async bulkDeleteAttendance(
+    organizationId: string,
+    eventId: string,
+    memberIds: string[],
+    activeCommitteeId?: string | null
+  ) {
+    const event = await this.eventRepo.findById(eventId, organizationId);
+    if (!event) {
+      throw new EventNotFoundError();
+    }
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
+      throw new EventNotFoundError();
+    }
+
+    // Verify all members belong to the organization
+    for (const memberId of memberIds) {
+      const member = await this.memberRepo.findByIdAndOrganization(memberId, organizationId);
+      if (!member) {
+        throw new MemberNotFoundError();
+      }
+    }
+
+    const result = await this.attendanceRepo.bulkDelete(eventId, memberIds);
+    return result;
+  }
+
   async getAttendanceList(organizationId: string, eventId: string, activeCommitteeId?: string | null) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) {

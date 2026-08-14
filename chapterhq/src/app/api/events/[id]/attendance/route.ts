@@ -80,3 +80,36 @@ export async function PATCH(
     return apiResponse.serverError();
   }
 }
+
+// DELETE /api/events/[id]/attendance
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return apiResponse.unauthorized();
+
+    const { context: authContext } = await requirePermission(session.user.id, "events:update");
+
+    const body = await request.json();
+    const { id: eventId } = await context.params;
+    const { memberIds } = body;
+
+    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+      return apiResponse.badRequest("memberIds array is required.");
+    }
+
+    const result = await registrationService.bulkDeleteAttendance(
+      authContext.organizationId,
+      eventId,
+      memberIds,
+      authContext.activeCommitteeId
+    );
+    return apiResponse.success(result, "Attendance records deleted successfully.");
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
+    if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
+    return apiResponse.serverError();
+  }
+}

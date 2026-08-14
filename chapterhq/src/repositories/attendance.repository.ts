@@ -98,4 +98,15 @@ export class AttendanceRepository {
       },
     });
   }
+
+  async bulkDelete(eventId: string, memberIds: string[]) {
+    return prisma.attendance.deleteMany({
+      where: {
+        eventId,
+        memberId: {
+          in: memberIds,
+        },
+      },
+    });
+  }
 }

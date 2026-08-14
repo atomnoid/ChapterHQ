@@ -13,10 +13,11 @@ import {
   Users,
   CheckCircle,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MarkAttendanceDialog, BulkMarkAttendanceDialog, type AttendanceStatus } from "./attendance-dialogs";
+import { MarkAttendanceDialog, BulkMarkAttendanceDialog, BulkDeleteAttendanceDialog, type AttendanceStatus } from "./attendance-dialogs";
 
 interface OrgMember {
   id: string;
@@ -62,7 +63,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [dialogState, setDialogState] = useState<{
-    type: "none" | "single" | "bulk";
+    type: "none" | "single" | "bulk" | "delete";
     memberId?: string;
     memberName?: string;
     currentStatus?: AttendanceStatus;
@@ -194,7 +195,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           <div className="relative flex-1 max-w-sm min-w-[200px]">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
             <Input
-              placeholder="Search by name or emailâ€¦"
+              placeholder="Search by name or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -232,14 +233,26 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
         </div>
 
         {selectedMemberIds.length > 0 && (
-          <Button
-            className="rounded-full shrink-0"
-            disabled={isPending}
-            onClick={() => setDialogState({ type: "bulk" })}
-          >
-            {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Mark Selected ({selectedMemberIds.length})
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              className="rounded-full"
+              disabled={isPending}
+              onClick={() => setDialogState({ type: "bulk" })}
+            >
+              {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Mark ({selectedMemberIds.length})
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="rounded-full"
+              disabled={isPending}
+              onClick={() => setDialogState({ type: "delete" })}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete ({selectedMemberIds.length})
+            </Button>
+          </div>
         )}
       </div>
 
@@ -392,6 +405,21 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           eventId={eventId}
           memberIds={selectedMemberIds}
           memberNames={`${selectedMemberIds.length} selected members`}
+        />
+      )}
+
+      {dialogState.type === "delete" && (
+        <BulkDeleteAttendanceDialog
+          open={dialogState.type === "delete"}
+          onOpenChange={(open) => !open && setDialogState({ type: "none" })}
+          onSuccess={async () => {
+            setIsPending(true);
+            await fetchData();
+            setIsPending(false);
+          }}
+          eventId={eventId}
+          memberIds={selectedMemberIds}
+          memberCount={selectedMemberIds.length}
         />
       )}
     </div>
