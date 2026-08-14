@@ -126,7 +126,7 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
             <select id="cert-member" {...register("memberId")}
               disabled={membersLoading}
               className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60">
-              <option value="">{membersLoading ? "Loading membersâ€¦" : members.length === 0 ? "No members found" : "Select memberâ€¦"}</option>
+              <option value="">{membersLoading ? "Loading members..." : members.length === 0 ? "No members found" : "Select member..."}</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>{m.user.name ?? m.user.email}</option>
               ))}

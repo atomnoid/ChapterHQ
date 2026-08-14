@@ -70,7 +70,7 @@ export function CertificateList() {
         <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
           <div className="relative flex-1 max-w-sm min-w-[200px]">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground" />
-            <Input placeholder="Search certificatesâ€¦" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+            <Input placeholder="Search certificates..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
           </div>
           <Button variant="outline" size="icon" className="rounded-full shrink-0" onClick={fetchData} disabled={loading} aria-label="Refresh">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
