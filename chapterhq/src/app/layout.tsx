@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -10,11 +10,15 @@ export const metadata: Metadata = {
   description: "ChapterHQ is the modern operating system for managing members, committees, events, documents, finances, and organization governance.",
   keywords: ["chapterhq", "organization management", "committee management", "event tracking", "member management"],
   authors: [{ name: "ChapterHQ Team" }],
-  viewport: "width=device-width, initial-scale=1",
   robots: {
     index: true,
     follow: true,
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
