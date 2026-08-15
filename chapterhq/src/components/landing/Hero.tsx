@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, CircleCheckBig, LayoutDashboard } from "lucide-react";
 
