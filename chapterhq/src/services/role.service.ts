@@ -87,9 +87,10 @@ export class RoleService {
     const activeCommitteeId = params.activeCommitteeId;
     const filteredRoles = items
       .filter((role) => {
-        if (!role.name.startsWith("[committeeId:")) return true;
-        if (activeCommitteeId && role.name.startsWith(`[committeeId:${activeCommitteeId}]`)) return true;
-        return false;
+        if (activeCommitteeId) {
+          return role.name.startsWith(`[committeeId:${activeCommitteeId}]`);
+        }
+        return !role.name.startsWith("[committeeId:");
       })
       .map((role) => {
         if (role.name.startsWith("[committeeId:")) {

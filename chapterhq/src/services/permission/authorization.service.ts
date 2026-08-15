@@ -73,7 +73,7 @@ export class AuthorizationService {
       const { isCommitteeHead } = await import("@/lib/committee-auth");
       const isHead = await isCommitteeHead(userId, context.organizationId, context.activeCommitteeId);
       if (isHead) {
-        const allowedResources = ["events", "finance", "documents", "inventory", "announcements", "appointments", "notifications"];
+        const allowedResources = ["events", "finance", "documents", "inventory", "announcements", "appointments", "notifications", "roles"];
         const actions = ["create", "read", "update", "delete"];
         allowedResources.forEach(res => {
           actions.forEach(act => {
@@ -105,7 +105,7 @@ export class AuthorizationService {
 
     if (!hasPerm && context.activeCommitteeId) {
       const [resource] = permission.split(":");
-      const allowedResources = ["events", "finance", "documents", "inventory", "announcements", "appointments", "notifications"];
+      const allowedResources = ["events", "finance", "documents", "inventory", "announcements", "appointments", "notifications", "roles"];
       if (allowedResources.includes(resource)) {
         const { isCommitteeHead } = await import("@/lib/committee-auth");
         const isHead = await isCommitteeHead(userId, context.organizationId, context.activeCommitteeId);
@@ -144,7 +144,7 @@ export class AuthorizationService {
       const { isCommitteeHead } = await import("@/lib/committee-auth");
       const isHead = await isCommitteeHead(userId, context.organizationId, context.activeCommitteeId);
       if (isHead) {
-        const allowedResources = ["events", "finance", "documents", "inventory", "announcements", "appointments", "notifications"];
+        const allowedResources = ["events", "finance", "documents", "inventory", "announcements", "appointments", "notifications", "roles"];
         hasPerm = permissions.some(p => {
           const [resource] = p.split(":");
           return allowedResources.includes(resource);
