@@ -185,7 +185,27 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-function AuditLogRow({ log }: { log: AuditLogItem }) {
+function formatMetadata(metadata: Record<string, unknown> | null, memberMap: Map<string, string>) {
+  if (!metadata || Object.keys(metadata).length === 0) return null;
+  
+  return Object.entries(metadata)
+    .map(([key, val]) => {
+      if (key === "memberId" && typeof val === "string") {
+        const name = memberMap.get(val);
+        if (name) return `member: ${name}`;
+      }
+      let formattedVal = "";
+      if (val && typeof val === "object") {
+        formattedVal = JSON.stringify(val);
+      } else {
+        formattedVal = String(val);
+      }
+      return `${key}: ${formattedVal}`;
+    })
+    .join(", ");
+}
+
+function AuditLogRow({ log, memberMap }: { log: AuditLogItem; memberMap: Map<string, string> }) {
   const { date, time } = formatDateTime(log.timestamp);
   const actorLabel = log.actor.name || log.actor.email || "System";
   const initials = getInitials(log.actor.name, log.actor.email);
@@ -237,7 +257,7 @@ function AuditLogRow({ log }: { log: AuditLogItem }) {
 
         {log.metadata && Object.keys(log.metadata).length > 0 && (
           <p className="mt-1 truncate font-mono text-[11px] text-secondary-foreground">
-            {JSON.stringify(log.metadata).slice(0, 120)}
+            {formatMetadata(log.metadata, memberMap)}
           </p>
         )}
       </div>
@@ -318,6 +338,29 @@ export function AuditLogList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [page, setPage] = useState(1);
+  const [memberMap, setMemberMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const res = await fetch("/api/members?limit=1000");
+        if (res.ok) {
+          const json = await res.json();
+          const items = json?.items ?? [];
+          const map = new Map<string, string>();
+          items.forEach((m: any) => {
+            if (m.id && m.user) {
+              map.set(m.id, m.user.name || m.user.email || "Unknown");
+            }
+          });
+          setMemberMap(map);
+        }
+      } catch (err) {
+        console.error("Failed to fetch members for audit log resolution", err);
+      }
+    };
+    fetchMembers();
+  }, []);
 
   // Filter state
   const [search, setSearch] = useState("");
@@ -455,7 +498,7 @@ export function AuditLogList() {
       ) : (
         <div className="space-y-2">
           {data.items.map((log) => (
-            <AuditLogRow key={log.id} log={log} />
+            <AuditLogRow key={log.id} log={log} memberMap={memberMap} />
           ))}
         </div>
       )}
