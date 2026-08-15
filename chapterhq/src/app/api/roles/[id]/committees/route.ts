@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 // Returns the list of committees this role has access to
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -14,7 +14,7 @@ export async function GET(
       return apiResponse.unauthorized();
     }
 
-    const roleId = params.id;
+    const { id: roleId } = await params;
     const organizationId = session.activeOrganizationId;
 
     if (!organizationId) {
@@ -62,7 +62,7 @@ export async function GET(
 // Grant a role access to committees
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -70,7 +70,7 @@ export async function POST(
       return apiResponse.unauthorized();
     }
 
-    const roleId = params.id;
+    const { id: roleId } = await params;
     const organizationId = session.activeOrganizationId;
 
     if (!organizationId) {
@@ -140,7 +140,7 @@ export async function POST(
 // Remove all committee access from a role
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -148,7 +148,7 @@ export async function DELETE(
       return apiResponse.unauthorized();
     }
 
-    const roleId = params.id;
+    const { id: roleId } = await params;
     const organizationId = session.activeOrganizationId;
 
     if (!organizationId) {

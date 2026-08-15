@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Edit2,
   Key,
+  Layers,
   MoreHorizontal,
   Plus,
   RefreshCw,
@@ -27,6 +28,7 @@ import {
 import { CreateRoleDialog } from "./create-role-dialog";
 import { EditRoleDialog } from "./edit-role-dialog";
 import { DeleteRoleDialog } from "./delete-role-dialog";
+import { RoleCommitteeAccessDialog } from "./role-committee-access-dialog";
 
 interface Role {
   id: string;
@@ -55,18 +57,21 @@ type DialogState =
   | { type: "create" }
   | { type: "edit"; role: Role }
   | { type: "delete"; role: Role }
-  | { type: "assign-members"; role: Role };
+  | { type: "assign-members"; role: Role }
+  | { type: "committee-access"; role: Role };
 
 function RoleCard({
   role,
   onEdit,
   onDelete,
   onManageMembers,
+  onManageCommittees,
 }: {
   role: Role;
   onEdit: (r: Role) => void;
   onDelete: (r: Role) => void;
   onManageMembers: (r: Role) => void;
+  onManageCommittees: (r: Role) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isPresident = role.name.toLowerCase() === "admin" || role.name.toLowerCase() === "president";
@@ -117,6 +122,16 @@ function RoleCard({
                   >
                     <Edit2 className="h-3.5 w-3.5" />
                     Edit
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onManageCommittees(role);
+                    }}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Committees
                   </button>
                   <button
                     className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
@@ -665,6 +680,14 @@ export function RoleList() {
       <RoleMembersDialog
         role={dialog.type === "assign-members" ? dialog.role : null}
         open={dialog.type === "assign-members"}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+        onSuccess={fetchRoles}
+      />
+      <RoleCommitteeAccessDialog
+        role={dialog.type === "committee-access" ? dialog.role : null}
+        open={dialog.type === "committee-access"}
         onOpenChange={(open) => {
           if (!open) closeDialog();
         }}
