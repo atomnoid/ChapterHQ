@@ -33,7 +33,15 @@ export function MemberOnboardingForm() {
       try {
         const response = await fetch("/api/member/onboarding-forms");
         if (!response.ok) {
-          throw new Error("Failed to fetch onboarding status");
+          let errMsg = `Request failed (${response.status})`;
+          try {
+            const errJson = await response.json();
+            errMsg = errJson?.message ?? errMsg;
+          } catch {
+            // non-JSON response (e.g. HTML redirect)
+            errMsg = `Unexpected response (${response.status} ${response.statusText}). The server may have redirected — try refreshing.`;
+          }
+          throw new Error(errMsg);
         }
         const data = await response.json();
         setStatus(data);
@@ -63,7 +71,7 @@ export function MemberOnboardingForm() {
             setCurrentFormIndex(-1);
           } else {
             // Move to next incomplete form
-            setCurrentFormIndex(currentFormIndex + 1);
+            setCurrentFormIndex((prev) => prev + 1);
           }
         }
       } catch (err) {
