@@ -46,12 +46,14 @@ export class CoreMemberService {
 
     const record = await this.repository.create({ organizationId, memberId, note });
 
+    const memberName = member.user?.name || member.user?.email || memberId;
+
     await logActivity(
       { userId: actorUserId, organizationId },
       "create",
       "core_member",
       record.id,
-      `Member ${memberId} designated as Core Member`
+      `Member ${memberName} designated as Core Member`
     );
 
     return record;
