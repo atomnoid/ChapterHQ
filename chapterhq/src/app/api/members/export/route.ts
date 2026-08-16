@@ -30,10 +30,12 @@ export async function POST(request: Request) {
     const members = allMembers.filter((m) => !m.deletedAt);
 
     // 2. Fetch all active forms for this org (for column headers)
-    const forms = await prisma.customForm.findMany({
-      where: { organizationId, deletedAt: null },
+    // Note: deletedAt: null in where clause is broken on MongoDB/Prisma — post-filter in JS instead
+    const allForms = await prisma.customForm.findMany({
+      where: { organizationId },
       include: { fields: { orderBy: { order: "asc" } } },
     });
+    const forms = allForms.filter((f) => !f.deletedAt);
 
     // 3. Fetch all relevant submissions for these members
     const memberIdList = members.map((m) => m.id);
