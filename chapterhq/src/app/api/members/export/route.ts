@@ -11,86 +11,82 @@ export async function POST(request: Request) {
     }
 
     const { context } = await requirePermission(session.user.id, "members:read");
+    const { organizationId } = context;
 
     const body = await request.json();
     const { memberIds } = body as { memberIds?: string[] };
 
-    // Fetch members and their form submissions
-    const members = await prisma.member.findMany({
+    // 1. Fetch members
+    const allMembers = await prisma.member.findMany({
       where: {
-        organizationId: context.organizationId,
+        organizationId,
         ...(memberIds && memberIds.length > 0 ? { id: { in: memberIds } } : {}),
       },
       include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-        submissions: {
-          where: {
-            organizationId: context.organizationId,
-          },
-          include: {
-            form: {
-              select: {
-                name: true,
-                fields: true,
-              },
-            },
-            answers: {
-              include: {
-                field: true,
-              },
-            },
-          },
+        user: { select: { name: true, email: true } },
+      },
+    });
+
+    const members = allMembers.filter((m) => !m.deletedAt);
+
+    // 2. Fetch all active forms for this org (for column headers)
+    const forms = await prisma.customForm.findMany({
+      where: { organizationId, deletedAt: null },
+      include: { fields: { orderBy: { order: "asc" } } },
+    });
+
+    // 3. Fetch all relevant submissions for these members
+    const memberIdList = members.map((m) => m.id);
+    const submissions = await prisma.customFormSubmission.findMany({
+      where: {
+        organizationId,
+        memberId: { in: memberIdList },
+      },
+      include: {
+        answers: {
+          include: { field: true },
         },
       },
     });
 
-    const activeMembers = members.filter((m) => !m.deletedAt);
+    // Build lookup: memberId -> formId -> Map<fieldKey, value>
+    const submissionLookup: Record<string, Record<string, Record<string, string>>> = {};
+    for (const sub of submissions) {
+      if (!submissionLookup[sub.memberId]) submissionLookup[sub.memberId] = {};
+      const answerMap: Record<string, string> = {};
+      for (const ans of sub.answers) {
+        answerMap[ans.field.key] = ans.value ?? "";
+      }
+      submissionLookup[sub.memberId][sub.formId] = answerMap;
+    }
 
-    // Escape CSV values
+    // CSV escape helper
     const escape = (val: string | null | undefined): string => {
       if (!val) return "";
-      const stringValue = String(val);
-      if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
+      const s = String(val);
+      if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+        return `"${s.replace(/"/g, '""')}"`;
       }
-      return stringValue;
+      return s;
     };
 
-    // Construct headers: Basic Info + All Unique Form Questions
+    // Build headers
     const basicHeaders = ["Member Name", "Member Email", "Joined Date", "Status"];
-    const formsInOrg = await prisma.customForm.findMany({
-      where: {
-        organizationId: context.organizationId,
-        deletedAt: null,
-      },
-      select: {
-        name: true,
-        fields: true,
-      },
-    });
-
-    const formFieldHeaders: string[] = [];
-    const fieldMap: Record<string, string> = {}; // label -> key/id mapping
-
-    for (const f of formsInOrg) {
-      for (const field of f.fields as any[]) {
-        const header = `${f.name} - ${field.label}`;
-        if (!formFieldHeaders.includes(header)) {
-          formFieldHeaders.push(header);
-          fieldMap[header] = field.key;
-        }
+    const formFieldHeaders: { label: string; formId: string; fieldKey: string }[] = [];
+    for (const form of forms) {
+      for (const field of form.fields as { key: string; label: string }[]) {
+        formFieldHeaders.push({
+          label: `${form.name} - ${field.label}`,
+          formId: form.id,
+          fieldKey: field.key,
+        });
       }
     }
 
-    const allHeaders = [...basicHeaders, ...formFieldHeaders];
+    const allHeaders = [...basicHeaders, ...formFieldHeaders.map((f) => f.label)];
     const rows: string[] = [allHeaders.map(escape).join(",")];
 
-    for (const member of activeMembers) {
+    for (const member of members) {
       const row: string[] = [
         escape(member.user?.name || ""),
         escape(member.user?.email || ""),
@@ -98,19 +94,10 @@ export async function POST(request: Request) {
         escape(member.status),
       ];
 
-      // Match answers
-      for (const header of formFieldHeaders) {
-        const fieldKey = fieldMap[header];
-        let matchedValue = "";
-
-        for (const sub of member.submissions) {
-          const matchingAnswer = sub.answers.find((a) => a.field.key === fieldKey);
-          if (matchingAnswer) {
-            matchedValue = matchingAnswer.value || "";
-            break;
-          }
-        }
-        row.push(escape(matchedValue));
+      const memberSubmissions = submissionLookup[member.id] ?? {};
+      for (const { formId, fieldKey } of formFieldHeaders) {
+        const value = memberSubmissions[formId]?.[fieldKey] ?? "";
+        row.push(escape(value));
       }
 
       rows.push(row.join(","));
@@ -122,7 +109,7 @@ export async function POST(request: Request) {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="member-onboarding-export-${new Date().toISOString().split("T")[0]}.csv"`,
+        "Content-Disposition": `attachment; filename="member-export-${new Date().toISOString().split("T")[0]}.csv"`,
       },
     });
   } catch (error: unknown) {
