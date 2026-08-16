@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { MemberOnboardingForm } from "@/features/forms/components/member-onboarding-form";
 
 export default function OnboardingPage() {
-  // The old combined signup+org form is replaced.
-  // /signup handles account creation, /welcome handles org onboarding choice.
-  redirect("/signup");
+  return <MemberOnboardingForm />;
 }
