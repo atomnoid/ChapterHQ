@@ -13,9 +13,10 @@ const formService = new CustomFormService();
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -23,7 +24,7 @@ export async function GET(
 
     const { context } = await requirePermission(session.user.id, "forms:read");
 
-    const form = await formService.getForm(context.organizationId, params.id);
+    const form = await formService.getForm(context.organizationId, resolvedParams.id);
 
     return NextResponse.json(form, { status: 200 });
   } catch (error: unknown) {
@@ -44,9 +45,10 @@ export async function GET(
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -57,7 +59,7 @@ export async function PATCH(
     const body = await request.json();
     const input = updateCustomFormSchema.parse(body);
 
-    const form = await formService.updateForm(context.organizationId, params.id, session.user.id, input);
+    const form = await formService.updateForm(context.organizationId, resolvedParams.id, session.user.id, input);
 
     return NextResponse.json(form, { status: 200 });
   } catch (error: unknown) {
@@ -84,9 +86,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -94,7 +97,7 @@ export async function DELETE(
 
     const { context } = await requirePermission(session.user.id, "forms:delete");
 
-    await formService.deleteForm(context.organizationId, params.id, session.user.id);
+    await formService.deleteForm(context.organizationId, resolvedParams.id, session.user.id);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: unknown) {
