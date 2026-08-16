@@ -39,16 +39,13 @@ export class CoreMemberRepository {
           include: {
             user: { select: { id: true, name: true, email: true, image: true } },
             userRoles: {
-              include: { role: { select: { id: true, name: true, description: true } } },
-              where: { role: { deletedAt: null } },
+              include: { role: { select: { id: true, name: true, description: true, deletedAt: true } } },
             },
             committeeMembers: {
-              where: { deletedAt: null },
-              include: { committee: { select: { id: true, name: true } } },
+              include: { committee: { select: { id: true, name: true, deletedAt: true } } },
             },
             appointments: {
-              where: { status: "ACTIVE", deletedAt: null },
-              include: { committee: { select: { id: true, name: true } } },
+              include: { committee: { select: { id: true, name: true, deletedAt: true } } },
             },
           },
         },
@@ -56,16 +53,33 @@ export class CoreMemberRepository {
       orderBy: { addedAt: "desc" },
     });
 
-    // Post-filter soft-deleted (MongoDB Prisma bug workaround)
-    const notDeleted = records.filter((r) => !r.deletedAt) as unknown as CoreMemberWithDetails[];
+    // Post-filter soft-deleted records (MongoDB Prisma bug workaround)
+    const activeRecords = records
+      .filter((r) => !r.deletedAt)
+      .map((r) => {
+        // Post-filter nested relations for soft deletes
+        const filteredRoles = r.member.userRoles.filter((ur) => !ur.role.deletedAt);
+        const filteredCommittees = r.member.committeeMembers.filter((cm) => !cm.deletedAt && !cm.committee.deletedAt);
+        const filteredAppointments = r.member.appointments.filter((app) => app.status === "ACTIVE" && !app.deletedAt && !app.committee.deletedAt);
+
+        return {
+          ...r,
+          member: {
+            ...r.member,
+            userRoles: filteredRoles,
+            committeeMembers: filteredCommittees,
+            appointments: filteredAppointments,
+          },
+        };
+      }) as unknown as CoreMemberWithDetails[];
 
     if (activeCommitteeId) {
-      return notDeleted.filter((r) =>
+      return activeRecords.filter((r) =>
         r.member.committeeMembers.some((cm) => cm.committee.id === activeCommitteeId)
       );
     }
 
-    return notDeleted;
+    return activeRecords;
   }
 
   async findById(id: string, organizationId: string) {
