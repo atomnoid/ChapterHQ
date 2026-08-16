@@ -11,9 +11,10 @@ const submissionService = new CustomFormSubmissionService();
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string; submissionId: string } }
+  { params }: { params: Promise<{ id: string; submissionId: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -23,8 +24,8 @@ export async function GET(
 
     const submission = await submissionService.getSubmission(
       context.organizationId,
-      params.id,
-      params.submissionId
+      resolvedParams.id,
+      resolvedParams.submissionId
     );
 
     return NextResponse.json(submission, { status: 200 });
