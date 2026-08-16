@@ -34,6 +34,26 @@ export class InvitationAcceptService {
     private readonly userRoleRepository = new UserRoleRepository()
   ) {}
 
+  /**
+   * Check if the organization has required onboarding forms.
+   */
+  async organizationHasRequiredForms(organizationId: string): Promise<boolean> {
+    try {
+      const form = await prisma.customForm.findFirst({
+        where: {
+          organizationId,
+          required: true,
+          status: "ACTIVE",
+          deletedAt: null,
+        },
+      });
+      return !!form;
+    } catch (error) {
+      // Fail open if there's an error checking forms
+      return false;
+    }
+  }
+
   async acceptInvitation(token: string, userId: string) {
     // 1. Resolve the invitation
     // MongoDB Prisma bug: deletedAt: null in where clause returns no results.

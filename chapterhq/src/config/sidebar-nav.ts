@@ -99,6 +99,12 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
     requiredPermission: "documents:read",
   },
   {
+    title: "Forms",
+    route: "/forms",
+    icon: ClipboardList,
+    requiredPermission: "forms:read",
+  },
+  {
     title: "Certificates",
     route: "/certificates",
     icon: Award,

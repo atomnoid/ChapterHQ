@@ -155,6 +155,8 @@ model Organization {
   coreMembers CoreMember[]
   emailTemplates EmailTemplate[]
   emailLogs EmailLog[]
+  customForms CustomForm[]
+  customFormSubmissions CustomFormSubmission[]
 
   @@map("organizations")
 }
@@ -862,4 +864,115 @@ model Announcement {
   deletedAt DateTime?
 
   @@map("cms_announcements")
+}
+
+//////////////////////////////////////////////////////
+// CUSTOM FORMS
+//////////////////////////////////////////////////////
+
+enum CustomFormFieldType {
+  SHORT_TEXT
+  LONG_TEXT
+  EMAIL
+  PHONE
+  NUMBER
+  DATE
+  DROPDOWN
+  RADIO
+  CHECKBOX
+  YES_NO
+}
+
+enum CustomFormStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model CustomForm {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String @db.ObjectId
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  name        String
+  description String?
+  status      CustomFormStatus @default(ACTIVE)
+  required    Boolean @default(false)
+  createdBy   String @db.ObjectId
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  fields       CustomFormField[]
+  submissions  CustomFormSubmission[]
+
+  @@index([organizationId, status])
+  @@map("custom_forms")
+}
+
+model CustomFormField {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  formId String @db.ObjectId
+
+  form CustomForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  label       String
+  key         String
+  type        CustomFormFieldType
+  required    Boolean @default(false)
+  placeholder String?
+  helpText    String?
+  options     Json? // For DROPDOWN, RADIO, CHECKBOX - array of {label, value}
+  order       Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submissionAnswers CustomFormSubmissionAnswer[]
+
+  @@unique([formId, key])
+  @@index([formId, order])
+  @@map("custom_form_fields")
+}
+
+model CustomFormSubmission {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  formId         String @db.ObjectId
+  organizationId String @db.ObjectId
+  memberId       String @db.ObjectId
+  userId         String @db.ObjectId
+
+  form         CustomForm @relation(fields: [formId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  answers CustomFormSubmissionAnswer[]
+
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([formId, memberId])
+  @@index([organizationId, formId])
+  @@index([memberId])
+  @@map("custom_form_submissions")
+}
+
+model CustomFormSubmissionAnswer {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  submissionId String @db.ObjectId
+  fieldId      String @db.ObjectId
+
+  submission CustomFormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  field      CustomFormField      @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  value String? // Stored as JSON string for flexibility
+
+  createdAt DateTime @default(now())
+
+  @@unique([submissionId, fieldId])
+  @@map("custom_form_submission_answers")
 }

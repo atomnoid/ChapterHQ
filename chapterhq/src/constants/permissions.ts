@@ -18,7 +18,9 @@ export const RESOURCES = [
   "audit-logs",
   "website",
   "notifications",
-  "settings"
+  "settings",
+  "forms",
+  "forms-submissions"
 ] as const;
 
 export const ACTIONS = ["create", "read", "update", "delete", "assign", "remove"] as const;

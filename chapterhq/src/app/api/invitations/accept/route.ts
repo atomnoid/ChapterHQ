@@ -331,11 +331,24 @@ export async function POST(
       },
     });
 
+    // Check if organization has required onboarding forms
+    const requiredForms = await prisma.customForm.findFirst({
+      where: {
+        organizationId: invitation.organizationId,
+        required: true,
+        status: "ACTIVE",
+        deletedAt: null,
+      },
+    });
+
+    const requiresOnboarding = !!requiredForms;
+
     return NextResponse.json({
       message: "Invitation accepted successfully.",
       activeOrganizationId: invitation.organizationId,
       activeCommitteeId: finalActiveCommitteeId,
       membershipAction,
+      requiresOnboarding,
     });
   } catch (error) {
     console.error("[INVITE_ACCEPT_ERROR] errorName", error instanceof Error ? error.name : typeof error);
