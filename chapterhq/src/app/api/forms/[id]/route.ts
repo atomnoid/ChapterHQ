@@ -4,12 +4,15 @@ import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { CustomFormService, CustomFormNotFoundError } from "@/services/custom-form.service";
 import { updateCustomFormSchema } from "@/validators/custom-form.validator";
+import { AuthorizationService } from "@/services/permission/authorization.service";
 
 const formService = new CustomFormService();
+const authService = new AuthorizationService();
 
 /**
  * GET /api/forms/[id]
- * Get a single form by ID
+ * Get a single form by ID — accessible by any authenticated org member
+ * (needed so members can view and fill forms, not just admins)
  */
 export async function GET(
   request: Request,
@@ -22,7 +25,8 @@ export async function GET(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "forms:read");
+    // Any authenticated org member can read a form (to fill it out)
+    const context = await authService.resolveContext(session.user.id);
 
     const form = await formService.getForm(context.organizationId, resolvedParams.id);
 
@@ -31,7 +35,7 @@ export async function GET(
     if (error instanceof CustomFormNotFoundError) {
       return NextResponse.json({ message: error.message }, { status: 404 });
     }
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && (error.name === "PermissionDeniedError" || error.name === "OrganizationContextNotFoundError")) {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     console.error("GET /api/forms/[id] error:", error);

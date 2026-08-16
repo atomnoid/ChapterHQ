@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { auth } from "@/lib/auth";
-import { requirePermission } from "@/lib/permission-enforcer";
 import { CustomFormSubmissionService } from "@/services/custom-form-submission.service";
 import { submitCustomFormSchema } from "@/validators/custom-form.validator";
 import { MemberRepository } from "@/repositories/member.repository";
+import { AuthorizationService } from "@/services/permission/authorization.service";
 
 const submissionService = new CustomFormSubmissionService();
 const memberRepository = new MemberRepository();
+const authService = new AuthorizationService();
 
 /**
  * POST /api/forms/[id]/submit
@@ -25,7 +26,8 @@ export async function POST(
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { context } = await requirePermission(session.user.id, "forms:read");
+    // Any authenticated org member can submit a form — no special permission required
+    const context = await authService.resolveContext(session.user.id);
 
     // Get the current member
     const member = await memberRepository.findByOrganizationAndUser(
@@ -57,7 +59,7 @@ export async function POST(
       { status: isNew ? 201 : 200 }
     );
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
+    if (error instanceof Error && (error.name === "PermissionDeniedError" || error.name === "OrganizationContextNotFoundError")) {
       return NextResponse.json({ message: "Permission denied." }, { status: 403 });
     }
     if (error instanceof ZodError) {
