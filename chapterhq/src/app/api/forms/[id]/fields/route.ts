@@ -13,9 +13,10 @@ const formService = new CustomFormService();
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -26,7 +27,7 @@ export async function POST(
     const body = await request.json();
     const fieldData = createCustomFormFieldSchema.parse(body);
 
-    const field = await formService.addField(context.organizationId, params.id, session.user.id, fieldData);
+    const field = await formService.addField(context.organizationId, resolvedParams.id, session.user.id, fieldData);
 
     return NextResponse.json(field, { status: 201 });
   } catch (error: unknown) {
