@@ -48,28 +48,31 @@ export function FormActionsMenu({ form, onDeleted }: FormActionsMenuProps) {
       </button>
 
       {showMenu && (
-        <div className="absolute right-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg z-50">
-          <Link href={`/forms/${form.id}/submissions`}>
-            <button className="w-full text-left px-4 py-2 hover:bg-secondary/50 flex items-center gap-2 text-sm">
-              <Eye className="h-4 w-4" />
-              View Submissions
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+          <div className="absolute right-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg z-50 origin-top-right">
+            <Link href={`/forms/${form.id}/submissions`}>
+              <button className="w-full text-left px-4 py-2 hover:bg-secondary/50 flex items-center gap-2 text-sm">
+                <Eye className="h-4 w-4" />
+                View Submissions
+              </button>
+            </Link>
+            <Link href={`/forms/${form.id}/edit`}>
+              <button className="w-full text-left px-4 py-2 hover:bg-secondary/50 flex items-center gap-2 text-sm">
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </button>
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="w-full text-left px-4 py-2 hover:bg-destructive/10 flex items-center gap-2 text-sm text-destructive disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isDeleting ? "Deleting..." : "Delete"}
             </button>
-          </Link>
-          <Link href={`/forms/${form.id}/edit`}>
-            <button className="w-full text-left px-4 py-2 hover:bg-secondary/50 flex items-center gap-2 text-sm">
-              <Edit2 className="h-4 w-4" />
-              Edit
-            </button>
-          </Link>
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="w-full text-left px-4 py-2 hover:bg-destructive/10 flex items-center gap-2 text-sm text-destructive disabled:opacity-50"
-          >
-            <Trash2 className="h-4 w-4" />
-            {isDeleting ? "Deleting..." : "Delete"}
-          </button>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
