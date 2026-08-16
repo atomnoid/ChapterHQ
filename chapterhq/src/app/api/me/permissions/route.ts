@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/services/permission/authorization.service";
+import { PermissionService } from "@/services/permission/permission.service";
 
 const authorizationService = new AuthorizationService();
+const permissionService = new PermissionService();
 
 /**
  * GET /api/me/permissions
@@ -27,6 +29,15 @@ export async function GET() {
 
     // Resolve org context, roles, and permissions via existing services.
     const context = await authorizationService.resolveContext(userId);
+
+    // Silently sync any newly-added permissions (e.g. forms:read) to the org.
+    // This is idempotent — safe to run on every request.
+    try {
+      await permissionService.seedDefaultPermissionsAndMappings(context.organizationId);
+    } catch {
+      // Non-fatal: proceed even if sync fails
+    }
+
     const assignedRoles = await authorizationService.resolveAssignedRoles(userId);
     const permissions = await authorizationService.resolveCurrentPermissions(userId);
 

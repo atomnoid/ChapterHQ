@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShieldOff } from "lucide-react";
+import { UnauthorizedIcon } from "./unauthorized-icon";
 
 export const metadata: Metadata = {
   title: "Access Denied — ChapterHQ",
@@ -10,9 +10,7 @@ export const metadata: Metadata = {
 export default function UnauthorizedPage() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-16 text-center">
-      <span className="flex h-20 w-20 items-center justify-center rounded-full border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.08)]">
-        <ShieldOff className="h-8 w-8 text-secondary-foreground" />
-      </span>
+      <UnauthorizedIcon />
 
       <h1 className="mt-6 text-2xl font-bold tracking-[-0.04em] text-foreground">
         Access Denied
