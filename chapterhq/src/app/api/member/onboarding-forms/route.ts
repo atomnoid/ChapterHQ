@@ -17,20 +17,24 @@ const memberRepository = new MemberRepository();
  */
 export async function GET(request: Request) {
   try {
+    console.log("[onboarding-forms] step: auth()");
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
     const userId = session.user.id;
+    console.log("[onboarding-forms] userId:", userId, "sessionOrgId:", session.activeOrganizationId);
 
     // Derive organizationId from the session (set by the JWT callback) or fall back
     // to the user's first active membership.
     let organizationId: string | undefined = session.activeOrganizationId;
 
     if (!organizationId) {
+      console.log("[onboarding-forms] step: fallback findActiveByUserId");
       const fallbackMember = await memberRepository.findActiveByUserId(userId);
       organizationId = fallbackMember?.organizationId;
+      console.log("[onboarding-forms] fallback orgId:", organizationId ?? "NONE");
     }
 
     if (!organizationId) {
@@ -40,11 +44,12 @@ export async function GET(request: Request) {
       );
     }
 
-    // Get the current member record within the resolved organization
+    console.log("[onboarding-forms] step: findByOrganizationAndUser", organizationId, userId);
     const member = await memberRepository.findByOrganizationAndUser(
       organizationId,
       userId
     );
+    console.log("[onboarding-forms] member:", member?.id ?? "NULL");
 
     if (!member) {
       return NextResponse.json(
@@ -53,16 +58,19 @@ export async function GET(request: Request) {
       );
     }
 
+    console.log("[onboarding-forms] step: getMemberOnboardingStatus");
     const onboardingStatus = await onboardingService.getMemberOnboardingStatus(
       organizationId,
       member.id
     );
 
+    console.log("[onboarding-forms] step: isMemberFullyOnboarded");
     const isOnboarded = await onboardingService.isMemberFullyOnboarded(
       organizationId,
       member.id
     );
 
+    console.log("[onboarding-forms] done — isOnboarded:", isOnboarded);
     return NextResponse.json(
       {
         isOnboarded,
@@ -73,7 +81,8 @@ export async function GET(request: Request) {
       { status: 200 }
     );
   } catch (error: unknown) {
-    console.error("GET /api/member/onboarding-forms error:", error);
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    console.error("[onboarding-forms] CAUGHT ERROR:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Edit2,
   Eye,
   Filter,
@@ -278,6 +279,13 @@ export function MemberList() {
 
         {/* Add Member button */}
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full shrink-0"
+            onClick={() => window.location.href = "/forms"}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" /> Custom Forms
+          </Button>
           <Button
             variant="outline"
             className="rounded-full shrink-0"
