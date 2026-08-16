@@ -13,9 +13,10 @@ const formService = new CustomFormService();
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; fieldId: string } }
+  { params }: { params: Promise<{ id: string; fieldId: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -28,8 +29,8 @@ export async function PATCH(
 
     const field = await formService.updateField(
       context.organizationId,
-      params.id,
-      params.fieldId,
+      resolvedParams.id,
+      resolvedParams.fieldId,
       session.user.id,
       fieldData
     );
@@ -62,9 +63,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; fieldId: string } }
+  { params }: { params: Promise<{ id: string; fieldId: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -72,7 +74,7 @@ export async function DELETE(
 
     const { context } = await requirePermission(session.user.id, "forms:delete");
 
-    await formService.deleteField(context.organizationId, params.id, params.fieldId, session.user.id);
+    await formService.deleteField(context.organizationId, resolvedParams.id, resolvedParams.fieldId, session.user.id);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: unknown) {
