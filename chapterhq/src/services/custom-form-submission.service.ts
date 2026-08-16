@@ -333,8 +333,8 @@ export class CustomFormSubmissionService {
     const rows: string[] = [allHeaders.map(escapeCSVValue).join(",")];
 
     for (const submission of submissions) {
-      const answerMap = new Map(
-        submission.answers.map((a) => [a.field.key, a.value])
+      const answerMap = new Map<string, string | null | undefined>(
+        submission.answers.map((a: { field: { key: string }; value: string | null }) => [a.field.key, a.value])
       );
 
       // Get member info

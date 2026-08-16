@@ -3,6 +3,7 @@ import { logActivity } from "@/lib/audit-logger";
 import { CustomFormRepository } from "@/repositories/custom-form.repository";
 import { MemberRepository } from "@/repositories/member.repository";
 import type { CreateCustomFormInput, UpdateCustomFormInput } from "@/validators/custom-form.validator";
+import { CustomFormFieldType } from "@prisma/client";
 
 export class CustomFormNotFoundError extends Error {
   constructor() {
@@ -122,7 +123,7 @@ export class CustomFormService {
               formId,
               label: field.label,
               key: field.key,
-              type: field.type,
+              type: field.type as CustomFormFieldType,
               required: field.required,
               placeholder: field.placeholder,
               helpText: field.helpText,
@@ -133,7 +134,9 @@ export class CustomFormService {
         )
       );
 
-      updated.fields = newFields;
+      if (updated) {
+        (updated as any).fields = newFields;
+      }
     }
 
     await logActivity(
@@ -175,9 +178,9 @@ export class CustomFormService {
       key: string;
       type: string;
       required?: boolean;
-      placeholder?: string;
-      helpText?: string;
-      options?: Array<{ label: string; value: string }>;
+      placeholder?: string | null;
+      helpText?: string | null;
+      options?: Array<{ label: string; value: string }> | null;
     }
   ) {
     const form = await this.formRepository.findByIdAndOrganization(formId, organizationId);
@@ -193,7 +196,7 @@ export class CustomFormService {
         formId,
         label: fieldData.label,
         key: fieldData.key,
-        type: fieldData.type,
+        type: fieldData.type as CustomFormFieldType,
         required: fieldData.required ?? false,
         placeholder: fieldData.placeholder || null,
         helpText: fieldData.helpText || null,
@@ -222,9 +225,9 @@ export class CustomFormService {
       label: string;
       type: string;
       required: boolean;
-      placeholder: string;
-      helpText: string;
-      options: Array<{ label: string; value: string }>;
+      placeholder: string | null;
+      helpText: string | null;
+      options: Array<{ label: string; value: string }> | null;
       order: number;
     }>
   ) {
@@ -242,7 +245,7 @@ export class CustomFormService {
       where: { id: fieldId },
       data: {
         label: fieldData.label ?? field.label,
-        type: fieldData.type ?? field.type,
+        type: (fieldData.type ?? field.type) as CustomFormFieldType,
         required: fieldData.required ?? field.required,
         placeholder: fieldData.placeholder ?? field.placeholder,
         helpText: fieldData.helpText ?? field.helpText,

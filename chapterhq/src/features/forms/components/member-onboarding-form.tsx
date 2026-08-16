@@ -232,7 +232,7 @@ export function MemberOnboardingForm() {
         {/* Form Submitter */}
         <FormSubmitter
           formId={incompleteForm.id}
-          onSubmitSuccess={handleFormSubmitSuccess}
+          onSuccess={handleFormSubmitSuccess}
         />
       </div>
 

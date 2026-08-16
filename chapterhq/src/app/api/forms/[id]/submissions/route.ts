@@ -24,10 +24,7 @@ export async function GET(
     const { context } = await requirePermission(session.user.id, "forms-submissions:read");
 
     const { searchParams } = new URL(request.url);
-    const pagination = parsePaginationQuery({
-      page: searchParams.get("page"),
-      limit: searchParams.get("limit"),
-    });
+    const pagination = parsePaginationQuery(searchParams);
 
     const { submissions, total } = await submissionService.listSubmissions(
       context.organizationId,
