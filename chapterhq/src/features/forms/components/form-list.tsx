@@ -101,8 +101,8 @@ export function FormList() {
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="w-full">
+          <table className="w-full text-sm min-w-[800px]">
             <thead className="border-b border-border">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>

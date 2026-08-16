@@ -1,12 +1,13 @@
 "use client";
 
-import type { Metadata } from "next";
+import { use } from "react";
 import { FormEditor } from "@/features/forms/components/form-editor";
 
-export default function EditFormPage({ params }: { params: { id: string } }) {
+export default function EditFormPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   return (
     <div>
-      <FormEditor formId={params.id} />
+      <FormEditor formId={resolvedParams.id} />
     </div>
   );
 }

@@ -12,9 +12,10 @@ const submissionService = new CustomFormSubmissionService();
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -30,7 +31,7 @@ export async function GET(
 
     const { submissions, total } = await submissionService.listSubmissions(
       context.organizationId,
-      params.id,
+      resolvedParams.id,
       {
         skip: (pagination.page - 1) * pagination.limit,
         take: pagination.limit,
@@ -64,9 +65,10 @@ export async function GET(
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -79,7 +81,7 @@ export async function POST(
 
     const csv = await submissionService.exportSubmissionsAsCSV(
       context.organizationId,
-      params.id,
+      resolvedParams.id,
       selectedSubmissionIds
     );
 
@@ -87,7 +89,7 @@ export async function POST(
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="form-submissions-${params.id}-${new Date().toISOString().split("T")[0]}.csv"`,
+        "Content-Disposition": `attachment; filename="form-submissions-${resolvedParams.id}-${new Date().toISOString().split("T")[0]}.csv"`,
       },
     });
   } catch (error: unknown) {
