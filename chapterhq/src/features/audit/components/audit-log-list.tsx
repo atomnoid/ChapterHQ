@@ -186,23 +186,61 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 }
 
 function formatMetadata(metadata: Record<string, unknown> | null, memberMap: Map<string, string>) {
-  if (!metadata || Object.keys(metadata).length === 0) return null;
+  if (!metadata || typeof metadata !== "object" || Object.keys(metadata).length === 0) return null;
   
-  return Object.entries(metadata)
-    .map(([key, val]) => {
-      if (key === "memberId" && typeof val === "string") {
-        const name = memberMap.get(val);
-        if (name) return `member: ${name}`;
+  // If metadata has memberName directly or through memberId
+  const entries = Object.entries(metadata);
+  const formattedItems: string[] = [];
+
+  for (const [key, val] of entries) {
+    if (val === null || val === undefined || val === "") continue;
+
+    if (key === "memberName") {
+      formattedItems.push(`member: ${val}`);
+      continue;
+    }
+
+    if (key === "memberId" && typeof val === "string") {
+      // If memberName is also in metadata, skip memberId
+      if (metadata.memberName) continue;
+      const name = memberMap.get(val);
+      if (name) {
+        formattedItems.push(`member: ${name}`);
+        continue;
       }
-      let formattedVal = "";
-      if (val && typeof val === "object") {
-        formattedVal = JSON.stringify(val);
+    }
+
+    if (key === "userName") {
+      formattedItems.push(`user: ${val}`);
+      continue;
+    }
+
+    if (key === "userId" && typeof val === "string") {
+      if (metadata.userName) continue;
+      const name = memberMap.get(val);
+      if (name) {
+        formattedItems.push(`user: ${name}`);
+        continue;
+      }
+    }
+
+    let valStr = "";
+    if (typeof val === "object") {
+      if (Array.isArray(val)) {
+        valStr = val.join(", ");
       } else {
-        formattedVal = String(val);
+        valStr = Object.entries(val as Record<string, unknown>)
+          .map(([k, v]) => `${k}: ${String(v)}`)
+          .join(", ");
       }
-      return `${key}: ${formattedVal}`;
-    })
-    .join(", ");
+    } else {
+      valStr = String(val);
+    }
+
+    formattedItems.push(`${key}: ${valStr}`);
+  }
+
+  return formattedItems.length > 0 ? formattedItems.join(" · ") : null;
 }
 
 function AuditLogRow({ log, memberMap }: { log: AuditLogItem; memberMap: Map<string, string> }) {
@@ -343,14 +381,18 @@ export function AuditLogList() {
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        const res = await fetch("/api/members?limit=1000");
+        const res = await fetch("/api/members?limit=100");
         if (res.ok) {
           const json = await res.json();
-          const items = json?.items ?? [];
+          const items = json?.items ?? json?.data?.items ?? (Array.isArray(json) ? json : []);
           const map = new Map<string, string>();
           items.forEach((m: any) => {
-            if (m.id && m.user) {
-              map.set(m.id, m.user.name || m.user.email || "Unknown");
+            if (m.id) {
+              const name = m.user?.name || m.user?.email || m.name || m.email || "Member";
+              map.set(m.id, name);
+              if (m.userId) {
+                map.set(m.userId, name);
+              }
             }
           });
           setMemberMap(map);
