@@ -17,6 +17,7 @@ import {
   Trash2,
   Users,
   ShieldAlert,
+  Download,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -95,10 +96,12 @@ function MemberRowMenu({
   onView,
   onEdit,
   onDelete,
+  onDownload,
 }: {
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onDownload: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
@@ -147,7 +150,7 @@ function MemberRowMenu({
             <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
             <div
               style={menuStyle}
-              className="w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]"
+              className="w-44 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]"
             >
               <button
                 className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
@@ -160,6 +163,12 @@ function MemberRowMenu({
                 onClick={() => { setOpen(false); onEdit(); }}
               >
                 <Edit2 className="h-3.5 w-3.5" /> Edit
+              </button>
+              <button
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
+                onClick={() => { setOpen(false); onDownload(); }}
+              >
+                <Download className="h-3.5 w-3.5" /> Download Data
               </button>
               <button
                 className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
@@ -187,7 +196,35 @@ export function MemberList() {
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [downloading, setDownloading] = useState(false);
   const LIMIT = 10;
+
+  const handleDownload = async (memberIds?: string[]) => {
+    try {
+      setDownloading(true);
+      const response = await fetch("/api/members/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberIds }),
+      });
+      if (!response.ok) throw new Error("Failed to export data");
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `member-data-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (err) {
+      alert("Failed to download CSV data.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Debounce search
   useEffect(() => {
@@ -282,6 +319,24 @@ export function MemberList() {
           <Button
             variant="outline"
             className="rounded-full shrink-0"
+            onClick={() => handleDownload()}
+            disabled={downloading}
+          >
+            <Download className="h-4 w-4 mr-2" /> Export All
+          </Button>
+          {selectedIds.size > 0 && (
+            <Button
+              variant="outline"
+              className="rounded-full shrink-0 bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
+              onClick={() => handleDownload(Array.from(selectedIds))}
+              disabled={downloading}
+            >
+              <Download className="h-4 w-4 mr-2" /> Export Selected ({selectedIds.size})
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            className="rounded-full shrink-0"
             onClick={() => window.location.href = "/forms"}
           >
             <ClipboardList className="h-4 w-4 mr-2" /> Custom Forms
@@ -355,7 +410,21 @@ export function MemberList() {
         <>
           <div className="overflow-hidden rounded-[1.75rem] border border-border">
             {/* Table Head */}
-            <div className="hidden grid-cols-[minmax(0,1fr)_160px_140px_52px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
+            <div className="hidden grid-cols-[40px_minmax(0,1fr)_160px_140px_52px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                checked={data.items.length > 0 && data.items.every((m) => selectedIds.has(m.id))}
+                onChange={(e) => {
+                  const newSelected = new Set(selectedIds);
+                  if (e.target.checked) {
+                    data.items.forEach((m) => newSelected.add(m.id));
+                  } else {
+                    data.items.forEach((m) => newSelected.delete(m.id));
+                  }
+                  setSelectedIds(newSelected);
+                }}
+              />
               <span>Member</span>
               <span>Joined</span>
               <span>Status</span>
@@ -363,52 +432,72 @@ export function MemberList() {
             </div>
 
             {/* Table Rows */}
-            {data.items.map((member, idx) => (
-              <div
-                key={member.id}
-                className={`grid grid-cols-[minmax(0,1fr)_52px] items-center gap-3 px-5 py-4 transition-colors hover:bg-[#fcf8f1] sm:grid-cols-[minmax(0,1fr)_160px_140px_52px] ${
-                  idx !== data.items.length - 1 ? "border-b border-border" : ""
-                }`}
-              >
-                {/* Name / email */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar member={member} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {member.user.name ?? "—"}
-                    </p>
-                    <p className="truncate text-xs text-secondary-foreground">
-                      {member.user.email ?? ""}
-                    </p>
+            {data.items.map((member, idx) => {
+              const isSelected = selectedIds.has(member.id);
+              return (
+                <div
+                  key={member.id}
+                  className={`grid grid-cols-[40px_minmax(0,1fr)_52px] items-center gap-3 px-5 py-4 transition-colors hover:bg-[#fcf8f1] sm:grid-cols-[40px_minmax(0,1fr)_160px_140px_52px] ${
+                    idx !== data.items.length - 1 ? "border-b border-border" : ""
+                  } ${isSelected ? "bg-primary/5" : ""}`}
+                >
+                  {/* Checkbox */}
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      const newSelected = new Set(selectedIds);
+                      if (e.target.checked) {
+                        newSelected.add(member.id);
+                      } else {
+                        newSelected.delete(member.id);
+                      }
+                      setSelectedIds(newSelected);
+                    }}
+                  />
+
+                  {/* Name / email */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar member={member} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {member.user.name ?? "—"}
+                      </p>
+                      <p className="truncate text-xs text-secondary-foreground">
+                        {member.user.email ?? ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Joined */}
+                  <p className="hidden text-sm text-secondary-foreground sm:block">
+                    {new Date(member.joinedAt).toLocaleDateString()}
+                  </p>
+
+                  {/* Status badge */}
+                  <div className="hidden sm:block">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        STATUS_STYLES[member.status]
+                      }`}
+                    >
+                      {member.status.charAt(0) + member.status.slice(1).toLowerCase()}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end">
+                    <MemberRowMenu
+                      onView={() => setDialog({ type: "view", member })}
+                      onEdit={() => setDialog({ type: "edit", member })}
+                      onDelete={() => setDialog({ type: "delete", member })}
+                      onDownload={() => handleDownload([member.id])}
+                    />
                   </div>
                 </div>
-
-                {/* Joined */}
-                <p className="hidden text-sm text-secondary-foreground sm:block">
-                  {new Date(member.joinedAt).toLocaleDateString()}
-                </p>
-
-                {/* Status badge */}
-                <div className="hidden sm:block">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      STATUS_STYLES[member.status]
-                    }`}
-                  >
-                    {member.status.charAt(0) + member.status.slice(1).toLowerCase()}
-                  </span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex justify-end">
-                  <MemberRowMenu
-                    onView={() => setDialog({ type: "view", member })}
-                    onEdit={() => setDialog({ type: "edit", member })}
-                    onDelete={() => setDialog({ type: "delete", member })}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Pagination Controls */}
