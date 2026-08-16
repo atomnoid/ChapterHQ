@@ -16,9 +16,10 @@ const memberRepository = new MemberRepository();
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
@@ -41,7 +42,7 @@ export async function POST(
 
     const { submission, isNew } = await submissionService.submitForm(
       context.organizationId,
-      params.id,
+      resolvedParams.id,
       member.id,
       session.user.id,
       input
