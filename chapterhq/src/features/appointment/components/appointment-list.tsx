@@ -84,6 +84,7 @@ function AppointmentRowMenu({
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   if (!canEdit && !canDelete) return null;
 
@@ -93,15 +94,22 @@ function AppointmentRowMenu({
         variant="ghost"
         size="icon"
         className="rounded-full h-8 w-8"
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+          setOpen((v) => !v);
+        }}
         aria-label="Appointment actions"
       >
         <MoreHorizontal className="h-4 w-4" />
       </Button>
-      {open && (
+      {open && menuPos && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-[calc(100%+6px)] z-20 w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]">
+          <div className="fixed inset-0 z-[100]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[101] w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_30px_rgba(77,54,37,0.1)]"
+            style={{ top: menuPos.top, right: menuPos.right }}
+          >
             {canEdit && (
               <button
                 className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-secondary-foreground hover:bg-secondary hover:text-foreground"
