@@ -26,6 +26,10 @@ try {
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  // Prevent Turbopack/webpack from bundling Prisma with the wrong module
+  // condition (edge-light/browser → Accelerate WASM) instead of `node`
+  // (binary engine). This forces Node's native resolver at runtime.
+  serverExternalPackages: ["@prisma/client", ".prisma/client"],
 };
 
 export default nextConfig;

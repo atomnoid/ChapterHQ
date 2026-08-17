@@ -2,6 +2,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator clientSrc {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-client"
+}
+
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
