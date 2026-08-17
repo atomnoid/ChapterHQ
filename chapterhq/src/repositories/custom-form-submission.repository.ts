@@ -113,6 +113,17 @@ export class CustomFormSubmissionRepository {
       prisma.customFormSubmission.findMany({
         where: whereClause,
         include: {
+          member: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                  image: true,
+                },
+              },
+            },
+          },
           answers: {
             include: {
               field: true,

@@ -14,6 +14,14 @@ import {
 } from "@/components/ui/table";
 import { AlertCircle, Download } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 type Submission = {
   id: string;
@@ -21,8 +29,15 @@ type Submission = {
   memberName: string;
   memberEmail: string;
   createdAt: string;
-  answers?: Record<string, any>;
+  answers: Record<string, any>;
 };
+
+interface FormField {
+  id: string;
+  label: string;
+  key: string;
+  type: string;
+}
 
 interface SubmissionsViewerProps {
   formId: string;
@@ -30,6 +45,7 @@ interface SubmissionsViewerProps {
 
 export function SubmissionsViewer({ formId }: SubmissionsViewerProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [formFields, setFormFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -38,6 +54,23 @@ export function SubmissionsViewer({ formId }: SubmissionsViewerProps) {
   const [limit, setLimit] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
+
+  // Fetch form details to get correct field labels
+  useEffect(() => {
+    const fetchFormDetails = async () => {
+      try {
+        const response = await fetch(`/api/forms/${formId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setFormFields(data.fields || []);
+        }
+      } catch (err) {
+        console.error("Failed to load form details:", err);
+      }
+    };
+    fetchFormDetails();
+  }, [formId]);
 
   // Fetch submissions on mount and on page/search change
   useEffect(() => {
@@ -252,8 +285,7 @@ export function SubmissionsViewer({ formId }: SubmissionsViewerProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            // Could navigate to submission detail view
-                            alert(`View submission ${submission.id}`);
+                            setActiveSubmission(submission);
                           }}
                         >
                           View
@@ -311,6 +343,52 @@ export function SubmissionsViewer({ formId }: SubmissionsViewerProps) {
           </>
         )}
       </div>
+
+      {/* Details Dialog */}
+      <Dialog open={!!activeSubmission} onOpenChange={(open) => !open && setActiveSubmission(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submission Details</DialogTitle>
+            <DialogDescription>
+              Submitted by {activeSubmission?.memberName} ({activeSubmission?.memberEmail}) on{" "}
+              {activeSubmission && new Date(activeSubmission.createdAt).toLocaleString()}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-6">
+            {formFields.map((field) => {
+              const answerRaw = activeSubmission?.answers?.[field.key];
+              let answerDisplay = "—";
+
+              if (answerRaw !== undefined && answerRaw !== null && answerRaw !== "") {
+                if (field.type === "CHECKBOX") {
+                  try {
+                    const parsed = JSON.parse(answerRaw);
+                    answerDisplay = Array.isArray(parsed) ? parsed.join(", ") : String(answerRaw);
+                  } catch {
+                    answerDisplay = String(answerRaw);
+                  }
+                } else {
+                  answerDisplay = String(answerRaw);
+                }
+              }
+
+              return (
+                <div key={field.id} className="border-b border-border pb-4 last:border-0 last:pb-0">
+                  <h4 className="text-sm font-semibold text-foreground mb-1">{field.label}</h4>
+                  <p className="text-sm text-secondary-foreground whitespace-pre-wrap">
+                    {answerDisplay}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setActiveSubmission(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

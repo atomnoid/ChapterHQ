@@ -35,9 +35,21 @@ export async function GET(
       }
     );
 
+    const formattedSubmissions = submissions.map((sub: any) => ({
+      id: sub.id,
+      memberId: sub.memberId,
+      memberName: sub.member?.user?.name || "Unknown",
+      memberEmail: sub.member?.user?.email || "",
+      createdAt: sub.submittedAt.toISOString(),
+      answers: sub.answers.reduce((acc: any, ans: any) => {
+        acc[ans.field.key] = ans.value;
+        return acc;
+      }, {}),
+    }));
+
     return NextResponse.json(
       {
-        items: submissions,
+        items: formattedSubmissions,
         total,
         page: pagination.page,
         limit: pagination.limit,

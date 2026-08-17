@@ -292,6 +292,7 @@ model Member {
   certificates     Certificate[]
   coreMemberRecords CoreMember[]
   notificationRecipients NotificationRecipient[]
+  customFormSubmissions CustomFormSubmission[]
 
   @@unique([organizationId, userId])
 
@@ -948,6 +949,7 @@ model CustomFormSubmission {
 
   form         CustomForm @relation(fields: [formId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
+  member       Member       @relation(fields: [memberId], references: [id])
 
   answers CustomFormSubmissionAnswer[]
 
