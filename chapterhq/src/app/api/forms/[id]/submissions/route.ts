@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
 import { CustomFormSubmissionService } from "@/services/custom-form-submission.service";
 import { parsePaginationQuery } from "@/lib/pagination";
+import { prisma } from "@/lib/prisma";
 
 const submissionService = new CustomFormSubmissionService();
 
@@ -35,17 +36,30 @@ export async function GET(
       }
     );
 
-    const formattedSubmissions = submissions.map((sub: any) => ({
-      id: sub.id,
-      memberId: sub.memberId,
-      memberName: sub.member?.user?.name || "Unknown",
-      memberEmail: sub.member?.user?.email || "",
-      createdAt: sub.submittedAt.toISOString(),
-      answers: sub.answers.reduce((acc: any, ans: any) => {
-        acc[ans.field.key] = ans.value;
-        return acc;
-      }, {}),
-    }));
+    // Manually fetch member+user data for these submissions
+    const memberIds = [...new Set(submissions.map((s: any) => s.memberId))];
+    const members = memberIds.length > 0
+      ? await prisma.member.findMany({
+          where: { id: { in: memberIds } },
+          include: { user: { select: { name: true, email: true, image: true } } },
+        })
+      : [];
+    const memberMap = new Map(members.map((m: any) => [m.id, m]));
+
+    const formattedSubmissions = submissions.map((sub: any) => {
+      const member = memberMap.get(sub.memberId) as any;
+      return {
+        id: sub.id,
+        memberId: sub.memberId,
+        memberName: member?.user?.name || "Unknown",
+        memberEmail: member?.user?.email || "",
+        createdAt: sub.submittedAt ? sub.submittedAt.toISOString() : new Date().toISOString(),
+        answers: (sub.answers || []).reduce((acc: any, ans: any) => {
+          if (ans.field?.key) acc[ans.field.key] = ans.value;
+          return acc;
+        }, {}),
+      };
+    });
 
     return NextResponse.json(
       {
@@ -64,7 +78,8 @@ export async function GET(
       return NextResponse.json({ message: error.message }, { status: 404 });
     }
     console.error("GET /api/forms/[id]/submissions error:", error);
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    const errMsg = error instanceof Error ? error.message : "Internal server error.";
+    return NextResponse.json({ message: errMsg }, { status: 500 });
   }
 }
 

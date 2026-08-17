@@ -85,7 +85,8 @@ export function SubmissionsViewer({ formId }: SubmissionsViewerProps) {
 
         const response = await fetch(`/api/forms/${formId}/submissions?${params}`);
         if (!response.ok) {
-          throw new Error("Failed to fetch submissions");
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to fetch submissions");
         }
 
         const data = await response.json();
