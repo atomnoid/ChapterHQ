@@ -99,6 +99,21 @@ export class CoreMemberRepository {
   }
 
   async create(data: { organizationId: string; memberId: string; note?: string }) {
+    const existing = await prisma.coreMember.findFirst({
+      where: { organizationId: data.organizationId, memberId: data.memberId },
+    });
+
+    if (existing) {
+      return prisma.coreMember.update({
+        where: { id: existing.id },
+        data: {
+          deletedAt: null,
+          note: data.note ?? null,
+          addedAt: new Date(),
+        },
+      });
+    }
+
     return prisma.coreMember.create({ data });
   }
 
