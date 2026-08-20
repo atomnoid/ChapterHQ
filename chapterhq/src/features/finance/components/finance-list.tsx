@@ -17,6 +17,8 @@ import {
   TrendingDown,
   DollarSign,
   PieChart,
+  Download,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +59,10 @@ export function FinanceList() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
+  const [dateRange, setDateRange] = useState<string>("ALL");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [downloading, setDownloading] = useState(false);
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,6 +81,49 @@ export function FinanceList() {
     };
   }, [search]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [dateRange, customStartDate, customEndDate]);
+
+  const getDateRangeParams = useCallback(() => {
+    if (dateRange === "ALL") {
+      return { startDate: "", endDate: "" };
+    }
+
+    const now = new Date();
+    let start: Date | null = null;
+    let end: Date | null = null;
+
+    if (dateRange === "LAST_7_DAYS") {
+      start = new Date();
+      start.setDate(now.getDate() - 7);
+      end = now;
+    } else if (dateRange === "LAST_30_DAYS") {
+      start = new Date();
+      start.setDate(now.getDate() - 30);
+      end = now;
+    } else if (dateRange === "THIS_MONTH") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = now;
+    } else if (dateRange === "LAST_MONTH") {
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    } else if (dateRange === "CUSTOM") {
+      if (customStartDate) {
+        start = new Date(customStartDate);
+      }
+      if (customEndDate) {
+        end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
+      }
+    }
+
+    return {
+      startDate: start ? start.toISOString() : "",
+      endDate: end ? end.toISOString() : "",
+    };
+  }, [dateRange, customStartDate, customEndDate]);
+
   const fetchFinanceData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -82,6 +131,10 @@ export function FinanceList() {
       const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (typeFilter !== "ALL") params.set("type", typeFilter);
+
+      const { startDate, endDate } = getDateRangeParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
 
       const [recordsRes, summaryRes] = await Promise.all([
         fetch(`/api/finance?${params}`),
@@ -105,11 +158,68 @@ export function FinanceList() {
     // activeCommitteeId is intentionally included: the server reads it from the session
     // cookie, but including it here ensures the client refetches when the context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, debouncedSearch, typeFilter, activeCommitteeId]);
+  }, [page, debouncedSearch, typeFilter, activeCommitteeId, getDateRangeParams]);
 
   useEffect(() => {
     fetchFinanceData();
   }, [fetchFinanceData]);
+
+  const handleDownloadCSV = async () => {
+    setDownloading(true);
+    try {
+      const params = new URLSearchParams({ page: "1", limit: "10000" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (typeFilter !== "ALL") params.set("type", typeFilter);
+
+      const { startDate, endDate } = getDateRangeParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+
+      const recordsRes = await fetch(`/api/finance?${params}`);
+      if (!recordsRes.ok) {
+        throw new Error("Failed to load records for download.");
+      }
+
+      const recordsJson = await recordsRes.json();
+      const rawItems = recordsJson?.data?.items ?? recordsJson?.items;
+      const records: FinanceRecord[] = rawItems || [];
+
+      if (records.length === 0) {
+        alert("No records found to download.");
+        return;
+      }
+
+      // Generate CSV
+      const csvHeaders = ["Date", "Category", "Description", "Type", "Amount (INR)"];
+      const csvRows = records.map((record) => {
+        const formattedDate = new Date(record.date).toLocaleDateString();
+        const category = `"${(record.category || "").replace(/"/g, '""')}"`;
+        const description = `"${(record.description || "").replace(/"/g, '""')}"`;
+        return [
+          formattedDate,
+          category,
+          description,
+          record.type,
+          record.amount,
+        ].join(",");
+      });
+
+      const csvContent = [csvHeaders.join(","), ...csvRows].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `finance_report_${new Date().toISOString().split("T")[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Failed to download CSV.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const closeDialog = () => setDialog({ type: "none" });
 
@@ -183,6 +293,45 @@ export function FinanceList() {
             </select>
           </div>
 
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-secondary-foreground shrink-0" />
+            <select
+              value={dateRange}
+              onChange={(e) => {
+                setDateRange(e.target.value);
+              }}
+              className="h-10 rounded-2xl border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Filter date range"
+            >
+              <option value="ALL">All Time</option>
+              <option value="LAST_7_DAYS">Last 7 Days</option>
+              <option value="LAST_30_DAYS">Last 30 Days</option>
+              <option value="THIS_MONTH">This Month</option>
+              <option value="LAST_MONTH">Last Month</option>
+              <option value="CUSTOM">Custom Range</option>
+            </select>
+          </div>
+
+          {dateRange === "CUSTOM" && (
+            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+              <Input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="h-10 rounded-2xl px-3 w-[130px] text-sm shrink-0"
+                aria-label="Start date"
+              />
+              <span className="text-xs text-secondary-foreground">to</span>
+              <Input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="h-10 rounded-2xl px-3 w-[130px] text-sm shrink-0"
+                aria-label="End date"
+              />
+            </div>
+          )}
+
           <Button
             variant="outline"
             size="icon"
@@ -195,9 +344,20 @@ export function FinanceList() {
           </Button>
         </div>
 
-        <Button className="rounded-full shrink-0" onClick={() => setDialog({ type: "create" })}>
-          <Plus className="h-4 w-4 mr-2" /> Add Transaction
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full shrink-0 border-border"
+            onClick={handleDownloadCSV}
+            disabled={downloading || loading}
+          >
+            <Download className={`h-4 w-4 mr-2 ${downloading ? "animate-pulse" : ""}`} />
+            {downloading ? "Downloading..." : "Download CSV"}
+          </Button>
+          <Button className="rounded-full shrink-0" onClick={() => setDialog({ type: "create" })}>
+            <Plus className="h-4 w-4 mr-2" /> Add Transaction
+          </Button>
+        </div>
       </div>
 
       {/* Error state */}
