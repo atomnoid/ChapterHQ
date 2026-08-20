@@ -45,6 +45,7 @@ export const createCustomFormSchema = z.object({
   name: z.string().trim().min(1, "Form name is required").max(255, "Name must be 255 characters or less"),
   description: z.string().max(1000).optional().nullable(),
   required: z.boolean().default(false),
+  committeeId: z.string().optional().nullable(),
   fields: z.array(createCustomFormFieldSchema).min(1, "At least one field is required"),
 });
 
@@ -53,6 +54,7 @@ export const updateCustomFormSchema = z.object({
   description: z.string().max(1000).optional().nullable(),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   required: z.boolean().optional(),
+  committeeId: z.string().optional().nullable(),
   fields: z.array(createCustomFormFieldSchema).optional(),
 });
 

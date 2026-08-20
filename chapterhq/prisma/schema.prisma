@@ -193,6 +193,7 @@ model Committee {
   inventoryItems   InventoryItem[]
   notifications    Notification[]
   roleAccess       RoleCommitteeAccess[]
+  customForms      CustomForm[]
 
   @@unique([organizationId, name])
 
@@ -897,16 +898,18 @@ enum CustomFormStatus {
 model CustomForm {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  organizationId String @db.ObjectId
+  organizationId String  @db.ObjectId
+  committeeId    String? @db.ObjectId
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  committee    Committee?   @relation(fields: [committeeId], references: [id])
 
   name        String
   description String?
   status      CustomFormStatus @default(ACTIVE)
   required    Boolean @default(false)
   createdBy   String @db.ObjectId
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
@@ -915,6 +918,7 @@ model CustomForm {
   submissions  CustomFormSubmission[]
 
   @@index([organizationId, status])
+  @@index([organizationId, committeeId])
   @@map("custom_forms")
 }
 

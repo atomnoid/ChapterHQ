@@ -13,6 +13,8 @@ interface CustomForm {
   description: string | null;
   status: string;
   required: boolean;
+  committeeId: string | null;
+  committee: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
   fields: Array<{ id: string }>;
@@ -107,6 +109,7 @@ export function FormList() {
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
                 <th className="px-4 py-3 text-left font-semibold text-foreground">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-foreground">Scope</th>
                 <th className="px-4 py-3 text-left font-semibold text-foreground">Type</th>
                 <th className="px-4 py-3 text-center font-semibold text-foreground">Fields</th>
                 <th className="px-4 py-3 text-center font-semibold text-foreground">Submissions</th>
@@ -132,6 +135,19 @@ export function FormList() {
                     >
                       {form.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {form.committee ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-800">
+                        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        {form.committee.name}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        All Members
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className="inline-block px-2.5 py-1 rounded-full text-xs bg-blue-100 text-blue-800">

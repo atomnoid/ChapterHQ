@@ -35,6 +35,7 @@ export class CustomFormService {
       name: input.name,
       description: input.description,
       required: input.required,
+      committeeId: input.committeeId ?? null,
       createdBy: createdByUserId,
     });
 

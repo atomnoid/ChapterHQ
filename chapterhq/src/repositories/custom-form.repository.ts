@@ -7,6 +7,7 @@ interface CreateCustomFormData {
   description?: string | null;
   required: boolean;
   createdBy: string;
+  committeeId?: string | null;
 }
 
 interface UpdateCustomFormData {
@@ -25,11 +26,15 @@ export class CustomFormRepository {
         description: data.description || null,
         required: data.required,
         createdBy: data.createdBy,
+        committeeId: data.committeeId ?? null,
         status: "ACTIVE",
       },
       include: {
         fields: {
           orderBy: { order: "asc" },
+        },
+        committee: {
+          select: { id: true, name: true },
         },
       },
     });
@@ -45,6 +50,9 @@ export class CustomFormRepository {
         fields: {
           orderBy: { order: "asc" },
         },
+        committee: {
+          select: { id: true, name: true },
+        },
       },
     });
 
@@ -54,7 +62,7 @@ export class CustomFormRepository {
 
   async listByOrganization(
     organizationId: string,
-    options?: { status?: "ACTIVE" | "INACTIVE"; required?: boolean }
+    options?: { status?: "ACTIVE" | "INACTIVE"; required?: boolean; committeeId?: string | null }
   ) {
     const whereClause: Prisma.CustomFormWhereInput = {
       organizationId,
@@ -75,6 +83,9 @@ export class CustomFormRepository {
       include: {
         fields: {
           orderBy: { order: "asc" },
+        },
+        committee: {
+          select: { id: true, name: true },
         },
         _count: {
           select: { submissions: true },
@@ -102,6 +113,9 @@ export class CustomFormRepository {
         fields: {
           orderBy: { order: "asc" },
         },
+        committee: {
+          select: { id: true, name: true },
+        },
       },
     });
   }
@@ -116,21 +130,47 @@ export class CustomFormRepository {
     });
   }
 
-  async findRequiredActiveFormsByOrganization(organizationId: string) {
-    const forms = await prisma.customForm.findMany({
+  /**
+   * Fetch required active forms for onboarding.
+   * - committeeIds: optional list of committees the member belongs to.
+   *   Returns global forms (committeeId = null) + forms matching any of those committees.
+   * - If committeeIds is empty/undefined, returns only global forms.
+   */
+  async findRequiredActiveFormsByOrganization(organizationId: string, committeeIds?: string[]) {
+    // Always include global (committee-agnostic) required forms
+    const globalForms = await prisma.customForm.findMany({
       where: {
         organizationId,
         status: "ACTIVE",
         required: true,
+        committeeId: null,
       },
       include: {
-        fields: {
-          orderBy: { order: "asc" },
-        },
+        fields: { orderBy: { order: "asc" } },
+        committee: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: "asc" },
     });
 
-    return forms.filter((f) => !f.deletedAt);
+    let committeeForms: typeof globalForms = [];
+
+    if (committeeIds && committeeIds.length > 0) {
+      committeeForms = await prisma.customForm.findMany({
+        where: {
+          organizationId,
+          status: "ACTIVE",
+          required: true,
+          committeeId: { in: committeeIds },
+        },
+        include: {
+          fields: { orderBy: { order: "asc" } },
+          committee: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+    }
+
+    const allForms = [...globalForms, ...committeeForms];
+    return allForms.filter((f) => !f.deletedAt);
   }
 }

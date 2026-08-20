@@ -331,17 +331,32 @@ export async function POST(
       },
     });
 
-    // Check if organization has required onboarding forms
-    const requiredForms = await prisma.customForm.findFirst({
+    // Check if there are any required onboarding forms applicable to this member.
+    // Global (no committee) forms always apply; committee-specific forms apply if they joined a committee.
+    const globalRequiredForm = await prisma.customForm.findFirst({
       where: {
         organizationId: invitation.organizationId,
         required: true,
         status: "ACTIVE",
-        deletedAt: null,
+        committeeId: null,
       },
     });
 
-    const requiresOnboarding = !!requiredForms;
+    let committeeRequiredForm = null;
+    if (finalActiveCommitteeId) {
+      committeeRequiredForm = await prisma.customForm.findFirst({
+        where: {
+          organizationId: invitation.organizationId,
+          required: true,
+          status: "ACTIVE",
+          committeeId: finalActiveCommitteeId,
+        },
+      });
+    }
+
+    const requiresOnboarding =
+      (!!globalRequiredForm && !globalRequiredForm.deletedAt) ||
+      (!!committeeRequiredForm && !committeeRequiredForm.deletedAt);
 
     return NextResponse.json({
       message: "Invitation accepted successfully.",

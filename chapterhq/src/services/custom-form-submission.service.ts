@@ -239,8 +239,20 @@ export class CustomFormSubmissionService {
   }
 
   async getMemberRequiredForms(organizationId: string, memberId: string) {
-    // Get all required active forms
-    const requiredForms = await this.formRepository.findRequiredActiveFormsByOrganization(organizationId);
+    // Get the member's active committee memberships so we can include committee-specific forms
+    const committeeMembers = await prisma.committeeMember.findMany({
+      where: { memberId },
+      select: { committeeId: true, deletedAt: true },
+    });
+    const activeCommitteeIds = committeeMembers
+      .filter((cm) => !cm.deletedAt)
+      .map((cm) => cm.committeeId);
+
+    // Get all required active forms: global (no committee) + matching committee forms
+    const requiredForms = await this.formRepository.findRequiredActiveFormsByOrganization(
+      organizationId,
+      activeCommitteeIds
+    );
 
     if (requiredForms.length === 0) {
       return {

@@ -35,19 +35,37 @@ export class InvitationAcceptService {
   ) {}
 
   /**
-   * Check if the organization has required onboarding forms.
+   * Check if there are any required onboarding forms applicable to a newly accepted member.
+   * - Always checks for global (no committee) required forms.
+   * - If the invitation was for a specific committee, also checks for committee-specific forms.
    */
-  async organizationHasRequiredForms(organizationId: string): Promise<boolean> {
+  async organizationHasRequiredForms(organizationId: string, committeeId?: string | null): Promise<boolean> {
     try {
-      const form = await prisma.customForm.findFirst({
+      // Check global required forms
+      const globalForm = await prisma.customForm.findFirst({
         where: {
           organizationId,
           required: true,
           status: "ACTIVE",
-          deletedAt: null,
+          committeeId: null,
         },
       });
-      return !!form;
+      if (globalForm && !globalForm.deletedAt) return true;
+
+      // If member is joining a committee, also check for committee-specific forms
+      if (committeeId) {
+        const committeeForm = await prisma.customForm.findFirst({
+          where: {
+            organizationId,
+            required: true,
+            status: "ACTIVE",
+            committeeId,
+          },
+        });
+        if (committeeForm && !committeeForm.deletedAt) return true;
+      }
+
+      return false;
     } catch (error) {
       // Fail open if there's an error checking forms
       return false;
