@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import {
   ChevronLeft, ChevronRight, Filter, Edit2, Trash2,
   Plus, RefreshCw, Search, Package, MoreHorizontal,
+  Download, Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +119,10 @@ export function InventoryList() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [dateRange, setDateRange] = useState<string>("ALL");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [downloading, setDownloading] = useState(false);
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,6 +136,37 @@ export function InventoryList() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [dateRange, customStartDate, customEndDate]);
+
+  const getDateRangeParams = useCallback(() => {
+    if (dateRange === "ALL") return { startDate: "", endDate: "" };
+
+    const now = new Date();
+    let start: Date | null = null;
+    let end: Date | null = null;
+
+    if (dateRange === "LAST_7_DAYS") {
+      start = new Date(); start.setDate(now.getDate() - 7); end = now;
+    } else if (dateRange === "LAST_30_DAYS") {
+      start = new Date(); start.setDate(now.getDate() - 30); end = now;
+    } else if (dateRange === "THIS_MONTH") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1); end = now;
+    } else if (dateRange === "LAST_MONTH") {
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    } else if (dateRange === "CUSTOM") {
+      if (customStartDate) start = new Date(customStartDate);
+      if (customEndDate) { end = new Date(customEndDate); end.setHours(23, 59, 59, 999); }
+    }
+
+    return {
+      startDate: start ? start.toISOString() : "",
+      endDate: end ? end.toISOString() : "",
+    };
+  }, [dateRange, customStartDate, customEndDate]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -138,6 +174,9 @@ export function InventoryList() {
       const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter !== "ALL") params.set("status", statusFilter);
+      const { startDate, endDate } = getDateRangeParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
       const res = await fetch(`/api/inventory?${params}`);
       if (!res.ok) throw new Error((await res.json()).message ?? "Failed to load inventory.");
       const json = await res.json();
@@ -145,9 +184,55 @@ export function InventoryList() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally { setLoading(false); }
-  }, [page, debouncedSearch, statusFilter, activeCommitteeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, statusFilter, activeCommitteeId, getDateRangeParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleDownloadCSV = async () => {
+    setDownloading(true);
+    try {
+      const params = new URLSearchParams({ page: "1", limit: "10000" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      const { startDate, endDate } = getDateRangeParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+
+      const res = await fetch(`/api/inventory?${params}`);
+      if (!res.ok) throw new Error("Failed to load records for download.");
+
+      const json = await res.json();
+      const rawItems = json?.data?.items ?? json?.items;
+      const records: InventoryItem[] = rawItems || [];
+
+      if (records.length === 0) { alert("No records found to download."); return; }
+
+      const csvHeaders = ["Name", "Category", "Quantity", "Unit", "Location", "Status"];
+      const csvRows = records.map((item) => [
+        `"${(item.name || "").replace(/"/g, '""')}"`,
+        `"${(item.category || "").replace(/"/g, '""')}"`,
+        item.quantity,
+        `"${(item.unit || "").replace(/"/g, '""')}"`,
+        `"${(item.location || "").replace(/"/g, '""')}"`,
+        STATUS_LABELS[item.status],
+      ].join(","));
+
+      const csvContent = [csvHeaders.join(","), ...csvRows].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `inventory_report_${new Date().toISOString().split("T")[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Failed to download CSV.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const closeDialog = () => setDialog({ type: "none" });
 
@@ -170,13 +255,62 @@ export function InventoryList() {
               <option value="OUT_OF_STOCK">Out of Stock</option>
             </select>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-secondary-foreground shrink-0" />
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="h-10 rounded-2xl border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Filter date range"
+            >
+              <option value="ALL">All Time</option>
+              <option value="LAST_7_DAYS">Last 7 Days</option>
+              <option value="LAST_30_DAYS">Last 30 Days</option>
+              <option value="THIS_MONTH">This Month</option>
+              <option value="LAST_MONTH">Last Month</option>
+              <option value="CUSTOM">Custom Range</option>
+            </select>
+          </div>
+
+          {dateRange === "CUSTOM" && (
+            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+              <Input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="h-10 rounded-2xl px-3 w-[130px] text-sm shrink-0"
+                aria-label="Start date"
+              />
+              <span className="text-xs text-secondary-foreground">to</span>
+              <Input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="h-10 rounded-2xl px-3 w-[130px] text-sm shrink-0"
+                aria-label="End date"
+              />
+            </div>
+          )}
+
           <Button variant="outline" size="icon" className="rounded-full shrink-0" onClick={fetchData} disabled={loading} aria-label="Refresh">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
-        <Button className="rounded-full shrink-0" onClick={() => setDialog({ type: "create" })}>
-          <Plus className="h-4 w-4 mr-2" /> Add Item
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full shrink-0 border-border"
+            onClick={handleDownloadCSV}
+            disabled={downloading || loading}
+          >
+            <Download className={`h-4 w-4 mr-2 ${downloading ? "animate-pulse" : ""}`} />
+            {downloading ? "Downloading..." : "Download CSV"}
+          </Button>
+          <Button className="rounded-full shrink-0" onClick={() => setDialog({ type: "create" })}>
+            <Plus className="h-4 w-4 mr-2" /> Add Item
+          </Button>
+        </div>
       </div>
 
       {!loading && error && (

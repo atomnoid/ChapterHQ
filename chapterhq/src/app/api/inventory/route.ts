@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
       search: searchParams.get("search") ?? undefined,
       category: searchParams.get("category") ?? undefined,
       status: searchParams.get("status") ?? undefined,
+      startDate: searchParams.get("startDate") ?? undefined,
+      endDate: searchParams.get("endDate") ?? undefined,
       page: searchParams.get("page") ?? undefined,
       limit: searchParams.get("limit") ?? undefined,
     });

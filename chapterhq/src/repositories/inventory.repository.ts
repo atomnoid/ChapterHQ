@@ -25,6 +25,8 @@ export interface ListInventoryQuery {
   search?: string;
   category?: string;
   status?: InventoryStatus;
+  startDate?: Date;
+  endDate?: Date;
   page?: number;
   limit?: number;
   committeeId?: string | null;
@@ -63,7 +65,7 @@ export class InventoryRepository {
   }
 
   async list(organizationId: string, query: ListInventoryQuery = {}) {
-    const { search, category, status, page = 1, limit = 10, committeeId } = query;
+    const { search, category, status, startDate, endDate, page = 1, limit = 10, committeeId } = query;
     const skip = (page - 1) * limit;
 
     // MongoDB Prisma bug: deletedAt: null removed from where; JS post-filter applied below.
@@ -72,6 +74,14 @@ export class InventoryRepository {
       ...(category ? { category } : {}),
       ...(status ? { status } : {}),
       ...(committeeId ? { committeeId } : {}),
+      ...((startDate || endDate)
+        ? {
+            createdAt: {
+              ...(startDate ? { gte: startDate } : {}),
+              ...(endDate ? { lte: endDate } : {}),
+            },
+          }
+        : {}),
       ...(search
         ? {
             OR: [

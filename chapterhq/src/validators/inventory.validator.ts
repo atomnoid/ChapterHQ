@@ -38,8 +38,16 @@ export const inventoryQuerySchema = z.object({
   search: z.string().optional(),
   category: z.string().optional(),
   status: z.nativeEnum(InventoryStatus).optional(),
+  startDate: z
+    .string()
+    .optional()
+    .transform((val) => (val ? new Date(val) : undefined)),
+  endDate: z
+    .string()
+    .optional()
+    .transform((val) => (val ? new Date(val) : undefined)),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(10),
+  limit: z.coerce.number().int().positive().max(10000).default(10),
 });
 
 export type CreateInventoryItemInput = z.infer<typeof createInventoryItemSchema>;
