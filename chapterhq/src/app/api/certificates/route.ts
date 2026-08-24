@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
     return apiResponse.success(result);
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
+    if (error instanceof Error && error.name === "OrganizationContextNotFoundError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
@@ -42,20 +44,37 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createCertificateSchema.parse(body);
 
+    // Strip empty-string optional fields so they are omitted from the document
+    const cleanData = {
+      memberId: validatedData.memberId,
+      title: validatedData.title,
+      issueDate: validatedData.issueDate,
+      ...(validatedData.description?.trim() ? { description: validatedData.description.trim() } : {}),
+      ...(validatedData.expiryDate ? { expiryDate: validatedData.expiryDate } : {}),
+      ...(validatedData.credentialId?.trim() ? { credentialId: validatedData.credentialId.trim() } : {}),
+      ...(validatedData.certificateUrl?.trim() ? { certificateUrl: validatedData.certificateUrl.trim() } : {}),
+    };
+
     const certificate = await certificateService.createCertificate(
       context.organizationId,
-      validatedData,
+      cleanData,
       session.user.id
     );
 
     return apiResponse.created(certificate, "Certificate created successfully.");
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
+    if (error instanceof Error && error.name === "OrganizationContextNotFoundError") return apiResponse.forbidden();
     if (error instanceof ZodError) {
       return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
     }
     if (error instanceof MemberNotFoundError) return apiResponse.notFound(error.message);
     if (error instanceof DuplicateCredentialIdError) return apiResponse.conflict(error.message);
+    // Safety net: Prisma unique constraint violation on credentialId
+    if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
+      return apiResponse.conflict("A certificate with this Credential ID already exists in this organization.");
+    }
+    console.error("[POST /api/certificates] Unexpected error:", error);
     return apiResponse.serverError();
   }
 }

@@ -25,16 +25,20 @@ export interface UpdateCertificateData {
 
 export class CertificateRepository {
   async create(data: CreateCertificateData) {
+    // Conditionally omit optional fields so they are absent from the MongoDB
+    // document rather than stored as null. This prevents the @@unique index on
+    // [organizationId, credentialId] from treating multiple null values as
+    // duplicates (MongoDB unique indexes consider null equal to null).
     return prisma.certificate.create({
       data: {
         organizationId: data.organizationId,
         memberId: data.memberId,
         title: data.title,
-        description: data.description,
         issueDate: data.issueDate,
-        expiryDate: data.expiryDate,
-        credentialId: data.credentialId,
-        certificateUrl: data.certificateUrl,
+        ...(data.description ? { description: data.description } : {}),
+        ...(data.expiryDate ? { expiryDate: data.expiryDate } : {}),
+        ...(data.credentialId ? { credentialId: data.credentialId } : {}),
+        ...(data.certificateUrl ? { certificateUrl: data.certificateUrl } : {}),
       },
       include: {
         member: {
