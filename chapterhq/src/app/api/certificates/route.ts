@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { ZodError } from "zod";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { apiResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permission-enforcer";
@@ -71,10 +70,13 @@ export async function POST(request: NextRequest) {
     if (error instanceof MemberNotFoundError) return apiResponse.notFound(error.message);
     if (error instanceof DuplicateCredentialIdError) return apiResponse.conflict(error.message);
     // Safety net: Prisma unique constraint violation on credentialId
-    if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
+    if (error && typeof error === "object" && "code" in error && (error as { code: unknown }).code === "P2002") {
       return apiResponse.conflict("A certificate with this Credential ID already exists in this organization.");
     }
+    const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     console.error("[POST /api/certificates] Unexpected error:", error);
-    return apiResponse.serverError();
+    return process.env.NODE_ENV === "development"
+      ? apiResponse.serverError(`Unexpected error — ${errMsg}`)
+      : apiResponse.serverError();
   }
 }

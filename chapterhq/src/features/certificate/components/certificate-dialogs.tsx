@@ -109,7 +109,7 @@ export function GenerateCertificateDialog({ open, onOpenChange, onSuccess }: Gen
 
   return (
     <Dialog open={open} onOpenChange={(v) => !isSubmitting && onOpenChange(v)}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">

@@ -697,7 +697,6 @@ model Certificate {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  @@unique([organizationId, credentialId])
   @@map("certificates")
 }
 

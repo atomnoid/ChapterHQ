@@ -53,14 +53,6 @@ export class CertificateService {
       throw new MemberNotFoundError();
     }
 
-    // 2. Prevent duplicate credentialId in the organization if provided
-    if (data.credentialId) {
-      const exists = await this.repository.existsByCredentialId(organizationId, data.credentialId);
-      if (exists) {
-        throw new DuplicateCredentialIdError();
-      }
-    }
-
     const certificate = await this.repository.create({
       organizationId,
       ...data,
@@ -145,14 +137,6 @@ export class CertificateService {
       const member = await this.memberRepo.findByIdAndOrganization(data.memberId, organizationId);
       if (!member) {
         throw new MemberNotFoundError();
-      }
-    }
-
-    // Prevent duplicate credentialId in the organization
-    if (data.credentialId && data.credentialId !== certificate.credentialId) {
-      const exists = await this.repository.existsByCredentialId(organizationId, data.credentialId, id);
-      if (exists) {
-        throw new DuplicateCredentialIdError();
       }
     }
 
