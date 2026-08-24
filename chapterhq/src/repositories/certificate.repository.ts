@@ -78,11 +78,12 @@ export class CertificateRepository {
   }
 
   async findById(id: string, organizationId: string) {
-    return prisma.certificate.findFirst({
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    // Fetch without filter and post-filter in JS.
+    const certificate = await prisma.certificate.findFirst({
       where: {
         id,
         organizationId,
-        deletedAt: null,
       },
       include: {
         member: {
@@ -99,24 +100,28 @@ export class CertificateRepository {
         },
       },
     });
+    if (certificate?.deletedAt) return null;
+    return certificate;
   }
 
   async existsByCredentialId(organizationId: string, credentialId: string, excludeId?: string) {
+    // MongoDB Prisma bug: deletedAt: null in where clause returns no results.
+    // Fetch without filter and post-filter in JS.
     const cert = await prisma.certificate.findFirst({
       where: {
         organizationId,
         credentialId,
-        deletedAt: null,
         NOT: excludeId ? { id: excludeId } : undefined,
       },
     });
+    if (cert?.deletedAt) return false;
     return !!cert;
   }
 
   async list(params: PaginationParams & { organizationId: string; activeCommitteeId?: string | null }) {
     const whereClause: Prisma.CertificateWhereInput = {
       organizationId: params.organizationId,
-      deletedAt: null,
+      // MongoDB Prisma bug: deletedAt: null removed; JS post-filter applied below.
     };
 
     if (params.activeCommitteeId) {
@@ -140,29 +145,29 @@ export class CertificateRepository {
 
     const orderBy = buildOrderBy(params.sortBy, params.order, "issueDate");
 
-    const [total, items] = await Promise.all([
-      prisma.certificate.count({ where: whereClause }),
-      prisma.certificate.findMany({
-        where: whereClause,
-        skip: params.skip,
-        take: params.take,
-        orderBy,
-        include: {
-          member: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                },
+    const allItems = await prisma.certificate.findMany({
+      where: whereClause,
+      orderBy,
+      include: {
+        member: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
               },
             },
           },
         },
-      }),
-    ]);
+      },
+    });
+
+    // Post-filter soft-deleted records in JS (MongoDB Prisma bug workaround).
+    const notDeleted = allItems.filter((c) => !c.deletedAt);
+    const total = notDeleted.length;
+    const items = notDeleted.slice(params.skip, params.skip + params.take);
 
     return { total, items };
   }
