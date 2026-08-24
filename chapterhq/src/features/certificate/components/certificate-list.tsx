@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ChevronLeft, ChevronRight, Award, Plus, RefreshCw, Search, Trash2, Download, ExternalLink,
+  ChevronLeft, ChevronRight, Award, Plus, RefreshCw, Search, Trash2, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,7 +156,7 @@ export function CertificateList() {
                 </p>
 
                 <div className="flex justify-end items-center gap-1">
-                  {cert.certificateUrl ? (
+                  {cert.certificateUrl && (
                     <a
                       href={cert.certificateUrl}
                       target="_blank"
@@ -172,16 +172,6 @@ export function CertificateList() {
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Button>
                     </a>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full h-8 w-8 text-secondary-foreground hover:text-foreground"
-                      title="Download (not yet available)"
-                      aria-label="Download certificate"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                    </Button>
                   )}
                   <Button
                     variant="ghost"
