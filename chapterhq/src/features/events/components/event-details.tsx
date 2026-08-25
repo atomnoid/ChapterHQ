@@ -31,6 +31,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { AttendanceList } from "@/features/attendance/components/attendance-list";
+import { EventFormBuilder } from "./event-form-builder";
 
 interface Event {
   id: string;
@@ -151,6 +152,8 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     setAttendance([]);
     fetchDetails();
   }, [eventId, fetchDetails]);
+
+  const [isFormBuilderOpen, setIsFormBuilderOpen] = useState(false);
 
   // Handle adding member registration
   async function handleRegisterMember(e: React.FormEvent) {
@@ -380,9 +383,21 @@ export function EventDetails({ eventId }: EventDetailsProps) {
               )}
             </div>
           </div>
-          <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase tracking-wider">
-            {event.status}
-          </span>
+          <div className="flex flex-col items-end gap-2">
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase tracking-wider">
+              {event.status}
+            </span>
+            <Button
+              onClick={() => setIsFormBuilderOpen(true)}
+              variant="default"
+              className="rounded-full font-semibold text-xs gap-1.5"
+            >
+              <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Registration Form
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -550,6 +565,21 @@ export function EventDetails({ eventId }: EventDetailsProps) {
           </div>
         </div>
       )}
+
+      {/* Custom Form Builder Dialog overlay */}
+      <Dialog open={isFormBuilderOpen} onOpenChange={setIsFormBuilderOpen}>
+        <DialogContent className="max-w-4xl rounded-[2rem] border border-border bg-card p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold tracking-tight">Manage Custom Registration Form</DialogTitle>
+            <DialogDescription className="text-xs text-secondary-foreground">
+              Define the questions and input fields you want attendees to fill out for this event.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <EventFormBuilder eventId={eventId} />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {activeTab === "attendees" && (
         <div className="space-y-6">

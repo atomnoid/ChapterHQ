@@ -61,7 +61,10 @@ export async function POST(
         "Registration successful."
       );
     } else {
-      const data = externalSchema.parse(body);
+      const externalSchemaWithCustom = externalSchema.extend({
+        customAnswers: z.any().optional(),
+      });
+      const data = externalSchemaWithCustom.parse(body);
 
       // Get the event to find organizationId
       const event = await prisma.event.findFirst({ where: { id: eventId } });
@@ -106,6 +109,16 @@ export async function GET(
       return apiResponse.notFound("Event not found.");
     }
 
+    // Fetch custom form for the event, if configured
+    const customForm = await prisma.customForm.findFirst({
+      where: { eventId, deletedAt: null },
+      include: {
+        fields: {
+          orderBy: { order: "asc" },
+        },
+      },
+    });
+
     return apiResponse.success({
       id: event.id,
       title: event.title,
@@ -116,6 +129,12 @@ export async function GET(
       status: event.status,
       capacity: event.capacity,
       registrationRequired: event.registrationRequired,
+      customForm: customForm ? {
+        id: customForm.id,
+        name: customForm.name,
+        description: customForm.description,
+        fields: customForm.fields,
+      } : null,
     });
   } catch {
     return apiResponse.serverError();

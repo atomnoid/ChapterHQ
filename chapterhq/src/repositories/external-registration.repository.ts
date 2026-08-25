@@ -11,6 +11,7 @@ export interface CreateExternalRegistrationData {
   email: string;
   phone?: string;
   usn?: string;
+  customAnswers?: any;
 }
 
 export class ExternalRegistrationRepository {
@@ -23,6 +24,7 @@ export class ExternalRegistrationRepository {
         email: data.email,
         phone: data.phone,
         usn: data.usn,
+        customAnswers: data.customAnswers || null,
         checkInToken: token,
         status: "REGISTERED",
       },

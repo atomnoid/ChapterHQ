@@ -388,7 +388,7 @@ export class EventRegistrationService {
   async publicRegisterExternal(
     organizationId: string,
     eventId: string,
-    data: { name: string; email: string; phone?: string; usn?: string }
+    data: { name: string; email: string; phone?: string; usn?: string; customAnswers?: any }
   ) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) throw new EventNotFoundError();

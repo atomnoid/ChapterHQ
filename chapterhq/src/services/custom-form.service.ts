@@ -291,4 +291,129 @@ export class CustomFormService {
 
     return { success: true };
   }
+
+  // ─── Event Form Methods ───────────────────────────────────────────────────────
+
+  async getEventForm(organizationId: string, eventId: string) {
+    const form = await this.formRepository.findByEvent(eventId);
+    return form ?? null;
+  }
+
+  async createEventForm(
+    organizationId: string,
+    eventId: string,
+    userId: string,
+    input: CreateCustomFormInput
+  ) {
+    // Remove any existing event form first (one form per event)
+    const existing = await this.formRepository.findByEvent(eventId);
+    if (existing) {
+      await this.formRepository.softDelete(existing.id, organizationId);
+    }
+
+    const form = await this.formRepository.create({
+      organizationId,
+      name: input.name,
+      description: input.description,
+      required: false,
+      committeeId: null,
+      eventId,
+      createdBy: userId,
+    });
+
+    // Add fields
+    const fieldsData = await Promise.all(
+      input.fields.map((field, index) =>
+        prisma.customFormField.create({
+          data: {
+            formId: form.id,
+            label: field.label,
+            key: field.key,
+            type: field.type,
+            required: field.required,
+            placeholder: field.placeholder,
+            helpText: field.helpText,
+            options: field.options || null,
+            order: field.order ?? index,
+          },
+        })
+      )
+    );
+
+    await logActivity(
+      { userId, organizationId },
+      "create",
+      "event_form",
+      form.id,
+      `${input.name} (for event ${eventId})`
+    );
+
+    return { ...form, fields: fieldsData };
+  }
+
+  async deleteEventForm(organizationId: string, eventId: string, userId: string) {
+    const form = await this.formRepository.findByEvent(eventId);
+    if (!form) throw new CustomFormNotFoundError();
+
+    await this.formRepository.softDelete(form.id, organizationId);
+
+    await logActivity(
+      { userId, organizationId },
+      "delete",
+      "event_form",
+      form.id,
+      `Form for event ${eventId}`
+    );
+
+    return { success: true };
+  }
+
+  async addFieldToEventForm(
+    organizationId: string,
+    eventId: string,
+    userId: string,
+    fieldData: {
+      label: string;
+      key: string;
+      type: string;
+      required?: boolean;
+      placeholder?: string | null;
+      helpText?: string | null;
+      options?: Array<{ label: string; value: string }> | null;
+    }
+  ) {
+    const form = await this.formRepository.findByEvent(eventId);
+    if (!form) throw new CustomFormNotFoundError();
+
+    const maxOrder = form.fields.length > 0 ? Math.max(...form.fields.map((f) => f.order)) : -1;
+
+    const field = await prisma.customFormField.create({
+      data: {
+        formId: form.id,
+        label: fieldData.label,
+        key: fieldData.key,
+        type: fieldData.type as any,
+        required: fieldData.required ?? false,
+        placeholder: fieldData.placeholder || null,
+        helpText: fieldData.helpText || null,
+        options: fieldData.options || null,
+        order: maxOrder + 1,
+      },
+    });
+
+    return field;
+  }
+
+  async deleteEventFormField(
+    organizationId: string,
+    eventId: string,
+    fieldId: string,
+    userId: string
+  ) {
+    const form = await this.formRepository.findByEvent(eventId);
+    if (!form) throw new CustomFormNotFoundError();
+
+    await prisma.customFormField.delete({ where: { id: fieldId } });
+    return { success: true };
+  }
 }

@@ -8,6 +8,7 @@ interface CreateCustomFormData {
   required: boolean;
   createdBy: string;
   committeeId?: string | null;
+  eventId?: string | null;
 }
 
 interface UpdateCustomFormData {
@@ -27,6 +28,7 @@ export class CustomFormRepository {
         required: data.required,
         createdBy: data.createdBy,
         committeeId: data.committeeId ?? null,
+        eventId: data.eventId ?? null,
         status: "ACTIVE",
       },
       include: {
@@ -128,6 +130,20 @@ export class CustomFormRepository {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  /**
+   * Find the custom form linked to a specific event.
+   */
+  async findByEvent(eventId: string) {
+    const form = await prisma.customForm.findFirst({
+      where: { eventId },
+      include: {
+        fields: { orderBy: { order: "asc" } },
+      },
+    });
+    if (form?.deletedAt) return null;
+    return form;
   }
 
   /**

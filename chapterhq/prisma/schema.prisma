@@ -589,8 +589,8 @@ model Event {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  registrations EventRegistration[]
-  attendances   Attendance[]
+  registrations         EventRegistration[]
+  attendances           Attendance[]
   externalRegistrations ExternalRegistration[]
   externalAttendances   ExternalAttendance[]
 
@@ -663,6 +663,8 @@ model ExternalRegistration {
   email String
   phone String?
   usn   String?
+
+  customAnswers Json? // Stores answers to event-specific custom registration form fields
 
   checkInToken String @unique
 
@@ -956,6 +958,7 @@ model CustomForm {
 
   organizationId String  @db.ObjectId
   committeeId    String? @db.ObjectId
+  eventId        String? @db.ObjectId // Links to a specific event (mutually exclusive with onboarding use)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   committee    Committee?   @relation(fields: [committeeId], references: [id])
@@ -975,6 +978,7 @@ model CustomForm {
 
   @@index([organizationId, status])
   @@index([organizationId, committeeId])
+  @@index([eventId])
   @@map("custom_forms")
 }
 

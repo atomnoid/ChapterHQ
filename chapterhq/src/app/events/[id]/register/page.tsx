@@ -6,6 +6,20 @@ import { Loader2, Calendar, MapPin, Clock, CheckCircle, AlertTriangle, Download 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+
+interface FormField {
+  id: string;
+  label: string;
+  key: string;
+  type: string;
+  required: boolean;
+  placeholder?: string | null;
+  helpText?: string | null;
+  options?: any;
+}
 
 interface EventInfo {
   id: string;
@@ -17,6 +31,12 @@ interface EventInfo {
   status: string;
   capacity: number | null;
   registrationRequired: boolean;
+  customForm?: {
+    id: string;
+    name: string;
+    description?: string | null;
+    fields: FormField[];
+  } | null;
 }
 
 interface RegistrationResult {
@@ -41,6 +61,7 @@ export default function PublicRegisterPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [usn, setUsn] = useState("");
+  const [answers, setAnswers] = useState<Record<string, any>>({});
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -76,19 +97,36 @@ export default function PublicRegisterPage() {
       return;
     }
 
+    // Custom form field validations
+    if (event?.customForm?.fields) {
+      for (const field of event.customForm.fields) {
+        if (field.required && !answers[field.key]) {
+          setFormError(`"${field.label}" is required.`);
+          return;
+        }
+      }
+    }
+
     setSubmitting(true);
     setFormError(null);
 
     try {
+      const payload: any = {
+        name: name.trim(),
+        email: email.trim(),
+      };
+
+      if (event?.customForm) {
+        payload.customAnswers = answers;
+      } else {
+        payload.phone = phone.trim() || undefined;
+        payload.usn = usn.trim() || undefined;
+      }
+
       const res = await fetch(`/api/events/${eventId}/public-register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim() || undefined,
-          usn: usn.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const json = await res.json();
@@ -99,7 +137,6 @@ export default function PublicRegisterPage() {
       }
 
       const data = json?.data ?? json;
-      // Determine token from response
       let token: string | undefined;
       let participantName = name;
 
@@ -124,6 +161,10 @@ export default function PublicRegisterPage() {
     }
   }
 
+  const handleInputChange = (key: string, val: any) => {
+    setAnswers((prev) => ({ ...prev, [key]: val }));
+  };
+
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString(undefined, {
       weekday: "long",
@@ -133,6 +174,171 @@ export default function PublicRegisterPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+
+  const renderCustomField = (field: FormField) => {
+    const value = answers[field.key] ?? "";
+    const isRequired = field.required;
+
+    switch (field.type) {
+      case "LONG_TEXT":
+        return (
+          <div key={field.id} className="space-y-1.5">
+            <Label htmlFor={field.key}>
+              {field.label} {isRequired && <span className="text-destructive font-bold">*</span>}
+            </Label>
+            <Textarea
+              id={field.key}
+              placeholder={field.placeholder ?? ""}
+              value={value}
+              onChange={(e) => handleInputChange(field.key, e.target.value)}
+              required={isRequired}
+              disabled={submitting}
+              className="min-h-[80px]"
+            />
+          </div>
+        );
+
+      case "DROPDOWN":
+        const selectOptions = Array.isArray(field.options) ? field.options : [];
+        return (
+          <div key={field.id} className="space-y-1.5">
+            <Label htmlFor={field.key}>
+              {field.label} {isRequired && <span className="text-destructive font-bold">*</span>}
+            </Label>
+            <Select
+              value={value}
+              onValueChange={(val) => handleInputChange(field.key, val)}
+              disabled={submitting}
+            >
+              <SelectTrigger id={field.key}>
+                <SelectValue placeholder={field.placeholder || "Select option"} />
+              </SelectTrigger>
+              <SelectContent>
+                {selectOptions.map((opt: any) => {
+                  const optLabel = typeof opt === "string" ? opt : opt.label;
+                  const optVal = typeof opt === "string" ? opt : opt.value;
+                  return (
+                    <SelectItem key={optVal} value={optVal}>
+                      {optLabel}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+
+      case "YES_NO":
+        return (
+          <div key={field.id} className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id={field.key}
+              checked={!!value}
+              onCheckedChange={(checked) => handleInputChange(field.key, !!checked)}
+              disabled={submitting}
+            />
+            <Label htmlFor={field.key} className="select-none cursor-pointer">
+              {field.label} {isRequired && <span className="text-destructive font-bold">*</span>}
+            </Label>
+          </div>
+        );
+
+      case "CHECKBOX":
+        const checkOptions = Array.isArray(field.options) ? field.options : [];
+        const currentChecks = Array.isArray(value) ? value : [];
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label>
+              {field.label} {isRequired && <span className="text-destructive font-bold">*</span>}
+            </Label>
+            <div className="grid gap-2">
+              {checkOptions.map((opt: any) => {
+                const optLabel = typeof opt === "string" ? opt : opt.label;
+                const optVal = typeof opt === "string" ? opt : opt.value;
+                const checked = currentChecks.includes(optVal);
+
+                return (
+                  <div key={optVal} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`${field.key}-${optVal}`}
+                      checked={checked}
+                      onCheckedChange={(isChecked) => {
+                        const nextChecks = isChecked
+                          ? [...currentChecks, optVal]
+                          : currentChecks.filter((c) => c !== optVal);
+                        handleInputChange(field.key, nextChecks);
+                      }}
+                      disabled={submitting}
+                    />
+                    <Label htmlFor={`${field.key}-${optVal}`} className="select-none cursor-pointer text-sm">
+                      {optLabel}
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      case "RADIO":
+        const radioOptions = Array.isArray(field.options) ? field.options : [];
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label>
+              {field.label} {isRequired && <span className="text-destructive font-bold">*</span>}
+            </Label>
+            <div className="grid gap-2">
+              {radioOptions.map((opt: any) => {
+                const optLabel = typeof opt === "string" ? opt : opt.label;
+                const optVal = typeof opt === "string" ? opt : opt.value;
+
+                return (
+                  <div key={optVal} className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id={`${field.key}-${optVal}`}
+                      name={field.key}
+                      checked={value === optVal}
+                      onChange={() => handleInputChange(field.key, optVal)}
+                      disabled={submitting}
+                      className="h-4 w-4 text-primary focus:ring-primary border-border"
+                    />
+                    <Label htmlFor={`${field.key}-${optVal}`} className="select-none cursor-pointer text-sm">
+                      {optLabel}
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      default:
+        // SHORT_TEXT, EMAIL, PHONE, NUMBER, DATE
+        let inputType = "text";
+        if (field.type === "EMAIL") inputType = "email";
+        if (field.type === "PHONE") inputType = "tel";
+        if (field.type === "NUMBER") inputType = "number";
+        if (field.type === "DATE") inputType = "date";
+
+        return (
+          <div key={field.id} className="space-y-1.5">
+            <Label htmlFor={field.key}>
+              {field.label} {isRequired && <span className="text-destructive font-bold">*</span>}
+            </Label>
+            <Input
+              id={field.key}
+              type={inputType}
+              placeholder={field.placeholder ?? ""}
+              value={value}
+              onChange={(e) => handleInputChange(field.key, e.target.value)}
+              required={isRequired}
+              disabled={submitting}
+            />
+          </div>
+        );
+    }
+  };
 
   if (pageState.type === "loading") {
     return (
@@ -161,7 +367,6 @@ export default function PublicRegisterPage() {
 
   if (pageState.type === "success") {
     const { token, name: participantName } = pageState.result;
-    // Build the QR data URL using a Google Charts QR API (no package needed)
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(token)}`;
 
     return (
@@ -238,7 +443,6 @@ export default function PublicRegisterPage() {
     );
   }
 
-  // Form state
   return (
     <div className="min-h-screen bg-background px-4 py-12">
       <div className="max-w-lg mx-auto space-y-6">
@@ -278,6 +482,7 @@ export default function PublicRegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {/* Primary identification fields */}
             <div className="space-y-1.5">
               <Label htmlFor="reg-name">Full Name *</Label>
               <Input
@@ -303,28 +508,35 @@ export default function PublicRegisterPage() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="reg-phone">Phone Number (Optional)</Label>
-              <Input
-                id="reg-phone"
-                type="tel"
-                placeholder="e.g. +91 98765 43210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled={submitting}
-              />
-            </div>
+            {/* Custom fields or fallback default inputs */}
+            {event?.customForm?.fields && event.customForm.fields.length > 0 ? (
+              event.customForm.fields.map((field) => renderCustomField(field))
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reg-phone">Phone Number (Optional)</Label>
+                  <Input
+                    id="reg-phone"
+                    type="tel"
+                    placeholder="e.g. +91 98765 43210"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="reg-usn">USN / Student ID (Optional)</Label>
-              <Input
-                id="reg-usn"
-                placeholder="e.g. 1CR21CS001"
-                value={usn}
-                onChange={(e) => setUsn(e.target.value)}
-                disabled={submitting}
-              />
-            </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reg-usn">USN / Student ID (Optional)</Label>
+                  <Input
+                    id="reg-usn"
+                    placeholder="e.g. 1CR21CS001"
+                    value={usn}
+                    onChange={(e) => setUsn(e.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
+              </>
+            )}
 
             {formError && (
               <div className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -370,3 +582,4 @@ export default function PublicRegisterPage() {
     </div>
   );
 }
+
