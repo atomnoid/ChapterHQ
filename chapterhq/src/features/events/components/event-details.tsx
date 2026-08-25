@@ -108,8 +108,24 @@ export function EventDetails({ eventId }: EventDetailsProps) {
         fetch("/api/members?limit=100"),
       ]);
 
-      if (!eventRes.ok || !regRes.ok || !attRes.ok) {
-        throw new Error("Failed to load event details.");
+      if (!eventRes.ok) {
+        const errorText = await eventRes.text();
+        console.error("Failed to load event:", eventRes.status, errorText);
+        throw new Error(`Failed to load event (status ${eventRes.status}).`);
+      }
+      if (!regRes.ok) {
+        const errorText = await regRes.text();
+        console.error("Failed to load registrations:", regRes.status, errorText);
+        throw new Error(`Failed to load registrations (status ${regRes.status}).`);
+      }
+      if (!attRes.ok) {
+        const errorText = await attRes.text();
+        console.error("Failed to load attendance:", attRes.status, errorText);
+        throw new Error(`Failed to load attendance (status ${attRes.status}).`);
+      }
+
+      if (!membersRes.ok) {
+        console.warn("Failed to load members list:", membersRes.status);
       }
 
       const eventJson = await eventRes.json();
