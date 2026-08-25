@@ -120,17 +120,19 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
       const attendanceJson = await attendanceRes.json();
 
       const registrations = regsJson?.items ?? regsJson?.data?.items ?? [];
-      const registeredMembers = registrations.map((r: any) => ({
-        id: r.memberId,
-        joinedAt: r.registeredAt,
-        status: r.status,
-        user: {
-          id: r.member?.user?.id ?? r.memberId,
-          name: r.member?.user?.name ?? null,
-          email: r.member?.user?.email ?? null,
-          image: r.member?.user?.image ?? null,
-        },
-      }));
+      const registeredMembers = registrations
+        .filter((r: any) => !r.isExternal)
+        .map((r: any) => ({
+          id: r.memberId,
+          joinedAt: r.registeredAt,
+          status: r.status,
+          user: {
+            id: r.member?.user?.id ?? r.memberId,
+            name: r.member?.user?.name ?? null,
+            email: r.member?.user?.email ?? null,
+            image: r.member?.user?.image ?? null,
+          },
+        }));
 
       setMembers(registeredMembers);
       const attData = attendanceJson?.data ?? attendanceJson;
