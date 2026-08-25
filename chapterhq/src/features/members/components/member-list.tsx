@@ -316,7 +316,7 @@ export function MemberList() {
             >
               <option value="ALL">All Members</option>
               <option value="CORE">Core Members</option>
-              <option value="EXTERNAL">External Members</option>
+              <option value="EXTERNAL">Members</option>
             </select>
           </div>
 
