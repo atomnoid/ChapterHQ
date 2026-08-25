@@ -2,6 +2,7 @@ import { EventRegistrationRepository } from "@/repositories/event-registration.r
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { EventRepository } from "@/repositories/event.repository";
 import { MemberRepository } from "@/repositories/member.repository";
+import { ExternalRegistrationRepository } from "@/repositories/external-registration.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 import { logActivity } from "@/lib/audit-logger";
 import { AttendanceStatus, RegistrationStatus } from "@prisma/client";
@@ -35,12 +36,34 @@ export class RegistrationNotFoundError extends Error {
   }
 }
 
+export class AlreadyRegisteredError extends Error {
+  constructor() {
+    super("You are already registered for this event.");
+    this.name = "AlreadyRegisteredError";
+  }
+}
+
+export class AttendanceAlreadyMarkedError extends Error {
+  constructor() {
+    super("Attendance already marked for this participant.");
+    this.name = "AttendanceAlreadyMarkedError";
+  }
+}
+
+export class InvalidTokenError extends Error {
+  constructor() {
+    super("Invalid or expired check-in token.");
+    this.name = "InvalidTokenError";
+  }
+}
+
 export class EventRegistrationService {
   constructor(
     private readonly registrationRepo = new EventRegistrationRepository(),
     private readonly attendanceRepo = new AttendanceRepository(),
     private readonly eventRepo = new EventRepository(),
-    private readonly memberRepo = new MemberRepository()
+    private readonly memberRepo = new MemberRepository(),
+    private readonly externalRepo = new ExternalRegistrationRepository()
   ) {}
 
   async registerMember(
@@ -267,5 +290,289 @@ export class EventRegistrationService {
     }
 
     return this.attendanceRepo.list(eventId);
+  }
+
+  // ─── Public Registration (member or external) ─────────────────────────────
+
+  async publicRegisterMember(
+    organizationId: string,
+    eventId: string,
+    memberId: string
+  ) {
+    const event = await this.eventRepo.findById(eventId, organizationId);
+    if (!event) throw new EventNotFoundError();
+    if (event.status !== "PUBLISHED") throw new EventNotFoundError();
+
+    const member = await this.memberRepo.findByIdAndOrganization(memberId, organizationId);
+    if (!member) throw new MemberNotFoundError();
+
+    // Check for existing active registration
+    const existing = await this.registrationRepo.findByEventAndMember(eventId, memberId);
+    if (existing && existing.status === "REGISTERED") {
+      // Return existing so participant can see their QR again
+      return existing;
+    }
+
+    // Check capacity
+    if (event.capacity) {
+      const activeRegistrations = await prisma.eventRegistration.findMany({
+        where: { eventId, status: "REGISTERED" },
+        select: { id: true, deletedAt: true },
+      });
+      const count = activeRegistrations.filter((r) => !r.deletedAt).length;
+      if (count >= event.capacity) throw new RegistrationLimitExceededError();
+    }
+
+    return this.registrationRepo.register({ eventId, memberId, status: "REGISTERED" });
+  }
+
+  async publicRegisterExternal(
+    organizationId: string,
+    eventId: string,
+    data: { name: string; email: string; phone?: string; usn?: string }
+  ) {
+    const event = await this.eventRepo.findById(eventId, organizationId);
+    if (!event) throw new EventNotFoundError();
+    if (event.status !== "PUBLISHED") throw new EventNotFoundError();
+
+    // Check if email matches an existing org member — if so, link as member
+    const userByEmail = await prisma.user.findFirst({ where: { email: data.email } });
+    if (userByEmail) {
+      const member = await prisma.member.findFirst({
+        where: { userId: userByEmail.id, organizationId },
+      });
+      if (member && !member.deletedAt) {
+        // Redirect to member registration path
+        return {
+          type: "member" as const,
+          registration: await this.publicRegisterMember(organizationId, eventId, member.id),
+        };
+      }
+    }
+
+    // Check for duplicate external registration
+    const existing = await this.externalRepo.findByEventAndEmail(eventId, data.email);
+    if (existing && existing.status === "REGISTERED") {
+      return { type: "external" as const, registration: existing };
+    }
+
+    // Check capacity (combined member + external registrations)
+    if (event.capacity) {
+      const memberRegs = await prisma.eventRegistration.findMany({
+        where: { eventId, status: "REGISTERED" },
+        select: { id: true, deletedAt: true },
+      });
+      const extRegs = await prisma.externalRegistration.findMany({
+        where: { eventId, status: "REGISTERED" },
+        select: { id: true, deletedAt: true },
+      });
+      const count =
+        memberRegs.filter((r) => !r.deletedAt).length +
+        extRegs.filter((r) => !r.deletedAt).length;
+      if (count >= event.capacity) throw new RegistrationLimitExceededError();
+    }
+
+    const registration = await this.externalRepo.create({ eventId, ...data });
+    return { type: "external" as const, registration };
+  }
+
+  // ─── QR Check-in (scan → verify → mark PRESENT) ─────────────────────────
+
+  async processQrCheckIn(
+    organizationId: string,
+    eventId: string,
+    token: string,
+    actorUserId: string,
+    activeCommitteeId?: string | null
+  ) {
+    // Verify event belongs to this org
+    const event = await this.eventRepo.findById(eventId, organizationId);
+    if (!event) throw new EventNotFoundError();
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
+      throw new EventNotFoundError();
+    }
+
+    // Try member registration token first
+    const memberReg = await this.registrationRepo.findByToken(token);
+    if (memberReg) {
+      // Verify this registration belongs to the requested event
+      if (memberReg.eventId !== eventId) {
+        throw new InvalidTokenError();
+      }
+
+      // Check registration is not cancelled/deleted
+      if (memberReg.deletedAt || memberReg.status === "CANCELLED") {
+        throw new InvalidTokenError();
+      }
+
+      // Check for duplicate attendance
+      const existingAttendance = await this.attendanceRepo.findByEventAndMember(eventId, memberReg.memberId);
+      if (existingAttendance && existingAttendance.status === "PRESENT") {
+        throw new AttendanceAlreadyMarkedError();
+      }
+
+      // Mark PRESENT
+      const attendance = await this.attendanceRepo.mark({
+        eventId,
+        memberId: memberReg.memberId,
+        status: "PRESENT",
+      });
+
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "qr_checkin",
+        "attendance",
+        attendance.id,
+        event.title,
+        { memberId: memberReg.memberId, via: "qr_scan" }
+      );
+
+      return {
+        participantName: memberReg.member.user.name ?? memberReg.member.user.email,
+        participantType: "member" as const,
+        attendance,
+      };
+    }
+
+    // Try external registration token
+    const externalReg = await this.externalRepo.findByToken(token);
+    if (externalReg) {
+      // Verify this registration belongs to the requested event
+      if (externalReg.eventId !== eventId) {
+        throw new InvalidTokenError();
+      }
+
+      // Check registration is not cancelled/deleted
+      if (externalReg.deletedAt || externalReg.status === "CANCELLED") {
+        throw new InvalidTokenError();
+      }
+
+      // Check for duplicate attendance
+      if (externalReg.attendance) {
+        throw new AttendanceAlreadyMarkedError();
+      }
+
+      // Mark PRESENT
+      const { attendance } = await this.externalRepo.markAttendance(externalReg.id, eventId);
+
+      await logActivity(
+        { userId: actorUserId, organizationId },
+        "qr_checkin_external",
+        "attendance",
+        attendance.id,
+        event.title,
+        { externalRegistrationId: externalReg.id, via: "qr_scan" }
+      );
+
+      return {
+        participantName: externalReg.name,
+        participantType: "external" as const,
+        attendance,
+      };
+    }
+
+    throw new InvalidTokenError();
+  }
+
+  // ─── Combined Attendance List (members + external) ─────────────────────────
+
+  async getCombinedAttendanceData(
+    organizationId: string,
+    eventId: string,
+    activeCommitteeId?: string | null
+  ) {
+    const event = await this.eventRepo.findById(eventId, organizationId);
+    if (!event) throw new EventNotFoundError();
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
+      throw new EventNotFoundError();
+    }
+
+    const [memberAttendance, externalRegs] = await Promise.all([
+      this.attendanceRepo.list(eventId),
+      this.externalRepo.listByEvent(eventId),
+    ]);
+
+    return { memberAttendance, externalRegs };
+  }
+
+  // ─── Attendance CSV Export ─────────────────────────────────────────────────
+
+  async exportAttendanceCsv(
+    organizationId: string,
+    eventId: string,
+    selectedMemberIds?: string[],
+    selectedExternalIds?: string[],
+    activeCommitteeId?: string | null
+  ) {
+    const event = await this.eventRepo.findById(eventId, organizationId);
+    if (!event) throw new EventNotFoundError();
+    if (activeCommitteeId && event.committeeId && event.committeeId !== activeCommitteeId) {
+      throw new EventNotFoundError();
+    }
+
+    const { memberAttendance, externalRegs } = await this.getCombinedAttendanceData(
+      organizationId,
+      eventId,
+      activeCommitteeId
+    );
+
+    // Get all member registrations (for members present in attendance but also registered)
+    const allMemberRegs = await this.registrationRepo.list(eventId, {
+      skip: 0, take: 9999, search: "", sortBy: "registeredAt", order: "desc"
+    });
+
+    const escapeCSV = (val: string | null | undefined) => {
+      if (val == null) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      "Type", "Name", "Email", "Phone", "USN",
+      "Registration Time", "Attendance Status", "Attendance Time"
+    ];
+
+    const rows: string[][] = [];
+
+    // Member rows
+    for (const att of memberAttendance) {
+      if (selectedMemberIds && selectedMemberIds.length > 0) {
+        if (!selectedMemberIds.includes(att.memberId)) continue;
+      }
+      const memberReg = allMemberRegs.items.find((r) => r.memberId === att.memberId);
+      rows.push([
+        "Member",
+        att.member.user.name ?? "",
+        att.member.user.email ?? "",
+        "",
+        "",
+        memberReg ? new Date(memberReg.registeredAt).toISOString() : "",
+        att.status,
+        att.markedAt ? new Date(att.markedAt).toISOString() : "",
+      ]);
+    }
+
+    // External rows
+    for (const ext of externalRegs) {
+      if (selectedExternalIds && selectedExternalIds.length > 0) {
+        if (!selectedExternalIds.includes(ext.id)) continue;
+      }
+      rows.push([
+        "External",
+        ext.name,
+        ext.email,
+        ext.phone ?? "",
+        ext.usn ?? "",
+        new Date(ext.registeredAt).toISOString(),
+        ext.attendance?.status ?? "NOT_CHECKED_IN",
+        ext.attendance?.markedAt ? new Date(ext.attendance.markedAt).toISOString() : "",
+      ]);
+    }
+
+    const csvLines = [headers.map(escapeCSV).join(","), ...rows.map((r) => r.map(escapeCSV).join(","))];
+    return csvLines.join("\n");
   }
 }

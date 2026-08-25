@@ -20,6 +20,20 @@ export async function GET(
     const { context: authContext } = await requirePermission(session.user.id, "events:read");
 
     const { id: eventId } = await context.params;
+
+    // Check if the client wants the combined view (member + external)
+    const { searchParams } = new URL(request.url);
+    const combined = searchParams.get("combined") === "true";
+
+    if (combined) {
+      const result = await registrationService.getCombinedAttendanceData(
+        authContext.organizationId,
+        eventId,
+        authContext.activeCommitteeId
+      );
+      return apiResponse.success(result);
+    }
+
     const result = await registrationService.getAttendanceList(
       authContext.organizationId,
       eventId,
@@ -33,6 +47,7 @@ export async function GET(
     return apiResponse.serverError();
   }
 }
+
 
 // PATCH /api/events/[id]/attendance
 export async function PATCH(

@@ -1,23 +1,23 @@
 "use client";
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
   Search,
   Filter,
-  Check,
-  X,
   Clock,
   RefreshCw,
   Users,
   CheckCircle,
   AlertTriangle,
   Trash2,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MarkAttendanceDialog, BulkMarkAttendanceDialog, BulkDeleteAttendanceDialog, type AttendanceStatus } from "./attendance-dialogs";
+import { ScanQrDialog } from "./scan-qr-dialog";
 
 interface OrgMember {
   id: string;
@@ -49,6 +49,33 @@ interface AttendanceRecord {
   };
 }
 
+interface ExternalRegistration {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  usn: string | null;
+  status: string;
+  registeredAt: string;
+  attendance: {
+    id: string;
+    status: string;
+    markedAt: string;
+    notes?: string;
+  } | null;
+}
+
+interface ParticipantRow {
+  id: string; // unique row id: e.g. member-id or external-id
+  type: "MEMBER" | "EXTERNAL";
+  name: string;
+  email: string;
+  image: string | null;
+  status: AttendanceStatus | "UNMARKED";
+  notes: string;
+  originalId: string; // raw DB ID
+}
+
 interface AttendanceListProps {
   eventId: string;
   eventName: string;
@@ -57,11 +84,14 @@ interface AttendanceListProps {
 export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [externalRegs, setExternalRegs] = useState<ExternalRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [isScanOpen, setIsScanOpen] = useState(false);
+
   const [dialogState, setDialogState] = useState<{
     type: "none" | "single" | "bulk" | "delete";
     memberId?: string;
@@ -78,7 +108,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
     try {
       const [membersRes, attendanceRes] = await Promise.all([
         fetch("/api/members?limit=100"),
-        fetch(`/api/events/${eventId}/attendance`),
+        fetch(`/api/events/${eventId}/attendance?combined=true`),
       ]);
 
       if (!membersRes.ok || !attendanceRes.ok) {
@@ -89,8 +119,16 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
       const attendanceJson = await attendanceRes.json();
 
       setMembers(membersJson?.items ?? membersJson?.data?.items ?? []);
-      setAttendance(attendanceJson?.data ?? attendanceJson ?? []);
-      setSelectedMemberIds([]);
+
+      const attData = attendanceJson?.data ?? attendanceJson;
+      if (attData && typeof attData === "object" && "memberAttendance" in attData) {
+        setAttendance(attData.memberAttendance || []);
+        setExternalRegs(attData.externalRegs || []);
+      } else {
+        setAttendance(Array.isArray(attData) ? attData : []);
+        setExternalRegs([]);
+      }
+      setSelectedRowIds([]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to fetch data.");
     } finally {
@@ -102,17 +140,46 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
     fetchData();
   }, [fetchData]);
 
-  const filteredMembers = members.filter((member) => {
-    const name = member.user.name ?? "";
-    const email = member.user.email ?? "";
-    const matchesSearch =
-      name.toLowerCase().includes(search.toLowerCase()) ||
-      email.toLowerCase().includes(search.toLowerCase());
+  // Construct unified rows
+  const participantRows: ParticipantRow[] = [
+    ...members.map((m) => {
+      const att = attendance.find((a) => a.memberId === m.id);
+      return {
+        id: `member-${m.id}`,
+        type: "MEMBER" as const,
+        name: m.user.name ?? m.user.email ?? "Unknown Member",
+        email: m.user.email ?? "",
+        image: m.user.image,
+        status: (att ? att.status : "UNMARKED") as AttendanceStatus | "UNMARKED",
+        notes: att?.notes ?? "",
+        originalId: m.id,
+      };
+    }),
+    ...externalRegs.map((e) => {
+      return {
+        id: `external-${e.id}`,
+        type: "EXTERNAL" as const,
+        name: e.name,
+        email: e.email,
+        image: null,
+        status: (e.attendance ? e.attendance.status : "UNMARKED") as AttendanceStatus | "UNMARKED",
+        notes: e.attendance?.notes ?? "",
+        originalId: e.id,
+      };
+    }),
+  ];
 
-    const record = attendance.find((att) => att.memberId === member.id);
-    const status = record?.status ?? "ABSENT"; // default to absent if unmarked
+  const filteredRows = participantRows.filter((row) => {
+    const matchesSearch =
+      row.name.toLowerCase().includes(search.toLowerCase()) ||
+      row.email.toLowerCase().includes(search.toLowerCase());
+
+    const status = row.status === "UNMARKED" ? "ABSENT" : row.status;
 
     if (statusFilter === "ALL") return matchesSearch;
+    if (statusFilter === "ABSENT") {
+      return matchesSearch && (status === "ABSENT" || row.status === "UNMARKED");
+    }
     return matchesSearch && status === statusFilter;
   });
 
@@ -131,26 +198,47 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
   };
 
   const getAttendanceRate = () => {
-    if (members.length === 0) return 0;
-    const presentCount = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
-    return Math.round((presentCount / members.length) * 100);
+    const totalCount = participantRows.length;
+    if (totalCount === 0) return 0;
+    const presentCount = participantRows.filter((r) => r.status === "PRESENT" || r.status === "LATE").length;
+    return Math.round((presentCount / totalCount) * 100);
   };
 
-  const handleSelectMember = (memberId: string) => {
+  const handleSelectRow = (id: string) => {
     if (isPending) return;
-    setSelectedMemberIds((prev) =>
-      prev.includes(memberId) ? prev.filter((id) => id !== memberId) : [...prev, memberId]
+    setSelectedRowIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isPending) return;
     if (e.target.checked) {
-      setSelectedMemberIds(filteredMembers.map((m) => m.id));
+      setSelectedRowIds(filteredRows.map((r) => r.id));
     } else {
-      setSelectedMemberIds([]);
+      setSelectedRowIds([]);
     }
   };
+
+  function handleExportCsv() {
+    try {
+      const selectedMembers = selectedRowIds.filter(id => id.startsWith("member-")).map(id => id.replace("member-", ""));
+      const selectedExternals = selectedRowIds.filter(id => id.startsWith("external-")).map(id => id.replace("external-", ""));
+
+      let query = "";
+      if (selectedMembers.length > 0) query += `memberIds=${selectedMembers.join(",")}&`;
+      if (selectedExternals.length > 0) query += `externalIds=${selectedExternals.join(",")}&`;
+
+      window.open(`/api/events/${eventId}/attendance/export?${query}`, "_blank");
+    } catch {
+      alert("Failed to export attendance CSV.");
+    }
+  }
+
+  // Get raw selected members (only members can be bulk updated using single/bulk dialogs)
+  const selectedMemberDbIds = selectedRowIds
+    .filter(id => id.startsWith("member-"))
+    .map(id => id.replace("member-", ""));
 
   return (
     <div className="space-y-6">
@@ -161,8 +249,8 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             <Users className="h-6 w-6 text-primary" />
           </span>
           <div>
-            <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Total Members</p>
-            <p className="text-2xl font-bold text-foreground">{members.length}</p>
+            <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Total Registered</p>
+            <p className="text-2xl font-bold text-foreground">{participantRows.length}</p>
           </div>
         </div>
 
@@ -173,7 +261,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           <div>
             <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Marked Present/Late</p>
             <p className="text-2xl font-bold text-foreground">
-              {attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE").length}
+              {participantRows.filter((r) => r.status === "PRESENT" || r.status === "LATE").length}
             </p>
           </div>
         </div>
@@ -222,6 +310,45 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
 
           <Button
             variant="outline"
+            className="rounded-full border-border font-semibold flex items-center gap-2"
+            onClick={() => setIsScanOpen(true)}
+            disabled={isPending}
+          >
+            <svg
+              className="h-4 w-4"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="5" height="5" x="3" y="3" rx="1" />
+              <rect width="5" height="5" x="16" y="3" rx="1" />
+              <rect width="5" height="5" x="3" y="16" rx="1" />
+              <path d="M21 16V21H16" />
+              <path d="M21 12H16V16" />
+              <path d="M12 21V16H16" />
+              <path d="M12 12H16" />
+              <path d="M12 3V12" />
+              <path d="M3 12H12" />
+            </svg>
+            Scan QR
+          </Button>
+
+          <Button
+            variant="outline"
+            className="rounded-full border-border font-semibold flex items-center gap-2"
+            onClick={handleExportCsv}
+            disabled={isPending}
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+
+          <Button
+            variant="outline"
             size="icon"
             className="rounded-full border-border shrink-0"
             aria-label="Refresh"
@@ -232,7 +359,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           </Button>
         </div>
 
-        {selectedMemberIds.length > 0 && (
+        {selectedMemberDbIds.length > 0 && (
           <div className="flex items-center gap-2 shrink-0">
             <Button
               className="rounded-full"
@@ -240,7 +367,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
               onClick={() => setDialogState({ type: "bulk" })}
             >
               {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Mark ({selectedMemberIds.length})
+              Mark ({selectedMemberDbIds.length})
             </Button>
             <Button
               variant="destructive"
@@ -250,7 +377,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
               onClick={() => setDialogState({ type: "delete" })}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete ({selectedMemberIds.length})
+              Delete ({selectedMemberDbIds.length})
             </Button>
           </div>
         )}
@@ -284,65 +411,69 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
       )}
 
       {/* Empty states */}
-      {!loading && !error && filteredMembers.length === 0 && (
+      {!loading && !error && filteredRows.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border bg-card py-16 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
             <AlertTriangle className="h-6 w-6 text-secondary-foreground" />
           </span>
-          <p className="mt-4 text-sm font-semibold text-foreground">No members found</p>
+          <p className="mt-4 text-sm font-semibold text-foreground">No participants found</p>
           <p className="mt-1 text-sm text-secondary-foreground">Try adjusting your filters or search keywords.</p>
         </div>
       )}
 
       {/* Table */}
-      {!loading && !error && filteredMembers.length > 0 && (
+      {!loading && !error && filteredRows.length > 0 && (
         <div className="overflow-hidden rounded-[1.75rem] border border-border">
-          <div className="hidden grid-cols-[48px_minmax(0,1fr)_160px_160px_120px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
+          <div className="hidden grid-cols-[48px_minmax(0,1fr)_120px_100px_160px_100px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
             <input
               type="checkbox"
               onChange={handleSelectAll}
               disabled={isPending}
-              checked={selectedMemberIds.length === filteredMembers.length}
+              checked={selectedRowIds.length === filteredRows.length}
               className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Select all members"
+              aria-label="Select all rows"
             />
-            <span>Member</span>
+            <span>Participant</span>
+            <span>Type</span>
             <span>Status</span>
             <span>Notes</span>
             <span className="text-right">Actions</span>
           </div>
 
-          {filteredMembers.map((member) => {
-            const name = member.user.name ?? member.user.email ?? "Unknown Member";
-            const record = attendance.find((att) => att.memberId === member.id);
-            const status = record?.status ?? "ABSENT";
-            const notes = record?.notes ?? "";
+          {filteredRows.map((row) => {
+            const record = attendance.find((att) => att.memberId === row.originalId);
+            const status = row.status;
+            const notes = row.notes;
 
             return (
               <div
-                key={member.id}
-                className="grid grid-cols-[48px_minmax(0,1fr)_80px] items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors sm:grid-cols-[48px_minmax(0,1fr)_160px_160px_120px]"
+                key={row.id}
+                className="grid grid-cols-[48px_minmax(0,1fr)_80px] items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors sm:grid-cols-[48px_minmax(0,1fr)_120px_100px_160px_100px]"
               >
                 <input
                   type="checkbox"
-                  checked={selectedMemberIds.includes(member.id)}
-                  onChange={() => handleSelectMember(member.id)}
+                  checked={selectedRowIds.includes(row.id)}
+                  onChange={() => handleSelectRow(row.id)}
                   disabled={isPending}
                   className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label={`Select ${name}`}
+                  aria-label={`Select ${row.name}`}
                 />
                 <div className="flex items-center gap-3 min-w-0">
-                  {member.user.image ? (
-                    <img src={member.user.image} alt={name} className="h-9 w-9 rounded-full object-cover shrink-0" />
+                  {row.image ? (
+                    <img src={row.image} alt={row.name} className="h-9 w-9 rounded-full object-cover shrink-0" />
                   ) : (
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                      {name.charAt(0).toUpperCase()}
+                      {row.name.charAt(0).toUpperCase()}
                     </span>
                   )}
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">{name}</p>
-                    <p className="truncate text-xs text-secondary-foreground">{member.user.email}</p>
+                    <p className="truncate text-sm font-semibold text-foreground">{row.name}</p>
+                    <p className="truncate text-xs text-secondary-foreground">{row.email}</p>
                   </div>
+                </div>
+
+                <div className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-secondary-foreground">
+                  {row.type}
                 </div>
 
                 <div>{getStatusBadge(status)}</div>
@@ -352,23 +483,27 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-full text-xs h-8"
-                    disabled={isPending}
-                    onClick={() =>
-                      setDialogState({
-                        type: "single",
-                        memberId: member.id,
-                        memberName: name,
-                        currentStatus: status,
-                        currentNotes: record?.notes ?? "",
-                      })
-                    }
-                  >
-                    Mark
-                  </Button>
+                  {row.type === "MEMBER" ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-full text-xs h-8"
+                      disabled={isPending}
+                      onClick={() =>
+                        setDialogState({
+                          type: "single",
+                          memberId: row.originalId,
+                          memberName: row.name,
+                          currentStatus: status === "UNMARKED" ? "ABSENT" : status,
+                          currentNotes: record?.notes ?? "",
+                        })
+                      }
+                    >
+                      Mark
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-secondary-foreground italic px-3 py-1">QR check-in</span>
+                  )}
                 </div>
               </div>
             );
@@ -403,8 +538,8 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             setIsPending(false);
           }}
           eventId={eventId}
-          memberIds={selectedMemberIds}
-          memberNames={`${selectedMemberIds.length} selected members`}
+          memberIds={selectedMemberDbIds}
+          memberNames={`${selectedMemberDbIds.length} selected members`}
         />
       )}
 
@@ -418,10 +553,17 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             setIsPending(false);
           }}
           eventId={eventId}
-          memberIds={selectedMemberIds}
-          memberCount={selectedMemberIds.length}
+          memberIds={selectedMemberDbIds}
+          memberCount={selectedMemberDbIds.length}
         />
       )}
+
+      <ScanQrDialog
+        open={isScanOpen}
+        onOpenChange={setIsScanOpen}
+        eventId={eventId}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }

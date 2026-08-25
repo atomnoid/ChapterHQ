@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { RegistrationStatus } from "@prisma/client";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
+import crypto from "crypto";
+
+function generateCheckInToken(): string {
+  return "reg_" + crypto.randomBytes(24).toString("hex");
+}
 
 export interface RegisterMemberData {
   eventId: string;
@@ -19,11 +24,14 @@ export class EventRegistrationRepository {
     });
 
     if (existing) {
+      // Re-activating a cancelled registration: keep or generate token
+      const token = existing.checkInToken ?? generateCheckInToken();
       return prisma.eventRegistration.update({
         where: { id: existing.id },
         data: {
           status: data.status ?? "REGISTERED",
           deletedAt: null,
+          checkInToken: token,
         },
       });
     }
@@ -33,6 +41,7 @@ export class EventRegistrationRepository {
         eventId: data.eventId,
         memberId: data.memberId,
         status: data.status ?? "REGISTERED",
+        checkInToken: generateCheckInToken(),
       },
     });
   }
@@ -56,6 +65,26 @@ export class EventRegistrationRepository {
     });
     if (reg?.deletedAt) return null;
     return reg;
+  }
+
+  async findByToken(token: string) {
+    return prisma.eventRegistration.findUnique({
+      where: { checkInToken: token },
+      include: {
+        event: true,
+        member: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   async list(eventId: string, params: PaginationParams) {

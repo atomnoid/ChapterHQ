@@ -16,6 +16,7 @@ import {
   Search,
   UserCheck,
   Loader2,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "attendees" | "attendance" | "statistics">("overview");
+  const [copied, setCopied] = useState(false);
 
   // Search & add new attendee variables
   const [searchQuery, setSearchQuery] = useState("");
@@ -197,7 +199,16 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     }
   }
 
-  // Handle removing member registration
+  // Safe JSON parser — prevents SyntaxError when server returns a non-JSON error body
+  async function safeJson(res: Response): Promise<{ message?: string } | null> {
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  // Handle removing member registration (single row trash icon)
   async function handleCancelRegistration(memberId: string) {
     if (!confirm("Are you sure you want to remove this member from the attendee list?")) return;
     try {
@@ -205,22 +216,23 @@ export function EventDetails({ eventId }: EventDetailsProps) {
         method: "DELETE",
       });
       if (!res.ok) {
-        const json = await res.json();
-        alert(json.message ?? "Failed to remove attendee.");
+        const json = await safeJson(res);
+        alert(json?.message ?? `Failed to remove attendee. (${res.status})`);
         return;
       }
       await fetchDetails();
     } catch {
-      alert("An unexpected error occurred.");
+      alert("A network error occurred. Please try again.");
     }
   }
 
-  // Handle bulk deletion
+  // Handle bulk deletion (checkbox → Delete button)
   async function handleBulkDeleteRegistrations() {
     if (selectedRegIds.length === 0) return;
     if (!confirm(`Are you sure you want to remove ${selectedRegIds.length} member(s) from the attendee list? This cannot be undone.`)) return;
-    
+
     setDeletingBulk(true);
+    let hadError = false;
     try {
       for (const regId of selectedRegIds) {
         const reg = registrations.find((r) => r.id === regId);
@@ -229,18 +241,23 @@ export function EventDetails({ eventId }: EventDetailsProps) {
           method: "DELETE",
         });
         if (!res.ok) {
-          const json = await res.json();
-          alert(json.message ?? "Failed to remove some attendees.");
+          const json = await safeJson(res);
+          alert(json?.message ?? `Failed to remove attendee. (${res.status})`);
+          hadError = true;
           break;
         }
       }
-      setSelectedRegIds([]);
-      await fetchDetails();
     } catch {
-      alert("An unexpected error occurred during bulk deletion.");
+      alert("A network error occurred. Please try again.");
+      hadError = true;
     } finally {
       setDeletingBulk(false);
     }
+
+    if (!hadError) {
+      setSelectedRegIds([]);
+    }
+    await fetchDetails();
   }
 
   // Handle checkbox selection
@@ -423,6 +440,65 @@ export function EventDetails({ eventId }: EventDetailsProps) {
                   <span className="font-semibold text-foreground uppercase">{event.status}</span>
                 </div>
               </div>
+
+              {event.status === "PUBLISHED" && (
+                <div className="pt-4 border-t border-border space-y-3">
+                  <span className="text-xs font-bold text-secondary-foreground uppercase tracking-wider block">Share Registration</span>
+                  
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={typeof window !== "undefined" ? `${window.location.origin}/events/${event.id}/register` : ""}
+                      className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-xs text-secondary-foreground focus:outline-none"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 rounded-xl"
+                      onClick={() => {
+                        const url = `${window.location.origin}/events/${event.id}/register`;
+                        navigator.clipboard.writeText(url);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <svg
+                          className="h-4 w-4 text-foreground"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                        </svg>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-2 pt-2 bg-secondary/20 rounded-2xl p-3 border border-border/50">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                        typeof window !== "undefined" ? `${window.location.origin}/events/${event.id}/register` : ""
+                      )}`}
+                      alt="Event registration link QR"
+                      className="h-[120px] w-[120px] rounded-lg"
+                    />
+                    <p className="text-[10px] text-secondary-foreground text-center">
+                      Point participants to scan this QR to register.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

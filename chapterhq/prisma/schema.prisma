@@ -591,6 +591,8 @@ model Event {
 
   registrations EventRegistration[]
   attendances   Attendance[]
+  externalRegistrations ExternalRegistration[]
+  externalAttendances   ExternalAttendance[]
 
   @@map("events")
 }
@@ -616,8 +618,9 @@ model EventRegistration {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  @@unique([eventId, memberId])
+  checkInToken String? @unique
 
+  @@unique([eventId, memberId])
   @@map("event_registrations")
 }
 
@@ -643,8 +646,62 @@ model Attendance {
   updatedAt DateTime @updatedAt
 
   @@unique([eventId, memberId])
-
   @@map("attendances")
+}
+
+//////////////////////////////////////////////////////
+// EXTERNAL EVENT REGISTRATION
+//////////////////////////////////////////////////////
+
+model ExternalRegistration {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  eventId String @db.ObjectId
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  name  String
+  email String
+  phone String?
+  usn   String?
+
+  checkInToken String @unique
+
+  status RegistrationStatus @default(REGISTERED)
+
+  registeredAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  attendance ExternalAttendance?
+
+  @@unique([eventId, email])
+  @@map("external_registrations")
+}
+
+//////////////////////////////////////////////////////
+// EXTERNAL ATTENDANCE
+//////////////////////////////////////////////////////
+
+model ExternalAttendance {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  eventId        String @db.ObjectId
+  registrationId String @db.ObjectId @unique
+
+  event        Event                @relation(fields: [eventId], references: [id])
+  registration ExternalRegistration @relation(fields: [registrationId], references: [id])
+
+  status AttendanceStatus @default(ABSENT)
+  notes  String?
+
+  markedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("external_attendances")
 }
 
 //////////////////////////////////////////////////////
