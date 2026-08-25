@@ -89,6 +89,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "MEMBER" | "EXTERNAL">("ALL");
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [isScanOpen, setIsScanOpen] = useState(false);
 
@@ -188,11 +189,10 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
 
     const status = row.status === "UNMARKED" ? "ABSENT" : row.status;
 
-    if (statusFilter === "ALL") return matchesSearch;
-    if (statusFilter === "ABSENT") {
-      return matchesSearch && (status === "ABSENT" || row.status === "UNMARKED");
-    }
-    return matchesSearch && status === statusFilter;
+    const matchesStatus = statusFilter === "ALL" || (statusFilter === "ABSENT" ? (status === "ABSENT" || row.status === "UNMARKED") : status === statusFilter);
+    const matchesType = typeFilter === "ALL" || row.type === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   const getStatusBadge = (status: AttendanceStatus | "UNMARKED") => {
@@ -317,6 +317,21 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
               <option value="PRESENT">Present</option>
               <option value="LATE">Late</option>
               <option value="ABSENT">Absent</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-secondary-foreground shrink-0" />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as "ALL" | "MEMBER" | "EXTERNAL")}
+              className="h-10 rounded-2xl border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Filter participant type"
+              disabled={isPending}
+            >
+              <option value="ALL">All Types</option>
+              <option value="MEMBER">Members</option>
+              <option value="EXTERNAL">Non-Members (External)</option>
             </select>
           </div>
 
