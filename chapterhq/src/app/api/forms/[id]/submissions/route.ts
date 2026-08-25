@@ -9,7 +9,7 @@ const submissionService = new CustomFormSubmissionService();
 
 /**
  * GET /api/forms/[id]/submissions
- * List submissions for a form
+ * List submissions for a form (paginated).
  */
 export async function GET(
   request: Request,
@@ -80,50 +80,5 @@ export async function GET(
     console.error("GET /api/forms/[id]/submissions error:", error);
     const errMsg = error instanceof Error ? error.message : "Internal server error.";
     return NextResponse.json({ message: errMsg }, { status: 500 });
-  }
-}
-
-/**
- * POST /api/forms/[id]/submissions/export
- * Export submissions as CSV
- */
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const resolvedParams = await params;
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
-    }
-
-    const { context } = await requirePermission(session.user.id, "forms-submissions:export");
-
-    const body = await request.json();
-    const selectedSubmissionIds = body.submissionIds as string[] | undefined;
-
-    const csv = await submissionService.exportSubmissionsAsCSV(
-      context.organizationId,
-      resolvedParams.id,
-      selectedSubmissionIds
-    );
-
-    return new NextResponse(csv, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="form-submissions-${resolvedParams.id}-${new Date().toISOString().split("T")[0]}.csv"`,
-      },
-    });
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === "PermissionDeniedError") {
-      return NextResponse.json({ message: "Permission denied." }, { status: 403 });
-    }
-    if (error instanceof Error && error.message.includes("not found")) {
-      return NextResponse.json({ message: error.message }, { status: 404 });
-    }
-    console.error("POST /api/forms/[id]/submissions/export error:", error);
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
 import { MemberStatus, Prisma } from "@prisma/client";
+import { MemberType } from "@/validators/member.validator";
 
 interface CreateMemberData {
   organizationId: string;
@@ -92,7 +93,12 @@ export class MemberRepository {
   }
 
   async list(
-    params: PaginationParams & { organizationId: string; status?: MemberStatus; activeCommitteeId?: string | null },
+    params: PaginationParams & {
+      organizationId: string;
+      status?: MemberStatus;
+      memberType?: MemberType;
+      activeCommitteeId?: string | null;
+    },
   ) {
     const whereClause: Prisma.MemberWhereInput = {
       organizationId: params.organizationId,
@@ -136,12 +142,24 @@ export class MemberRepository {
             image: true,
           },
         },
+        coreMemberRecords: {
+          select: { id: true, deletedAt: true },
+        },
       },
       orderBy,
     });
 
     // Post-filter soft-deleted records in JS (MongoDB Prisma bug workaround).
-    const notDeleted = allItems.filter((m) => !m.deletedAt);
+    let notDeleted = allItems.filter((m) => !m.deletedAt);
+
+    // Filter by member type: CORE = has an active CoreMember record; EXTERNAL = does not.
+    if (params.memberType && params.memberType !== "ALL") {
+      notDeleted = notDeleted.filter((m) => {
+        const isCore = m.coreMemberRecords.some((cm) => !cm.deletedAt);
+        return params.memberType === "CORE" ? isCore : !isCore;
+      });
+    }
+
     const total = notDeleted.length;
     const items = notDeleted.slice(params.skip, params.skip + params.take);
 

@@ -2,6 +2,7 @@ import { MemberRepository } from "@/repositories/member.repository";
 import { buildPaginationParams, buildPaginatedResult, PaginationQuery } from "@/lib/pagination";
 import { logActivity } from "@/lib/audit-logger";
 import { MemberStatus } from "@prisma/client";
+import { MemberType } from "@/validators/member.validator";
 
 export class MemberAlreadyExistsError extends Error {
   constructor() {
@@ -47,12 +48,18 @@ export class MemberService {
     return member;
   }
 
-  async getMembers(params: PaginationQuery & { organizationId: string; status?: MemberStatus; activeCommitteeId?: string | null }) {
+  async getMembers(params: PaginationQuery & {
+    organizationId: string;
+    status?: MemberStatus;
+    memberType?: MemberType;
+    activeCommitteeId?: string | null;
+  }) {
     const paginationParams = buildPaginationParams(params);
     const { total, items } = await this.repository.list({
       ...paginationParams,
       organizationId: params.organizationId,
       status: params.status,
+      memberType: params.memberType,
       activeCommitteeId: params.activeCommitteeId,
     });
 

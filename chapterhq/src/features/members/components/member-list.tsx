@@ -193,6 +193,7 @@ export function MemberList() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [memberTypeFilter, setMemberTypeFilter] = useState<"ALL" | "CORE" | "EXTERNAL">("ALL");
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -245,6 +246,7 @@ export function MemberList() {
       const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter !== "ALL") params.set("status", statusFilter);
+      if (memberTypeFilter !== "ALL") params.set("memberType", memberTypeFilter);
 
       const res = await fetch(`/api/members?${params}`);
       if (!res.ok) {
@@ -257,7 +259,7 @@ export function MemberList() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter]);
+  }, [page, debouncedSearch, statusFilter, memberTypeFilter]);
 
   useEffect(() => {
     fetchMembers();
@@ -298,6 +300,23 @@ export function MemberList() {
               <option value="PENDING">Pending</option>
               <option value="LEFT">Left</option>
               <option value="BLOCKED">Blocked</option>
+            </select>
+          </div>
+
+          {/* Member Type filter */}
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-secondary-foreground shrink-0" />
+            <select
+              value={memberTypeFilter}
+              onChange={(e) => {
+                setMemberTypeFilter(e.target.value as "ALL" | "CORE" | "EXTERNAL");
+                setPage(1);
+              }}
+              className="h-10 rounded-2xl border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="ALL">All Members</option>
+              <option value="CORE">Core Members</option>
+              <option value="EXTERNAL">External Members</option>
             </select>
           </div>
 
@@ -398,7 +417,7 @@ export function MemberList() {
           </span>
           <p className="mt-4 text-sm font-semibold text-foreground">No members found</p>
           <p className="mt-1 text-sm text-secondary-foreground">
-            {debouncedSearch || statusFilter !== "ALL"
+            {debouncedSearch || statusFilter !== "ALL" || memberTypeFilter !== "ALL"
               ? "Try adjusting your search or filters."
               : "No members have been added to this organization yet."}
           </p>
