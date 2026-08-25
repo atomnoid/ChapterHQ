@@ -106,20 +106,32 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
     setLoading(true);
     setError(null);
     try {
-      const [membersRes, attendanceRes] = await Promise.all([
-        fetch("/api/members?limit=100"),
+      const [regsRes, attendanceRes] = await Promise.all([
+        fetch(`/api/events/${eventId}/registrations?limit=100`),
         fetch(`/api/events/${eventId}/attendance?combined=true`),
       ]);
 
-      if (!membersRes.ok || !attendanceRes.ok) {
+      if (!regsRes.ok || !attendanceRes.ok) {
         throw new Error("Failed to load attendance list.");
       }
 
-      const membersJson = await membersRes.json();
+      const regsJson = await regsRes.json();
       const attendanceJson = await attendanceRes.json();
 
-      setMembers(membersJson?.items ?? membersJson?.data?.items ?? []);
+      const registrations = regsJson?.items ?? regsJson?.data?.items ?? [];
+      const registeredMembers = registrations.map((r: any) => ({
+        id: r.memberId,
+        joinedAt: r.registeredAt,
+        status: r.status,
+        user: {
+          id: r.member?.user?.id ?? r.memberId,
+          name: r.member?.user?.name ?? null,
+          email: r.member?.user?.email ?? null,
+          image: r.member?.user?.image ?? null,
+        },
+      }));
 
+      setMembers(registeredMembers);
       const attData = attendanceJson?.data ?? attendanceJson;
       if (attData && typeof attData === "object" && "memberAttendance" in attData) {
         setAttendance(attData.memberAttendance || []);
