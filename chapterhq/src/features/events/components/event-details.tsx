@@ -145,8 +145,11 @@ export function EventDetails({ eventId }: EventDetailsProps) {
   }, [eventId]);
 
   useEffect(() => {
+    setEvent(null);
+    setRegistrations([]);
+    setAttendance([]);
     fetchDetails();
-  }, [fetchDetails]);
+  }, [eventId, fetchDetails]);
 
   // Handle adding member registration
   async function handleRegisterMember(e: React.FormEvent) {
