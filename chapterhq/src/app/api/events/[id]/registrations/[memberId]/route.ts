@@ -18,6 +18,8 @@ export async function DELETE(
     const { context: authContext } = await requirePermission(session.user.id, "events:update");
 
     const { id: eventId, memberId } = await context.params;
+    console.log("[DELETE registration] eventId:", eventId, "memberId:", memberId, "orgId:", authContext.organizationId);
+
     await registrationService.cancelRegistration(
       authContext.organizationId,
       eventId,
@@ -30,6 +32,8 @@ export async function DELETE(
     if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
     if (error instanceof RegistrationNotFoundError) return apiResponse.notFound(error.message);
+    console.error("[DELETE registration] Unexpected error:", error);
     return apiResponse.serverError();
   }
 }
+
