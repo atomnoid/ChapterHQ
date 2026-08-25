@@ -108,14 +108,14 @@ export function EventDetails({ eventId }: EventDetailsProps) {
         fetch("/api/members?limit=100"),
       ]);
 
-      if (!eventRes.ok || !regRes.ok || !attRes.ok || !membersRes.ok) {
+      if (!eventRes.ok || !regRes.ok || !attRes.ok) {
         throw new Error("Failed to load event details.");
       }
 
       const eventJson = await eventRes.json();
       const regJson = await regRes.json();
       const attJson = await attRes.json();
-      const membersJson = await membersRes.json();
+      const membersJson = membersRes.ok ? await membersRes.json() : null;
 
       setEvent(eventJson?.data ?? eventJson);
       setRegistrations(regJson?.data?.items ?? regJson?.items ?? []);
