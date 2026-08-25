@@ -136,22 +136,40 @@ export class EventRegistrationService {
     }
 
     const registration = await this.registrationRepo.findByEventAndMember(eventId, memberId);
-    if (!registration) {
-      throw new RegistrationNotFoundError();
+    if (registration) {
+      await this.registrationRepo.cancel(eventId, memberId);
+      if (actorUserId) {
+        await logActivity(
+          { userId: actorUserId, organizationId },
+          "cancel",
+          "event_registration",
+          registration.id,
+          event.title,
+          { memberId }
+        );
+      }
+      return;
     }
 
-    await this.registrationRepo.cancel(eventId, memberId);
-
-    if (actorUserId) {
-      await logActivity(
-        { userId: actorUserId, organizationId },
-        "cancel",
-        "event_registration",
-        registration.id,
-        event.title,
-        { memberId }
-      );
+    const externalReg = await prisma.externalRegistration.findFirst({
+      where: { id: memberId, eventId },
+    });
+    if (externalReg) {
+      await this.externalRepo.cancel(memberId);
+      if (actorUserId) {
+        await logActivity(
+          { userId: actorUserId, organizationId },
+          "cancel",
+          "external_registration",
+          externalReg.id,
+          event.title,
+          { email: externalReg.email }
+        );
+      }
+      return;
     }
+
+    throw new RegistrationNotFoundError();
   }
 
   async getRegistrations(
@@ -168,8 +186,49 @@ export class EventRegistrationService {
       throw new EventNotFoundError();
     }
 
-    const paginationParams = buildPaginationParams(params);
-    const { total, items } = await this.registrationRepo.list(eventId, paginationParams);
+    const [memberRegsResult, externalRegs] = await Promise.all([
+      this.registrationRepo.list(eventId, { skip: 0, take: 9999, search: params.search, sortBy: "registeredAt", order: "desc" }),
+      this.externalRepo.listByEvent(eventId),
+    ]);
+
+    const mappedExternalRegs = externalRegs.map((ext) => ({
+      id: ext.id,
+      eventId: ext.eventId,
+      memberId: ext.id,
+      status: ext.status,
+      registeredAt: ext.registeredAt.toISOString(),
+      member: {
+        id: ext.id,
+        user: {
+          id: ext.id,
+          name: ext.name,
+          email: ext.email,
+          image: null,
+        },
+      },
+      isExternal: true,
+    }));
+
+    const combined = [
+      ...memberRegsResult.items.map((item) => ({ ...item, isExternal: false })),
+      ...mappedExternalRegs,
+    ];
+
+    let filtered = combined;
+    if (params.search) {
+      const q = params.search.toLowerCase();
+      filtered = combined.filter(
+        (r) =>
+          r.member.user.name?.toLowerCase().includes(q) ||
+          r.member.user.email?.toLowerCase().includes(q)
+      );
+    }
+
+    filtered.sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime());
+
+    const total = filtered.length;
+    const skip = (params.page - 1) * params.limit;
+    const items = filtered.slice(skip, skip + params.limit);
 
     return buildPaginatedResult(items, total, params);
   }
