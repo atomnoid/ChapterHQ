@@ -17,6 +17,7 @@ import {
   UserCheck,
   Loader2,
   Check,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -512,6 +513,33 @@ export function EventDetails({ eventId }: EventDetailsProps) {
                       alt="Event registration link QR"
                       className="h-[120px] w-[120px] rounded-lg"
                     />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs gap-1 border border-border bg-background hover:bg-accent hover:text-accent-foreground text-foreground"
+                      onClick={async () => {
+                        const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                          typeof window !== "undefined" ? `${window.location.origin}/events/${event.id}/register` : ""
+                        )}`;
+                        try {
+                          const response = await fetch(url);
+                          const blob = await response.blob();
+                          const blobUrl = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = blobUrl;
+                          link.download = `event-${event.title.replace(/\s+/g, "-").toLowerCase()}-registration-qr.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(blobUrl);
+                        } catch (error) {
+                          window.open(url, "_blank");
+                        }
+                      }}
+                    >
+                      <Download className="h-3 w-3" />
+                      Download QR
+                    </Button>
                     <p className="text-[10px] text-secondary-foreground text-center">
                       Point participants to scan this QR to register.
                     </p>

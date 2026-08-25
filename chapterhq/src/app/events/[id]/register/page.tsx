@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, Calendar, MapPin, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Calendar, MapPin, Clock, CheckCircle, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -188,8 +188,33 @@ export default function PublicRegisterPage() {
                 className="h-[200px] w-[200px]"
               />
             </div>
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-1.5 font-semibold"
+              onClick={async () => {
+                const downloadUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(token)}`;
+                try {
+                  const response = await fetch(downloadUrl);
+                  const blob = await response.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.href = blobUrl;
+                  link.download = `checkin-qr-${participantName.replace(/\s+/g, "-").toLowerCase()}.png`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(blobUrl);
+                } catch {
+                  window.open(downloadUrl, "_blank");
+                }
+              }}
+            >
+              <Download className="h-4 w-4" />
+              Download QR Code
+            </Button>
             <p className="text-xs text-secondary-foreground">
-              Save a screenshot of this QR code for entry at the event.
+              Save this QR code for entry at the event.
             </p>
           </div>
 
