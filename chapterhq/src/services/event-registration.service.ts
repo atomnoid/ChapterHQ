@@ -212,13 +212,26 @@ export class EventRegistrationService {
     }));
 
     const combined = [
-      ...memberRegsResult.items.map((item: any) => ({
-        ...item,
-        isExternal: false,
-        committees: (item.member?.committeeMembers ?? [])
+      ...memberRegsResult.items.map((item: any) => {
+        const isAdmin = (item.member?.userRoles ?? []).some(
+          (ur: any) => ur.role?.name?.toLowerCase() === "admin" || ur.role?.name?.toLowerCase() === "administrator"
+        );
+        const cmList = (item.member?.committeeMembers ?? [])
           .filter((cm: any) => !cm.deletedAt && !cm.committee?.deletedAt)
-          .map((cm: any) => ({ id: cm.committee.id, name: cm.committee.name })),
-      })),
+          .map((cm: any) => ({ id: cm.committee.id, name: cm.committee.name }));
+
+        if (isAdmin) {
+          if (!cmList.some((c: any) => c.name.toLowerCase() === "admin")) {
+            cmList.unshift({ id: "admin-role", name: "Admin" });
+          }
+        }
+
+        return {
+          ...item,
+          isExternal: false,
+          committees: cmList,
+        };
+      }),
       ...mappedExternalRegs,
     ];
 

@@ -130,6 +130,11 @@ export class EventRegistrationRepository {
                 },
               },
             },
+            userRoles: {
+              include: {
+                role: true,
+              },
+            },
           },
         },
       },
