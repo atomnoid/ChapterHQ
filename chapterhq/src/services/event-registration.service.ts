@@ -208,10 +208,17 @@ export class EventRegistrationService {
       },
       isExternal: true,
       customAnswers: ext.customAnswers,
+      committees: [] as { id: string; name: string }[],
     }));
 
     const combined = [
-      ...memberRegsResult.items.map((item) => ({ ...item, isExternal: false })),
+      ...memberRegsResult.items.map((item: any) => ({
+        ...item,
+        isExternal: false,
+        committees: (item.member?.committeeMembers ?? []).map(
+          (cm: any) => ({ id: cm.committee.id, name: cm.committee.name })
+        ),
+      })),
       ...mappedExternalRegs,
     ];
 
