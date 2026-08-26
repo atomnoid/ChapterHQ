@@ -46,7 +46,7 @@ export const createCustomFormSchema = z.object({
   description: z.string().max(1000).optional().nullable(),
   required: z.boolean().default(false),
   committeeId: z.string().optional().nullable(),
-  fields: z.array(createCustomFormFieldSchema).min(1, "At least one field is required"),
+  fields: z.array(createCustomFormFieldSchema).default([]),
 });
 
 export const updateCustomFormSchema = z.object({
