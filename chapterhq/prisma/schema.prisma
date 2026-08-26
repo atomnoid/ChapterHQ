@@ -619,6 +619,7 @@ model EventRegistration {
   deletedAt DateTime?
 
   checkInToken String? @unique
+  customAnswers Json?
 
   @@unique([eventId, memberId])
   @@map("event_registrations")

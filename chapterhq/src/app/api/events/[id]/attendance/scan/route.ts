@@ -51,6 +51,9 @@ export async function POST(
         participantType: result.participantType,
         status: result.attendance.status,
         markedAt: result.attendance.markedAt,
+        customAnswers: result.customAnswers,
+        phone: (result as any).phone,
+        usn: (result as any).usn,
       },
       `Attendance marked successfully. Welcome, ${result.participantName}!`
     );

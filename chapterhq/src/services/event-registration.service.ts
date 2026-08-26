@@ -207,6 +207,7 @@ export class EventRegistrationService {
         },
       },
       isExternal: true,
+      customAnswers: ext.customAnswers,
     }));
 
     const combined = [
@@ -356,7 +357,8 @@ export class EventRegistrationService {
   async publicRegisterMember(
     organizationId: string,
     eventId: string,
-    memberId: string
+    memberId: string,
+    customAnswers?: any
   ) {
     const event = await this.eventRepo.findById(eventId, organizationId);
     if (!event) throw new EventNotFoundError();
@@ -382,7 +384,7 @@ export class EventRegistrationService {
       if (count >= event.capacity) throw new RegistrationLimitExceededError();
     }
 
-    return this.registrationRepo.register({ eventId, memberId, status: "REGISTERED" });
+    return this.registrationRepo.register({ eventId, memberId, status: "REGISTERED", customAnswers });
   }
 
   async publicRegisterExternal(
@@ -404,7 +406,7 @@ export class EventRegistrationService {
         // Redirect to member registration path
         return {
           type: "member" as const,
-          registration: await this.publicRegisterMember(organizationId, eventId, member.id),
+          registration: await this.publicRegisterMember(organizationId, eventId, member.id, data.customAnswers),
         };
       }
     }
@@ -490,6 +492,7 @@ export class EventRegistrationService {
         participantName: memberReg.member.user.name ?? memberReg.member.user.email,
         participantType: "member" as const,
         attendance,
+        customAnswers: memberReg.customAnswers,
       };
     }
 
@@ -527,6 +530,9 @@ export class EventRegistrationService {
         participantName: externalReg.name,
         participantType: "external" as const,
         attendance,
+        customAnswers: externalReg.customAnswers,
+        phone: externalReg.phone,
+        usn: externalReg.usn,
       };
     }
 

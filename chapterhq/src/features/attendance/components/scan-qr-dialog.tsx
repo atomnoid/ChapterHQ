@@ -18,10 +18,14 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
     success: boolean;
     message: string;
     name?: string;
+    customAnswers?: any;
+    phone?: string | null;
+    usn?: string | null;
   } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [manualToken, setManualToken] = useState("");
   const [submittingManual, setSubmittingManual] = useState(false);
+  const [customForm, setCustomForm] = useState<any | null>(null);
 
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
   const scannerId = "qr-reader-target";
@@ -30,6 +34,12 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
     if (open) {
       setScanResult(null);
       setManualToken("");
+      // Fetch custom form structure
+      fetch(`/api/events/${eventId}/form`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => setCustomForm(data))
+        .catch(() => setCustomForm(null));
+
       // Delay initialization slightly to let Dialog render the target element
       const timer = setTimeout(() => {
         startScanner();
@@ -40,8 +50,9 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
       };
     } else {
       stopScanner();
+      setCustomForm(null);
     }
-  }, [open]);
+  }, [open, eventId]);
 
   async function startScanner() {
     try {
@@ -98,6 +109,9 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
           success: true,
           message: json.message ?? "Attendance marked successfully.",
           name: json.data?.participantName,
+          customAnswers: json.data?.customAnswers,
+          phone: json.data?.phone,
+          usn: json.data?.usn,
         });
         onSuccess();
       } else {
@@ -135,6 +149,9 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
           success: true,
           message: json.message ?? "Attendance marked successfully.",
           name: json.data?.participantName,
+          customAnswers: json.data?.customAnswers,
+          phone: json.data?.phone,
+          usn: json.data?.usn,
         });
         setManualToken("");
         onSuccess();
@@ -213,13 +230,51 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
                 {scanResult.name && (
                   <p className="text-xl font-extrabold mt-1 tracking-tight">{scanResult.name}</p>
                 )}
-                <p className="text-sm mt-2 max-w-[280px] leading-relaxed opacity-90">
+                <p className="text-sm mt-1 max-w-[280px] leading-relaxed opacity-95">
                   {scanResult.message}
                 </p>
 
+                {scanResult.success && customForm && customForm.fields && scanResult.customAnswers && (
+                  <div className="mt-3 bg-white/15 rounded-xl p-3 text-left w-full text-xs max-h-[140px] overflow-y-auto space-y-1.5 scrollbar-thin">
+                    <p className="font-bold border-b border-white/20 pb-1 mb-1 opacity-90 uppercase tracking-wider text-[10px]">Registration Info</p>
+                    {customForm.fields.map((field: any) => {
+                      const answer = scanResult.customAnswers?.[field.key];
+                      if (answer === undefined || answer === null || answer === "") return null;
+                      let displayVal = "";
+                      if (Array.isArray(answer)) displayVal = answer.join(", ");
+                      else if (typeof answer === "boolean") displayVal = answer ? "Yes" : "No";
+                      else displayVal = String(answer);
+                      return (
+                        <div key={field.id} className="grid grid-cols-3 gap-1">
+                          <span className="font-semibold opacity-80 truncate">{field.label}:</span>
+                          <span className="col-span-2 font-bold break-words">{displayVal}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {scanResult.success && !customForm && (scanResult.phone || scanResult.usn) && (
+                  <div className="mt-3 bg-white/15 rounded-xl p-3 text-left w-full text-xs space-y-1">
+                    <p className="font-bold border-b border-white/20 pb-1 mb-1 opacity-90 uppercase tracking-wider text-[10px]">Registration Info</p>
+                    {scanResult.phone && (
+                      <div className="grid grid-cols-3 gap-1">
+                        <span className="font-semibold opacity-80">Phone:</span>
+                        <span className="col-span-2 font-bold">{scanResult.phone}</span>
+                      </div>
+                    )}
+                    {scanResult.usn && (
+                      <div className="grid grid-cols-3 gap-1">
+                        <span className="font-semibold opacity-80">USN/ID:</span>
+                        <span className="col-span-2 font-bold">{scanResult.usn}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Button
                   variant="outline"
-                  className="mt-6 rounded-full bg-white/20 text-white border-white/40 hover:bg-white/30 hover:text-white"
+                  className="mt-4 rounded-full bg-white/20 text-white border-white/40 hover:bg-white/30 hover:text-white"
                   onClick={() => {
                     setScanResult(null);
                     startScanner();

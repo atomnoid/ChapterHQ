@@ -12,6 +12,7 @@ export interface RegisterMemberData {
   eventId: string;
   memberId: string;
   status?: RegistrationStatus;
+  customAnswers?: any;
 }
 
 export class EventRegistrationRepository {
@@ -32,6 +33,7 @@ export class EventRegistrationRepository {
           status: data.status ?? "REGISTERED",
           deletedAt: null,
           checkInToken: token,
+          customAnswers: data.customAnswers !== undefined ? data.customAnswers : existing.customAnswers,
         },
       });
     }
@@ -42,6 +44,7 @@ export class EventRegistrationRepository {
         memberId: data.memberId,
         status: data.status ?? "REGISTERED",
         checkInToken: generateCheckInToken(),
+        customAnswers: data.customAnswers || null,
       },
     });
   }

@@ -18,6 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MarkAttendanceDialog, BulkMarkAttendanceDialog, BulkDeleteAttendanceDialog, type AttendanceStatus } from "./attendance-dialogs";
 import { ScanQrDialog } from "./scan-qr-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface OrgMember {
   id: string;
@@ -29,6 +37,7 @@ interface OrgMember {
     email: string | null;
     image: string | null;
   };
+  customAnswers?: any;
 }
 
 interface AttendanceRecord {
@@ -63,6 +72,7 @@ interface ExternalRegistration {
     markedAt: string;
     notes?: string;
   } | null;
+  customAnswers?: any;
 }
 
 interface ParticipantRow {
@@ -74,6 +84,9 @@ interface ParticipantRow {
   status: AttendanceStatus | "UNMARKED";
   notes: string;
   originalId: string; // raw DB ID
+  customAnswers?: any;
+  phone?: string | null;
+  usn?: string | null;
 }
 
 interface AttendanceListProps {
@@ -101,19 +114,39 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
     currentNotes?: string;
   }>({ type: "none" });
 
+  const [infoDialogState, setInfoDialogState] = useState<{
+    open: boolean;
+    name?: string;
+    email?: string;
+    type?: string;
+    customAnswers?: any;
+    phone?: string | null;
+    usn?: string | null;
+  }>({ open: false });
+
+  const [customForm, setCustomForm] = useState<any | null>(null);
+
   const [isPending, setIsPending] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [regsRes, attendanceRes] = await Promise.all([
+      const [regsRes, attendanceRes, formRes] = await Promise.all([
         fetch(`/api/events/${eventId}/registrations?limit=100`),
         fetch(`/api/events/${eventId}/attendance?combined=true`),
+        fetch(`/api/events/${eventId}/form`),
       ]);
 
       if (!regsRes.ok || !attendanceRes.ok) {
         throw new Error("Failed to load attendance list.");
+      }
+
+      if (formRes.ok) {
+        const formJson = await formRes.json();
+        setCustomForm(formJson);
+      } else {
+        setCustomForm(null);
       }
 
       const regsJson = await regsRes.json();
@@ -132,6 +165,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             email: r.member?.user?.email ?? null,
             image: r.member?.user?.image ?? null,
           },
+          customAnswers: r.customAnswers,
         }));
 
       setMembers(registeredMembers);
@@ -157,7 +191,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
 
   // Construct unified rows
   const participantRows: ParticipantRow[] = [
-    ...members.map((m) => {
+    ...members.map((m: any) => {
       const att = attendance.find((a) => a.memberId === m.id);
       return {
         id: `member-${m.id}`,
@@ -168,6 +202,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
         status: (att ? att.status : "UNMARKED") as AttendanceStatus | "UNMARKED",
         notes: att?.notes ?? "",
         originalId: m.id,
+        customAnswers: m.customAnswers,
       };
     }),
     ...externalRegs.map((e) => {
@@ -180,6 +215,9 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
         status: (e.attendance ? e.attendance.status : "UNMARKED") as AttendanceStatus | "UNMARKED",
         notes: e.attendance?.notes ?? "",
         originalId: e.id,
+        customAnswers: e.customAnswers,
+        phone: e.phone,
+        usn: e.usn,
       };
     }),
   ];
@@ -511,12 +549,30 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
                   {notes}
                 </div>
 
-                <div className="flex justify-end">
+                 <div className="flex justify-end gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full text-xs h-8 border-border"
+                    onClick={() =>
+                      setInfoDialogState({
+                        open: true,
+                        name: row.name,
+                        email: row.email,
+                        type: row.type,
+                        customAnswers: row.customAnswers,
+                        phone: row.phone,
+                        usn: row.usn,
+                      })
+                    }
+                  >
+                    Info
+                  </Button>
                   {row.type === "MEMBER" ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="rounded-full text-xs h-8"
+                      className="rounded-full text-xs h-8 text-primary hover:text-primary hover:bg-primary/10"
                       disabled={isPending}
                       onClick={() =>
                         setDialogState({
@@ -531,7 +587,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
                       Mark
                     </Button>
                   ) : (
-                    <span className="text-xs text-secondary-foreground italic px-3 py-1">QR check-in</span>
+                    <span className="text-xs text-secondary-foreground italic px-3 py-2">QR Scan</span>
                   )}
                 </div>
               </div>
@@ -593,6 +649,76 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
         eventId={eventId}
         onSuccess={fetchData}
       />
+
+      <Dialog open={infoDialogState.open} onOpenChange={(v) => setInfoDialogState(prev => ({ ...prev, open: v }))}>
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold">Attendee Registration Info</DialogTitle>
+            <DialogDescription className="text-xs">
+              Registration data submitted for this event.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-sm border-t border-border mt-3 pt-3">
+            <div className="grid grid-cols-3 gap-2">
+              <span className="font-semibold text-secondary-foreground">Name:</span>
+              <span className="col-span-2 text-foreground font-medium">{infoDialogState.name}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <span className="font-semibold text-secondary-foreground">Email:</span>
+              <span className="col-span-2 text-foreground font-medium break-all">{infoDialogState.email}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <span className="font-semibold text-secondary-foreground">Type:</span>
+              <span className="col-span-2 text-foreground uppercase text-xs tracking-wider font-semibold">{infoDialogState.type}</span>
+            </div>
+
+            {customForm && customForm.fields && infoDialogState.customAnswers ? (
+              <div className="bg-secondary/10 border border-border/50 rounded-2xl p-4 mt-4 space-y-2.5">
+                <p className="font-bold border-b border-border pb-1.5 mb-1.5 opacity-90 uppercase tracking-wider text-[10px] text-secondary-foreground">Custom Form Responses</p>
+                {customForm.fields.map((field: any) => {
+                  const answer = infoDialogState.customAnswers?.[field.key];
+                  let displayVal = "-";
+                  if (answer !== undefined && answer !== null && answer !== "") {
+                    if (Array.isArray(answer)) displayVal = answer.join(", ");
+                    else if (typeof answer === "boolean") displayVal = answer ? "Yes" : "No";
+                    else displayVal = String(answer);
+                  }
+                  return (
+                    <div key={field.id} className="grid grid-cols-3 gap-2 text-xs">
+                      <span className="font-semibold text-secondary-foreground truncate">{field.label}:</span>
+                      <span className="col-span-2 text-foreground break-words font-medium">{displayVal}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              (infoDialogState.phone || infoDialogState.usn) && (
+                <div className="bg-secondary/10 border border-border/50 rounded-2xl p-4 mt-4 space-y-2.5">
+                  <p className="font-bold border-b border-border pb-1.5 mb-1.5 opacity-90 uppercase tracking-wider text-[10px] text-secondary-foreground">Registration Info</p>
+                  {infoDialogState.phone && (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <span className="font-semibold text-secondary-foreground">Phone:</span>
+                      <span className="col-span-2 text-foreground font-medium">{infoDialogState.phone}</span>
+                    </div>
+                  )}
+                  {infoDialogState.usn && (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <span className="font-semibold text-secondary-foreground">USN/ID:</span>
+                      <span className="col-span-2 text-foreground font-medium">{infoDialogState.usn}</span>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setInfoDialogState(prev => ({ ...prev, open: false }))} className="rounded-full w-full">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
