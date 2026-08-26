@@ -215,9 +215,9 @@ export class EventRegistrationService {
       ...memberRegsResult.items.map((item: any) => ({
         ...item,
         isExternal: false,
-        committees: (item.member?.committeeMembers ?? []).map(
-          (cm: any) => ({ id: cm.committee.id, name: cm.committee.name })
-        ),
+        committees: (item.member?.committeeMembers ?? [])
+          .filter((cm: any) => !cm.deletedAt && !cm.committee?.deletedAt)
+          .map((cm: any) => ({ id: cm.committee.id, name: cm.committee.name })),
       })),
       ...mappedExternalRegs,
     ];
