@@ -92,13 +92,17 @@ export default function PublicRegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) {
+
+    const hasCustomForm = !!(event?.customForm?.fields && event.customForm.fields.length > 0);
+
+    // Only require name/email when there's no custom form
+    if (!hasCustomForm && (!name.trim() || !email.trim())) {
       setFormError("Name and email are required.");
       return;
     }
 
     // Custom form field validations
-    if (event?.customForm?.fields) {
+    if (hasCustomForm && event?.customForm?.fields) {
       for (const field of event.customForm.fields) {
         if (field.required && !answers[field.key]) {
           setFormError(`"${field.label}" is required.`);
@@ -111,14 +115,16 @@ export default function PublicRegisterPage() {
     setFormError(null);
 
     try {
-      const payload: any = {
-        name: name.trim(),
-        email: email.trim(),
-      };
+      const hasCustomForm = !!(event?.customForm?.fields && event.customForm.fields.length > 0);
+      const payload: any = {};
 
-      if (event?.customForm) {
+      if (hasCustomForm) {
+        // Only send customAnswers — name/email resolved server-side from answers
         payload.customAnswers = answers;
       } else {
+        // No custom form: send traditional fields
+        payload.name = name.trim();
+        payload.email = email.trim();
         payload.phone = phone.trim() || undefined;
         payload.usn = usn.trim() || undefined;
       }
@@ -482,37 +488,38 @@ export default function PublicRegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Primary identification fields */}
-            <div className="space-y-1.5">
-              <Label htmlFor="reg-name">Full Name *</Label>
-              <Input
-                id="reg-name"
-                placeholder="e.g. Priya Sharma"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                disabled={submitting}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="reg-email">Email Address *</Label>
-              <Input
-                id="reg-email"
-                type="email"
-                placeholder="e.g. priya@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={submitting}
-              />
-            </div>
-
             {/* Custom fields or fallback default inputs */}
             {event?.customForm?.fields && event.customForm.fields.length > 0 ? (
+              // Custom form present: show ONLY custom fields, no Name/Email
               event.customForm.fields.map((field) => renderCustomField(field))
             ) : (
+              // No custom form: show standard Name/Email/Phone/USN fields
               <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reg-name">Full Name *</Label>
+                  <Input
+                    id="reg-name"
+                    placeholder="e.g. Priya Sharma"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    disabled={submitting}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="reg-email">Email Address *</Label>
+                  <Input
+                    id="reg-email"
+                    type="email"
+                    placeholder="e.g. priya@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={submitting}
+                  />
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="reg-phone">Phone Number (Optional)</Label>
                   <Input

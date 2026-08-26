@@ -12,10 +12,11 @@ import {
 const registrationService = new EventRegistrationService();
 
 const externalSchema = z.object({
-  name: z.string().trim().min(1, "Name is required.").max(200),
-  email: z.string().email("A valid email is required."),
+  name: z.string().trim().max(200).optional(),
+  email: z.string().email().optional().or(z.literal("")),
   phone: z.string().trim().max(20).optional(),
   usn: z.string().trim().max(50).optional(),
+  customAnswers: z.any().optional(),
 });
 
 const memberSchema = z.object({
@@ -61,10 +62,25 @@ export async function POST(
         "Registration successful."
       );
     } else {
-      const externalSchemaWithCustom = externalSchema.extend({
-        customAnswers: z.any().optional(),
-      });
-      const data = externalSchemaWithCustom.parse(body);
+      const data = externalSchema.parse(body);
+
+      // Resolve name and email from customAnswers if not provided directly
+      let resolvedName = data.name?.trim();
+      let resolvedEmail = data.email?.trim();
+      if (data.customAnswers && typeof data.customAnswers === "object") {
+        const ca = data.customAnswers as Record<string, any>;
+        if (!resolvedName) {
+          // look for a field whose key contains 'name'
+          const nameKey = Object.keys(ca).find((k) => /name/i.test(k));
+          if (nameKey) resolvedName = String(ca[nameKey]);
+        }
+        if (!resolvedEmail) {
+          const emailKey = Object.keys(ca).find((k) => /email/i.test(k));
+          if (emailKey) resolvedEmail = String(ca[emailKey]);
+        }
+      }
+      if (!resolvedName) resolvedName = "Participant";
+      if (!resolvedEmail) resolvedEmail = `participant-${Date.now()}@noemail.local`;
 
       // Get the event to find organizationId
       const event = await prisma.event.findFirst({ where: { id: eventId } });
@@ -78,7 +94,11 @@ export async function POST(
       const result = await registrationService.publicRegisterExternal(
         event.organizationId,
         eventId,
-        data
+        {
+          ...data,
+          name: resolvedName,
+          email: resolvedEmail,
+        }
       );
 
       return apiResponse.created(result, "Registration successful.");
