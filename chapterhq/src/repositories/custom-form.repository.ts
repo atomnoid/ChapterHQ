@@ -136,14 +136,14 @@ export class CustomFormRepository {
    * Find the custom form linked to a specific event.
    */
   async findByEvent(eventId: string) {
-    const form = await prisma.customForm.findFirst({
+    const forms = await prisma.customForm.findMany({
       where: { eventId },
       include: {
         fields: { orderBy: { order: "asc" } },
       },
     });
-    if (form?.deletedAt) return null;
-    return form;
+    const activeForm = forms.find((f) => !f.deletedAt);
+    return activeForm ?? null;
   }
 
   /**

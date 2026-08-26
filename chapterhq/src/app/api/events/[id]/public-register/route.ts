@@ -110,14 +110,15 @@ export async function GET(
     }
 
     // Fetch custom form for the event, if configured
-    const customForm = await prisma.customForm.findFirst({
-      where: { eventId, deletedAt: null },
+    const customForms = await prisma.customForm.findMany({
+      where: { eventId },
       include: {
         fields: {
           orderBy: { order: "asc" },
         },
       },
     });
+    const customForm = customForms.find((f) => !f.deletedAt) ?? null;
 
     return apiResponse.success({
       id: event.id,
