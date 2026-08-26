@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, Calendar, MapPin, Clock, CheckCircle, AlertTriangle, Download, ClipboardX } from "lucide-react";
+import { Loader2, Calendar, MapPin, Clock, CheckCircle, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -537,7 +537,7 @@ export default function PublicRegisterPage() {
           // No custom form configured — show informational notice
           <div className="rounded-[2rem] border border-border bg-card p-8 shadow-sm flex flex-col items-center text-center gap-4">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary/30">
-              <ClipboardX className="h-6 w-6 text-secondary-foreground" />
+              <AlertTriangle className="h-6 w-6 text-secondary-foreground" />
             </span>
             <div className="space-y-1.5">
               <h2 className="text-base font-semibold text-foreground">Registration Form Not Set Up</h2>

@@ -87,6 +87,7 @@ interface ParticipantRow {
   customAnswers?: any;
   phone?: string | null;
   usn?: string | null;
+  committees?: { id: string; name: string }[];
 }
 
 interface AttendanceListProps {
@@ -122,6 +123,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
     customAnswers?: any;
     phone?: string | null;
     usn?: string | null;
+    committees?: { id: string; name: string }[];
   }>({ open: false });
 
   const [customForm, setCustomForm] = useState<any | null>(null);
@@ -166,6 +168,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             image: r.member?.user?.image ?? null,
           },
           customAnswers: r.customAnswers,
+          committees: r.committees || [],
         }));
 
       setMembers(registeredMembers);
@@ -203,6 +206,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
         notes: att?.notes ?? "",
         originalId: m.id,
         customAnswers: m.customAnswers,
+        committees: m.committees || [],
       };
     }),
     ...externalRegs.map((e) => {
@@ -218,6 +222,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
         customAnswers: e.customAnswers,
         phone: e.phone,
         usn: e.usn,
+        committees: [],
       };
     }),
   ];
@@ -491,7 +496,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
       {/* Table */}
       {!loading && !error && filteredRows.length > 0 && (
         <div className="overflow-hidden rounded-[1.75rem] border border-border">
-          <div className="hidden grid-cols-[48px_minmax(0,1fr)_120px_100px_160px_100px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
+          <div className="hidden grid-cols-[48px_minmax(0,1fr)_130px_120px_100px_160px_100px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
             <input
               type="checkbox"
               onChange={handleSelectAll}
@@ -501,6 +506,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
               aria-label="Select all rows"
             />
             <span>Participant</span>
+            <span>Committee</span>
             <span>Type</span>
             <span>Status</span>
             <span>Notes</span>
@@ -515,7 +521,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             return (
               <div
                 key={row.id}
-                className="grid grid-cols-[48px_minmax(0,1fr)_80px] items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors sm:grid-cols-[48px_minmax(0,1fr)_120px_100px_160px_100px]"
+                className="grid grid-cols-[48px_minmax(0,1fr)_80px] items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors sm:grid-cols-[48px_minmax(0,1fr)_130px_120px_100px_160px_100px]"
               >
                 <input
                   type="checkbox"
@@ -537,6 +543,14 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
                     <p className="truncate text-sm font-semibold text-foreground">{row.name}</p>
                     <p className="truncate text-xs text-secondary-foreground">{row.email}</p>
                   </div>
+                </div>
+
+                <div className="hidden sm:block text-xs text-secondary-foreground truncate">
+                  {row.committees && row.committees.length > 0 ? (
+                    row.committees.map(c => c.name).join(", ")
+                  ) : (
+                    row.type === "EXTERNAL" ? "No Committee" : "None"
+                  )}
                 </div>
 
                 <div className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-secondary-foreground">
@@ -563,6 +577,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
                         customAnswers: row.customAnswers,
                         phone: row.phone,
                         usn: row.usn,
+                        committees: row.committees,
                       })
                     }
                   >
@@ -671,6 +686,16 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             <div className="grid grid-cols-3 gap-2">
               <span className="font-semibold text-secondary-foreground">Type:</span>
               <span className="col-span-2 text-foreground uppercase text-xs tracking-wider font-semibold">{infoDialogState.type}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <span className="font-semibold text-secondary-foreground">Committee:</span>
+              <span className="col-span-2 text-foreground font-medium">
+                {infoDialogState.committees && infoDialogState.committees.length > 0 ? (
+                  infoDialogState.committees.map((c: any) => c.name).join(", ")
+                ) : (
+                  infoDialogState.type === "EXTERNAL" ? "No Committee" : "None"
+                )}
+              </span>
             </div>
 
             {customForm && customForm.fields && infoDialogState.customAnswers ? (
