@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, Calendar, MapPin, Clock, CheckCircle, AlertTriangle, Download } from "lucide-react";
+import { Loader2, Calendar, MapPin, Clock, CheckCircle, AlertTriangle, Download, ClipboardX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -479,112 +479,74 @@ export default function PublicRegisterPage() {
         )}
 
         {/* Registration Form */}
-        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm space-y-5">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Your Details</h2>
-            <p className="text-sm text-secondary-foreground mt-1">
-              Fill in your information to register. After registration, you&apos;ll receive a unique QR code for entry.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Custom fields or fallback default inputs */}
-            {event?.customForm?.fields && event.customForm.fields.length > 0 ? (
-              // Custom form present: show ONLY custom fields, no Name/Email
-              event.customForm.fields.map((field) => renderCustomField(field))
-            ) : (
-              // No custom form: show standard Name/Email/Phone/USN fields
-              <>
-                <div className="space-y-1.5">
-                  <Label htmlFor="reg-name">Full Name *</Label>
-                  <Input
-                    id="reg-name"
-                    placeholder="e.g. Priya Sharma"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="reg-email">Email Address *</Label>
-                  <Input
-                    id="reg-email"
-                    type="email"
-                    placeholder="e.g. priya@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="reg-phone">Phone Number (Optional)</Label>
-                  <Input
-                    id="reg-phone"
-                    type="tel"
-                    placeholder="e.g. +91 98765 43210"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="reg-usn">USN / Student ID (Optional)</Label>
-                  <Input
-                    id="reg-usn"
-                    placeholder="e.g. 1CR21CS001"
-                    value={usn}
-                    onChange={(e) => setUsn(e.target.value)}
-                    disabled={submitting}
-                  />
-                </div>
-              </>
-            )}
-
-            {formError && (
-              <div className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {formError}
-              </div>
-            )}
-
-            <Button type="submit" className="w-full rounded-full" disabled={submitting}>
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Registering...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="h-4 w-4 mr-2"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect width="5" height="5" x="3" y="3" rx="1" />
-                    <rect width="5" height="5" x="16" y="3" rx="1" />
-                    <rect width="5" height="5" x="3" y="16" rx="1" />
-                    <path d="M21 16V21H16" />
-                    <path d="M21 12H16V16" />
-                    <path d="M12 21V16H16" />
-                    <path d="M12 12H16" />
-                    <path d="M12 3V12" />
-                    <path d="M3 12H12" />
-                  </svg>
-                  Register &amp; Get My QR Code
-                </>
+        {event?.customForm?.fields && event.customForm.fields.length > 0 ? (
+          <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm space-y-5">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">
+                {event.customForm.name || "Registration Form"}
+              </h2>
+              {event.customForm.description && (
+                <p className="text-sm text-secondary-foreground mt-1">{event.customForm.description}</p>
               )}
-            </Button>
-          </form>
-        </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              {event.customForm.fields.map((field) => renderCustomField(field))}
+
+              {formError && (
+                <div className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {formError}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full rounded-full" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Registering...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="h-4 w-4 mr-2"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect width="5" height="5" x="3" y="3" rx="1" />
+                      <rect width="5" height="5" x="16" y="3" rx="1" />
+                      <rect width="5" height="5" x="3" y="16" rx="1" />
+                      <path d="M21 16V21H16" />
+                      <path d="M21 12H16V16" />
+                      <path d="M12 21V16H16" />
+                      <path d="M12 12H16" />
+                      <path d="M12 3V12" />
+                      <path d="M3 12H12" />
+                    </svg>
+                    Register &amp; Get My QR Code
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+        ) : (
+          // No custom form configured — show informational notice
+          <div className="rounded-[2rem] border border-border bg-card p-8 shadow-sm flex flex-col items-center text-center gap-4">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary/30">
+              <ClipboardX className="h-6 w-6 text-secondary-foreground" />
+            </span>
+            <div className="space-y-1.5">
+              <h2 className="text-base font-semibold text-foreground">Registration Form Not Set Up</h2>
+              <p className="text-sm text-secondary-foreground leading-relaxed max-w-sm">
+                The admin has not configured a registration form for this event yet. Please contact the event organiser or check back later.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
