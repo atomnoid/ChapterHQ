@@ -123,6 +123,14 @@ export class EventRegistrationRepository {
                 image: true,
               },
             },
+            committeeMembers: {
+              where: { deletedAt: null },
+              include: {
+                committee: {
+                  select: { id: true, name: true },
+                },
+              },
+            },
           },
         },
       },
