@@ -8,6 +8,8 @@ import {
   EventNotFoundError,
 } from "@/services/event-registration.service";
 
+export const dynamic = "force-dynamic";
+
 const registrationService = new EventRegistrationService();
 
 const querySchema = z.object({
