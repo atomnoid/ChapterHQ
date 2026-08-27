@@ -23,6 +23,9 @@ export async function POST(request: Request) {
 
     const hasExplicitSelection = Array.isArray(memberIds) && memberIds.length > 0;
 
+    console.log("[CSV Export] Received Body:", JSON.stringify(body));
+    console.log("[CSV Export] hasExplicitSelection:", hasExplicitSelection);
+
     // 1. Fetch members with filters matching the query logic
     const whereClause: any = {
       organizationId,
@@ -55,6 +58,10 @@ export async function POST(request: Request) {
     });
 
     let members = allMembers.filter((m) => !m.deletedAt);
+
+    console.log("[CSV Export] whereClause:", JSON.stringify(whereClause));
+    console.log("[CSV Export] members count:", members.length);
+    console.log("[CSV Export] members IDs:", JSON.stringify(members.map((m) => m.id)));
 
     // Apply member type filter if requested and not doing an explicit selected-rows export
     if (!hasExplicitSelection && memberType && memberType !== "ALL") {
