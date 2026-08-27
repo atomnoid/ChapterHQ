@@ -51,6 +51,7 @@ interface Registration {
   memberId: string;
   status: string;
   registeredAt: string;
+  isExternal?: boolean;
   member: {
     id: string;
     user: {
@@ -74,6 +75,11 @@ interface AttendanceRecord {
   status: string;
 }
 
+interface ExternalReg {
+  id: string;
+  attendance: { status: string } | null;
+}
+
 interface EventDetailsProps {
   eventId: string;
 }
@@ -82,6 +88,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [externalRegs, setExternalRegs] = useState<ExternalReg[]>([]);
   const [allMembers, setAllMembers] = useState<OrgMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +113,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
       const [eventRes, regRes, attRes, membersRes] = await Promise.all([
         fetch(`/api/events/${eventId}`),
         fetch(`/api/events/${eventId}/registrations?limit=100`),
-        fetch(`/api/events/${eventId}/attendance`),
+        fetch(`/api/events/${eventId}/attendance?combined=true`),
         fetch("/api/members?limit=100"),
       ]);
 
@@ -137,7 +144,10 @@ export function EventDetails({ eventId }: EventDetailsProps) {
 
       setEvent(eventJson?.data ?? eventJson);
       setRegistrations(regJson?.data?.items ?? regJson?.items ?? []);
-      setAttendance(attJson?.data ?? attJson ?? []);
+      // combined response: { memberAttendance: [...], externalRegs: [...] }
+      const combinedData = attJson?.data ?? attJson ?? {};
+      setAttendance(combinedData.memberAttendance ?? []);
+      setExternalRegs(combinedData.externalRegs ?? []);
       setAllMembers(membersJson?.items ?? membersJson?.data?.items ?? []);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to fetch details.");
@@ -150,6 +160,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     setEvent(null);
     setRegistrations([]);
     setAttendance([]);
+    setExternalRegs([]);
     fetchDetails();
   }, [eventId, fetchDetails]);
 
@@ -320,19 +331,32 @@ export function EventDetails({ eventId }: EventDetailsProps) {
   }
 
   // Statistics Computations
-  const totalRegistered = registrations.length;
+  // registrations API returns both members AND externals combined (isExternal flag)
+  // externalRegs comes separately from the attendance endpoint — avoid double-counting
+  const memberOnlyRegistrations = registrations.filter((r) => !r.isExternal);
+  const totalRegistered = memberOnlyRegistrations.length; // used for capacity display
   const capVal = event.capacity ?? 0;
   const capacityPct = capVal > 0 ? Math.round((totalRegistered / capVal) * 100) : 0;
 
-  // Attendance metrics
-  const totalPresent = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
-  const totalAbsent = attendance.filter((a) => a.status === "ABSENT").length;
-  const totalLogged = attendance.length;
-  const attendanceRate = totalLogged > 0 ? Math.round((totalPresent / totalLogged) * 100) : 0;
+  // Attendance metrics — combine member attendance + external attendees
+  const memberPresent = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
+  const memberAbsent = attendance.filter((a) => a.status === "ABSENT").length;
+  const memberUnmarked = memberOnlyRegistrations.length - attendance.length;
+
+  // External: present if they have an attendance record (attendance != null)
+  const externalPresent = externalRegs.filter((r) => r.attendance != null).length;
+  const externalAbsent = externalRegs.filter((r) => r.attendance == null).length;
+
+  const totalPresent = memberPresent + externalPresent;
+  const totalAbsent = memberAbsent + externalAbsent;
+  // Total registered = member-only registrations + external registrations (no double-count)
+  const totalAllRegistered = memberOnlyRegistrations.length + externalRegs.length;
+  const attendanceRate = totalAllRegistered > 0 ? Math.round((totalPresent / totalAllRegistered) * 100) : 0;
 
   // Filter list of members available to add (not yet registered)
+  // Use memberOnlyRegistrations to avoid false matches against external IDs
   const availableMembers = allMembers.filter(
-    (m) => !registrations.some((r) => r.memberId === m.id)
+    (m) => !memberOnlyRegistrations.some((r) => r.memberId === m.id)
   );
 
   // Filter and search available members
@@ -345,8 +369,8 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     );
   });
 
-  // Search registrations
-  const filteredRegistrations = registrations.filter((reg) => {
+  // Search registrations (member-only \u2014 externals are handled separately in attendance tab)
+  const filteredRegistrations = memberOnlyRegistrations.filter((reg) => {
     const name = reg.member.user.name ?? "";
     const email = reg.member.user.email ?? "";
     return (
@@ -818,7 +842,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
                 </h4>
               </div>
               <div className="pt-4 border-t border-border mt-6">
-                <span className="text-xs text-secondary-foreground">Ratio of marked present/late to total logged check-ins.</span>
+                <span className="text-xs text-secondary-foreground">Ratio of present (members + external) to total registered.</span>
               </div>
             </div>
 
@@ -842,7 +866,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
                 </h4>
               </div>
               <div className="pt-4 border-t border-border mt-6">
-                <span className="text-xs text-secondary-foreground">{totalAbsent} absent · {totalRegistered} registered total</span>
+                <span className="text-xs text-secondary-foreground">{totalAbsent} absent · {totalAllRegistered} registered total</span>
               </div>
             </div>
           </div>
@@ -852,7 +876,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
               <div className="p-4 rounded-2xl bg-secondary/30">
                 <p className="text-xs font-semibold text-secondary-foreground">Total Registrations</p>
-                <p className="text-2xl font-bold text-foreground mt-1">{totalRegistered}</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{totalAllRegistered}</p>
               </div>
               <div className="p-4 rounded-2xl bg-secondary/30">
                 <p className="text-xs font-semibold text-secondary-foreground">Marked Present/Late</p>

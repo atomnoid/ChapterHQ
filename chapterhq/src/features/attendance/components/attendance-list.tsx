@@ -339,7 +339,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           <div>
             <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Absent / Excused</p>
             <p className="text-2xl font-bold text-foreground">
-              {participantRows.filter((r) => r.status === "ABSENT" || r.status === "EXCUSED").length}
+              {participantRows.filter((r) => r.status === "ABSENT" || r.status === "EXCUSED" || r.status === "UNMARKED").length}
             </p>
           </div>
         </div>
@@ -350,8 +350,12 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           </span>
           <div>
             <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Attendance Rate</p>
-            <p className="text-2xl font-bold text-foreground">{getAttendanceRate()}%</p>
-            <p className="text-[10px] text-secondary-foreground mt-0.5">of marked participants</p>
+            <p className="text-2xl font-bold text-foreground">
+              {participantRows.length > 0
+                ? Math.round((participantRows.filter((r) => r.status === "PRESENT").length / participantRows.length) * 100)
+                : 0}%
+            </p>
+            <p className="text-[10px] text-secondary-foreground mt-0.5">of total registered</p>
           </div>
         </div>
       </div>
