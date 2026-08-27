@@ -336,9 +336,9 @@ export function EventDetails({ eventId }: EventDetailsProps) {
 
   // totalAllRegistered mirrors the Attendees tab count exactly (same source: registrations API)
   const totalAllRegistered = registrations.length;
-  const totalRegistered = memberOnlyRegistrations.length; // for capacity display (member-only)
   const capVal = event.capacity ?? 0;
-  const capacityPct = capVal > 0 ? Math.round((totalRegistered / capVal) * 100) : 0;
+  // Capacity counts all registrations (members + externals)
+  const capacityPct = capVal > 0 ? Math.round((totalAllRegistered / capVal) * 100) : 0;
 
   // Member attendance: from attendance records fetched via combined endpoint
   const memberPresent = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
@@ -473,7 +473,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
                 <div className="flex justify-between text-sm font-semibold">
                   <span>Registered Capacity</span>
                   <span>
-                    {totalRegistered}
+                    {totalAllRegistered}
                     {event.capacity ? ` / ${event.capacity}` : " (Unlimited)"}
                   </span>
                 </div>
