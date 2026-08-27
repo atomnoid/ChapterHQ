@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const { context } = await requirePermission(session.user.id, "members:read");
     const { organizationId } = context;
 
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { memberIds, status, memberType, search } = body as {
       memberIds?: string[];
       status?: string;
@@ -21,12 +21,14 @@ export async function POST(request: Request) {
       search?: string;
     };
 
+    const hasExplicitSelection = Array.isArray(memberIds) && memberIds.length > 0;
+
     // 1. Fetch members with filters matching the query logic
     const whereClause: any = {
       organizationId,
     };
 
-    if (memberIds && memberIds.length > 0) {
+    if (hasExplicitSelection) {
       whereClause.id = { in: memberIds };
     } else {
       if (status && status !== "ALL") {
@@ -54,8 +56,8 @@ export async function POST(request: Request) {
 
     let members = allMembers.filter((m) => !m.deletedAt);
 
-    // Apply member type filter if requested
-    if (!memberIds && memberType && memberType !== "ALL") {
+    // Apply member type filter if requested and not doing an explicit selected-rows export
+    if (!hasExplicitSelection && memberType && memberType !== "ALL") {
       members = members.filter((m) => {
         const isCore = m.coreMemberRecords.some((cm) => !cm.deletedAt);
         return memberType === "CORE" ? isCore : !isCore;
