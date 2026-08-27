@@ -873,7 +873,7 @@ export function EventDetails({ eventId }: EventDetailsProps) {
 
           <div className="rounded-3xl border border-border bg-card p-6">
             <h3 className="text-sm font-bold uppercase tracking-wider text-secondary-foreground mb-4">Detailed Metrics</h3>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="p-4 rounded-2xl bg-secondary/30">
                 <p className="text-xs font-semibold text-secondary-foreground">Total Registrations</p>
                 <p className="text-2xl font-bold text-foreground mt-1">{totalAllRegistered}</p>
@@ -885,12 +885,6 @@ export function EventDetails({ eventId }: EventDetailsProps) {
               <div className="p-4 rounded-2xl bg-secondary/30">
                 <p className="text-xs font-semibold text-secondary-foreground">Marked Absent</p>
                 <p className="text-2xl font-bold text-foreground mt-1">{totalAbsent}</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-secondary/30">
-                <p className="text-xs font-semibold text-secondary-foreground">Presence/Absence Ratio</p>
-                <p className="text-2xl font-bold text-foreground mt-1">
-                  {totalAbsent > 0 ? (totalPresent / totalAbsent).toFixed(1) : totalPresent}x
-                </p>
               </div>
             </div>
           </div>
