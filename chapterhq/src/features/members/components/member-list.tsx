@@ -209,9 +209,11 @@ export function MemberList() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           memberIds,
-          status: statusFilter,
-          memberType: memberTypeFilter,
-          search: debouncedSearch,
+          ...(memberIds ? {} : {
+            status: statusFilter,
+            memberType: memberTypeFilter,
+            search: debouncedSearch,
+          }),
         }),
       });
       if (!response.ok) throw new Error("Failed to export data");
