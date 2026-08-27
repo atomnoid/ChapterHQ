@@ -332,25 +332,25 @@ export function EventDetails({ eventId }: EventDetailsProps) {
 
   // Statistics Computations
   // registrations API returns both members AND externals combined (isExternal flag)
-  // externalRegs comes separately from the attendance endpoint — avoid double-counting
   const memberOnlyRegistrations = registrations.filter((r) => !r.isExternal);
-  const totalRegistered = memberOnlyRegistrations.length; // used for capacity display
+
+  // totalAllRegistered mirrors the Attendees tab count exactly (same source: registrations API)
+  const totalAllRegistered = registrations.length;
+  const totalRegistered = memberOnlyRegistrations.length; // for capacity display (member-only)
   const capVal = event.capacity ?? 0;
   const capacityPct = capVal > 0 ? Math.round((totalRegistered / capVal) * 100) : 0;
 
-  // Attendance metrics — combine member attendance + external attendees
+  // Member attendance: from attendance records fetched via combined endpoint
   const memberPresent = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
   const memberAbsent = attendance.filter((a) => a.status === "ABSENT").length;
-  const memberUnmarked = memberOnlyRegistrations.length - attendance.length;
 
-  // External: present if they have an attendance record (attendance != null)
+  // External: present if attendance record exists in externalRegs
+  // externalRegs comes from combined attendance endpoint (same data as attendance tab)
   const externalPresent = externalRegs.filter((r) => r.attendance != null).length;
   const externalAbsent = externalRegs.filter((r) => r.attendance == null).length;
 
   const totalPresent = memberPresent + externalPresent;
   const totalAbsent = memberAbsent + externalAbsent;
-  // Total registered = member-only registrations + external registrations (no double-count)
-  const totalAllRegistered = memberOnlyRegistrations.length + externalRegs.length;
   const attendanceRate = totalAllRegistered > 0 ? Math.round((totalPresent / totalAllRegistered) * 100) : 0;
 
   // Filter list of members available to add (not yet registered)
@@ -369,8 +369,8 @@ export function EventDetails({ eventId }: EventDetailsProps) {
     );
   });
 
-  // Search registrations (member-only \u2014 externals are handled separately in attendance tab)
-  const filteredRegistrations = memberOnlyRegistrations.filter((reg) => {
+  // Search all registrations (members + externals shown in the Attendees tab)
+  const filteredRegistrations = registrations.filter((reg) => {
     const name = reg.member.user.name ?? "";
     const email = reg.member.user.email ?? "";
     return (
