@@ -18,10 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "EXCUSED";
 
 const markSchema = z.object({
-  status: z.enum(["PRESENT", "ABSENT", "LATE"]),
+  status: z.enum(["PRESENT", "ABSENT", "EXCUSED"]),
   notes: z.string().trim().max(500, "Notes must be 500 characters or less.").optional(),
 });
 type MarkInput = z.infer<typeof markSchema>;
@@ -117,7 +117,7 @@ export function MarkAttendanceDialog({
             >
               <option value="PRESENT">Present</option>
               <option value="ABSENT">Absent</option>
-              <option value="LATE">Late</option>
+              <option value="EXCUSED">Excused</option>
             </select>
           </div>
 
@@ -240,7 +240,7 @@ export function BulkMarkAttendanceDialog({
             >
               <option value="PRESENT">Present</option>
               <option value="ABSENT">Absent</option>
-              <option value="LATE">Late</option>
+              <option value="EXCUSED">Excused</option>
             </select>
           </div>
 

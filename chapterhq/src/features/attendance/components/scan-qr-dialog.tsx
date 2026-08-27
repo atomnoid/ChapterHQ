@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { Loader2, X, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -23,16 +23,21 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
     usn?: string | null;
   } | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [manualToken, setManualToken] = useState("");
   const [submittingManual, setSubmittingManual] = useState(false);
   const [customForm, setCustomForm] = useState<any | null>(null);
 
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
+  // Guard to prevent duplicate scan callbacks firing before stop() completes
+  const processingRef = useRef(false);
   const scannerId = "qr-reader-target";
 
   useEffect(() => {
     if (open) {
       setScanResult(null);
+      setProcessing(false);
+      processingRef.current = false;
       setManualToken("");
       // Fetch custom form structure
       fetch(`/api/events/${eventId}/form`)
@@ -55,6 +60,8 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
   }, [open, eventId]);
 
   async function startScanner() {
+    // Reset guard before each new scan session
+    processingRef.current = false;
     try {
       setScanning(true);
       const html5QrCode = new Html5Qrcode(scannerId);
@@ -67,7 +74,9 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
           qrbox: { width: 250, height: 250 },
         },
         async (decodedText: string) => {
-          // Found QR
+          // Guard: ignore if already processing a scan
+          if (processingRef.current) return;
+          processingRef.current = true;
           await handleScannedToken(decodedText);
         },
         () => {
@@ -92,7 +101,10 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
   }
 
   async function handleScannedToken(token: string) {
-    // Stop scanner temporarily to prevent multiple rapid scans
+    // Show processing state immediately so the "Camera Access Required"
+    // overlay never flashes between scan detection and result display
+    setProcessing(true);
+    // Stop scanner to prevent further callbacks
     await stopScanner();
 
     try {
@@ -125,6 +137,8 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
         success: false,
         message: "A network error occurred. Please try again.",
       });
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -171,6 +185,9 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
     }
   }
 
+  // Show overlay when we have a result OR when actively processing (prevents flicker)
+  const showResultOverlay = scanResult !== null || processing;
+
   return (
     <Dialog open={open} onOpenChange={(v) => {
       if (!v) {
@@ -187,11 +204,12 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Scanner frame */}
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-black aspect-square flex items-center justify-center">
+          {/* Scanner frame — fixed height so html5-qrcode video renders fully */}
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-black" style={{ height: "320px" }}>
             <div id={scannerId} className="w-full h-full" />
-            
-            {!scanning && !scanResult && (
+
+            {/* Camera access required — only shown when not scanning and no result/processing */}
+            {!scanning && !showResultOverlay && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white bg-black/60 p-4 text-center">
                 <svg
                   className="h-10 w-10 animate-pulse text-primary"
@@ -211,6 +229,14 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
                 <Button size="sm" onClick={startScanner} className="mt-2 rounded-full">
                   Retry Camera
                 </Button>
+              </div>
+            )}
+
+            {/* Processing spinner — shown while awaiting API response */}
+            {processing && !scanResult && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white bg-black/70">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <p className="text-sm font-semibold">Processing…</p>
               </div>
             )}
 
@@ -277,6 +303,7 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
                   className="mt-4 rounded-full bg-white/20 text-white border-white/40 hover:bg-white/30 hover:text-white"
                   onClick={() => {
                     setScanResult(null);
+                    processingRef.current = false;
                     startScanner();
                   }}
                 >

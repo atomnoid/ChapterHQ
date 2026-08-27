@@ -232,33 +232,42 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
       row.name.toLowerCase().includes(search.toLowerCase()) ||
       row.email.toLowerCase().includes(search.toLowerCase());
 
-    const status = row.status === "UNMARKED" ? "ABSENT" : row.status;
+    const matchesStatus =
+      statusFilter === "ALL" ||
+      (statusFilter === "ABSENT" ? (row.status === "ABSENT" || row.status === "UNMARKED") : row.status === statusFilter) ||
+      (statusFilter === "UNMARKED" && row.status === "UNMARKED");
 
-    const matchesStatus = statusFilter === "ALL" || (statusFilter === "ABSENT" ? (status === "ABSENT" || row.status === "UNMARKED") : status === statusFilter);
     const matchesType = typeFilter === "ALL" || row.type === typeFilter;
 
     return matchesSearch && matchesStatus && matchesType;
   });
 
   const getStatusBadge = (status: AttendanceStatus | "UNMARKED") => {
-    const styles = {
+    const styles: Record<string, string> = {
       PRESENT: "bg-emerald-100 text-emerald-700",
       ABSENT: "bg-destructive/10 text-destructive",
-      LATE: "bg-amber-100 text-amber-700",
+      EXCUSED: "bg-amber-100 text-amber-700",
       UNMARKED: "bg-secondary text-secondary-foreground",
     };
+    const label: Record<string, string> = {
+      PRESENT: "Present",
+      ABSENT: "Absent",
+      EXCUSED: "Excused",
+      UNMARKED: "Unmarked",
+    };
+    const cls = styles[status] ?? "bg-secondary text-secondary-foreground";
     return (
-      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status]}`}>
-        {status.charAt(0) + status.slice(1).toLowerCase()}
+      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+        {label[status] ?? status}
       </span>
     );
   };
 
   const getAttendanceRate = () => {
-    const totalCount = participantRows.length;
-    if (totalCount === 0) return 0;
-    const presentCount = participantRows.filter((r) => r.status === "PRESENT" || r.status === "LATE").length;
-    return Math.round((presentCount / totalCount) * 100);
+    const markedCount = participantRows.filter((r) => r.status !== "UNMARKED").length;
+    if (markedCount === 0) return 0;
+    const presentCount = participantRows.filter((r) => r.status === "PRESENT").length;
+    return Math.round((presentCount / markedCount) * 100);
   };
 
   const handleSelectRow = (id: string) => {
@@ -300,7 +309,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
   return (
     <div className="space-y-6">
       {/* Stats summary section */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Users className="h-6 w-6 text-primary" />
@@ -316,9 +325,21 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             <CheckCircle className="h-6 w-6 text-emerald-600" />
           </span>
           <div>
-            <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Marked Present/Late</p>
+            <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Present</p>
             <p className="text-2xl font-bold text-foreground">
-              {participantRows.filter((r) => r.status === "PRESENT" || r.status === "LATE").length}
+              {participantRows.filter((r) => r.status === "PRESENT").length}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+            <AlertTriangle className="h-6 w-6 text-destructive" />
+          </span>
+          <div>
+            <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Absent / Excused</p>
+            <p className="text-2xl font-bold text-foreground">
+              {participantRows.filter((r) => r.status === "ABSENT" || r.status === "EXCUSED").length}
             </p>
           </div>
         </div>
@@ -330,6 +351,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           <div>
             <p className="text-xs text-secondary-foreground uppercase tracking-wider font-semibold">Attendance Rate</p>
             <p className="text-2xl font-bold text-foreground">{getAttendanceRate()}%</p>
+            <p className="text-[10px] text-secondary-foreground mt-0.5">of marked participants</p>
           </div>
         </div>
       </div>
@@ -360,8 +382,9 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             >
               <option value="ALL">All Statuses</option>
               <option value="PRESENT">Present</option>
-              <option value="LATE">Late</option>
               <option value="ABSENT">Absent</option>
+              <option value="EXCUSED">Excused</option>
+              <option value="UNMARKED">Unmarked</option>
             </select>
           </div>
 
