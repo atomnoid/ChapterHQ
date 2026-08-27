@@ -6,24 +6,36 @@ import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Force html5-qrcode's injected video/canvas to fill the container
+// Force html5-qrcode's injected video to fill the container without breaking scan logic
 const qrStyles = `
   #qr-reader-target {
     width: 100% !important;
     height: 100% !important;
     border: none !important;
     padding: 0 !important;
-  }
-  #qr-reader-target > div {
-    display: none !important;
+    position: relative !important;
   }
   #qr-reader-target video {
+    position: absolute !important;
+    inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
     display: block !important;
   }
   #qr-reader-target canvas {
+    position: absolute !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 1px !important;
+    height: 1px !important;
+  }
+  #qr-reader-target__dashboard {
+    display: none !important;
+  }
+  #qr-reader-target__header_message {
     display: none !important;
   }
 `;
