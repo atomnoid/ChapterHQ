@@ -6,6 +6,28 @@ import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
+// Force html5-qrcode's injected video/canvas to fill the container
+const qrStyles = `
+  #qr-reader-target {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  #qr-reader-target > div {
+    display: none !important;
+  }
+  #qr-reader-target video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+  #qr-reader-target canvas {
+    display: none !important;
+  }
+`;
+
 interface ScanQrDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -204,9 +226,12 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Inject CSS to override html5-qrcode internal element sizing */}
+          <style dangerouslySetInnerHTML={{ __html: qrStyles }} />
+
           {/* Scanner frame — fixed height so html5-qrcode video renders fully */}
           <div className="relative overflow-hidden rounded-2xl border border-border bg-black" style={{ height: "320px" }}>
-            <div id={scannerId} className="w-full h-full" />
+            <div id={scannerId} className="absolute inset-0" />
 
             {/* Camera access required — only shown when not scanning and no result/processing */}
             {!scanning && !showResultOverlay && (
