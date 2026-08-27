@@ -620,12 +620,13 @@ export class EventRegistrationService {
       "Registration Time", "Attendance Status", "Attendance Time"
     ];
 
+    const hasSelection = selectedMemberIds !== undefined || selectedExternalIds !== undefined;
     const rows: string[][] = [];
 
     // Member rows
     for (const att of memberAttendance) {
-      if (selectedMemberIds && selectedMemberIds.length > 0) {
-        if (!selectedMemberIds.includes(att.memberId)) continue;
+      if (hasSelection) {
+        if (!selectedMemberIds || !selectedMemberIds.includes(att.memberId)) continue;
       }
       const memberReg = allMemberRegs.items.find((r) => r.memberId === att.memberId);
       rows.push([
@@ -642,8 +643,8 @@ export class EventRegistrationService {
 
     // External rows
     for (const ext of externalRegs) {
-      if (selectedExternalIds && selectedExternalIds.length > 0) {
-        if (!selectedExternalIds.includes(ext.id)) continue;
+      if (hasSelection) {
+        if (!selectedExternalIds || !selectedExternalIds.includes(ext.id)) continue;
       }
       rows.push([
         "External",
