@@ -6,34 +6,6 @@ import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Override html5-qrcode's injected video to fill the container.
-// IMPORTANT: Do NOT touch the canvas — html5-qrcode uses it for QR frame detection.
-const qrStyles = `
-  #qr-reader-target {
-    width: 100% !important;
-    height: 100% !important;
-    border: none !important;
-    padding: 0 !important;
-    position: relative !important;
-    overflow: hidden !important;
-  }
-  #qr-reader-target video {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-    display: block !important;
-    z-index: 1 !important;
-  }
-  #qr-reader-target__dashboard,
-  #qr-reader-target__header_message,
-  #qr-reader-target__status_span {
-    display: none !important;
-  }
-`;
-
 interface ScanQrDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,7 +29,7 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
   const [customForm, setCustomForm] = useState<any | null>(null);
 
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
-  // Guard to prevent duplicate scan callbacks firing before stop() completes
+  // Guard: prevents duplicate scan callbacks before stop() resolves
   const processingRef = useRef(false);
   const scannerId = "qr-reader-target";
 
@@ -67,16 +39,13 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
       setProcessing(false);
       processingRef.current = false;
       setManualToken("");
-      // Fetch custom form structure
+
       fetch(`/api/events/${eventId}/form`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => setCustomForm(data))
         .catch(() => setCustomForm(null));
 
-      // Delay initialization slightly to let Dialog render the target element
-      const timer = setTimeout(() => {
-        startScanner();
-      }, 500);
+      const timer = setTimeout(() => startScanner(), 600);
       return () => {
         clearTimeout(timer);
         stopScanner();
@@ -88,28 +57,36 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
   }, [open, eventId]);
 
   async function startScanner() {
-    // Reset guard before each new scan session
     processingRef.current = false;
+
+    // Clean up any leftover instance first
+    if (qrScannerRef.current) {
+      try {
+        if (qrScannerRef.current.isScanning) {
+          await qrScannerRef.current.stop();
+        }
+      } catch { /* ignore */ }
+      qrScannerRef.current = null;
+    }
+
     try {
       setScanning(true);
-      const html5QrCode = new Html5Qrcode(scannerId);
+      const html5QrCode = new Html5Qrcode(scannerId, { verbose: false });
       qrScannerRef.current = html5QrCode;
 
       await html5QrCode.start(
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          // No qrbox — scan the full frame so position doesn't matter
+          aspectRatio: 1.0,
         },
         async (decodedText: string) => {
-          // Guard: ignore if already processing a scan
           if (processingRef.current) return;
           processingRef.current = true;
           await handleScannedToken(decodedText);
         },
-        () => {
-          // Ignore failures to decode on individual frames
-        }
+        () => { /* ignore per-frame decode failures */ }
       );
     } catch {
       setScanning(false);
@@ -117,22 +94,18 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
   }
 
   async function stopScanner() {
-    if (qrScannerRef.current && qrScannerRef.current.isScanning) {
+    const instance = qrScannerRef.current;
+    qrScannerRef.current = null;
+    if (instance) {
       try {
-        await qrScannerRef.current.stop();
-      } catch {
-        // Safe ignore
-      }
-      qrScannerRef.current = null;
+        if (instance.isScanning) await instance.stop();
+      } catch { /* ignore */ }
     }
     setScanning(false);
   }
 
   async function handleScannedToken(token: string) {
-    // Show processing state immediately so the "Camera Access Required"
-    // overlay never flashes between scan detection and result display
     setProcessing(true);
-    // Stop scanner to prevent further callbacks
     await stopScanner();
 
     try {
@@ -213,14 +186,11 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
     }
   }
 
-  // Show overlay when we have a result OR when actively processing (prevents flicker)
   const showResultOverlay = scanResult !== null || processing;
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
-      if (!v) {
-        stopScanner();
-      }
+      if (!v) stopScanner();
       onOpenChange(v);
     }}>
       <DialogContent className="max-w-md rounded-3xl">
@@ -232,16 +202,21 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Inject CSS to override html5-qrcode internal element sizing */}
-          <style dangerouslySetInnerHTML={{ __html: qrStyles }} />
+          {/*
+            Outer wrapper: overflow-hidden + fixed height clips html5-qrcode's
+            rendered output. We do NOT force any CSS on the inner elements —
+            the library must own its video/canvas fully for detection to work.
+          */}
+          <div
+            className="relative rounded-2xl border border-border bg-black overflow-hidden"
+            style={{ height: "380px" }}
+          >
+            {/* html5-qrcode mounts into this div. No forced sizing/positioning. */}
+            <div id={scannerId} style={{ width: "100%", height: "100%" }} />
 
-          {/* Scanner frame — fixed height so html5-qrcode video renders fully */}
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-black" style={{ height: "320px" }}>
-            <div id={scannerId} className="absolute inset-0" />
-
-            {/* Camera access required — only shown when not scanning and no result/processing */}
+            {/* Camera Access Required — only when idle and no result */}
             {!scanning && !showResultOverlay && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white bg-black/60 p-4 text-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white bg-black/60 p-4 text-center z-10">
                 <svg
                   className="h-10 w-10 animate-pulse text-primary"
                   xmlns="http://www.w3.org/2000/svg"
@@ -263,37 +238,37 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
               </div>
             )}
 
-            {/* Processing spinner — shown while awaiting API response */}
+            {/* Processing spinner while awaiting API */}
             {processing && !scanResult && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white bg-black/70">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white bg-black/80 z-10">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 <p className="text-sm font-semibold">Processing…</p>
               </div>
             )}
 
-            {/* Scan Overlay Result */}
+            {/* Scan result overlay */}
             {scanResult && (
-              <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white ${
+              <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white z-10 ${
                 scanResult.success ? "bg-emerald-600/95" : "bg-destructive/95"
               }`}>
                 {scanResult.success ? (
-                  <CheckCircle className="h-14 w-14 mb-3 text-white" />
+                  <CheckCircle className="h-12 w-12 mb-2 text-white animate-bounce" />
                 ) : (
-                  <AlertCircle className="h-14 w-14 mb-3 text-white" />
+                  <AlertCircle className="h-12 w-12 mb-2 text-white animate-shake" />
                 )}
                 <h3 className="text-lg font-bold">
                   {scanResult.success ? "Check-in Successful" : "Check-in Failed"}
                 </h3>
                 {scanResult.name && (
-                  <p className="text-xl font-extrabold mt-1 tracking-tight">{scanResult.name}</p>
+                  <p className="text-2xl font-extrabold mt-1 tracking-tight">{scanResult.name}</p>
                 )}
-                <p className="text-sm mt-1 max-w-[280px] leading-relaxed opacity-95">
+                <p className="text-sm mt-0.5 max-w-[280px] leading-relaxed opacity-95">
                   {scanResult.message}
                 </p>
 
-                {scanResult.success && customForm && customForm.fields && scanResult.customAnswers && (
-                  <div className="mt-3 bg-white/15 rounded-xl p-3 text-left w-full text-xs max-h-[140px] overflow-y-auto space-y-1.5 scrollbar-thin">
-                    <p className="font-bold border-b border-white/20 pb-1 mb-1 opacity-90 uppercase tracking-wider text-[10px]">Registration Info</p>
+                {scanResult.success && customForm?.fields && scanResult.customAnswers && (
+                  <div className="mt-3 bg-white/15 rounded-xl p-4 text-left w-full text-sm max-h-[180px] overflow-y-auto space-y-2">
+                    <p className="font-bold border-b border-white/20 pb-1 mb-1 opacity-90 uppercase tracking-wider text-xs">Registration Info</p>
                     {customForm.fields.map((field: any) => {
                       const answer = scanResult.customAnswers?.[field.key];
                       if (answer === undefined || answer === null || answer === "") return null;
@@ -302,8 +277,8 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
                       else if (typeof answer === "boolean") displayVal = answer ? "Yes" : "No";
                       else displayVal = String(answer);
                       return (
-                        <div key={field.id} className="grid grid-cols-3 gap-1">
-                          <span className="font-semibold opacity-80 truncate">{field.label}:</span>
+                        <div key={field.id} className="grid grid-cols-3 gap-2">
+                          <span className="font-semibold opacity-85 truncate">{field.label}:</span>
                           <span className="col-span-2 font-bold break-words">{displayVal}</span>
                         </div>
                       );
@@ -312,17 +287,17 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
                 )}
 
                 {scanResult.success && !customForm && (scanResult.phone || scanResult.usn) && (
-                  <div className="mt-3 bg-white/15 rounded-xl p-3 text-left w-full text-xs space-y-1">
-                    <p className="font-bold border-b border-white/20 pb-1 mb-1 opacity-90 uppercase tracking-wider text-[10px]">Registration Info</p>
+                  <div className="mt-3 bg-white/15 rounded-xl p-4 text-left w-full text-sm space-y-2">
+                    <p className="font-bold border-b border-white/20 pb-1 mb-1 opacity-90 uppercase tracking-wider text-xs">Registration Info</p>
                     {scanResult.phone && (
-                      <div className="grid grid-cols-3 gap-1">
-                        <span className="font-semibold opacity-80">Phone:</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="font-semibold opacity-85">Phone:</span>
                         <span className="col-span-2 font-bold">{scanResult.phone}</span>
                       </div>
                     )}
                     {scanResult.usn && (
-                      <div className="grid grid-cols-3 gap-1">
-                        <span className="font-semibold opacity-80">USN/ID:</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="font-semibold opacity-85">USN/ID:</span>
                         <span className="col-span-2 font-bold">{scanResult.usn}</span>
                       </div>
                     )}
@@ -368,3 +343,5 @@ export function ScanQrDialog({ open, onOpenChange, eventId, onSuccess }: ScanQrD
     </Dialog>
   );
 }
+
+

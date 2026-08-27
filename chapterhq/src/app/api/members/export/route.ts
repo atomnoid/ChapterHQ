@@ -14,20 +14,53 @@ export async function POST(request: Request) {
     const { organizationId } = context;
 
     const body = await request.json();
-    const { memberIds } = body as { memberIds?: string[] };
+    const { memberIds, status, memberType, search } = body as {
+      memberIds?: string[];
+      status?: string;
+      memberType?: "ALL" | "CORE" | "EXTERNAL";
+      search?: string;
+    };
 
-    // 1. Fetch members
+    // 1. Fetch members with filters matching the query logic
+    const whereClause: any = {
+      organizationId,
+    };
+
+    if (memberIds && memberIds.length > 0) {
+      whereClause.id = { in: memberIds };
+    } else {
+      if (status && status !== "ALL") {
+        whereClause.status = status;
+      }
+      if (search) {
+        whereClause.user = {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        };
+      }
+    }
+
     const allMembers = await prisma.member.findMany({
-      where: {
-        organizationId,
-        ...(memberIds && memberIds.length > 0 ? { id: { in: memberIds } } : {}),
-      },
+      where: whereClause,
       include: {
         user: { select: { name: true, email: true } },
+        coreMemberRecords: {
+          select: { id: true, deletedAt: true },
+        },
       },
     });
 
-    const members = allMembers.filter((m) => !m.deletedAt);
+    let members = allMembers.filter((m) => !m.deletedAt);
+
+    // Apply member type filter if requested
+    if (!memberIds && memberType && memberType !== "ALL") {
+      members = members.filter((m) => {
+        const isCore = m.coreMemberRecords.some((cm) => !cm.deletedAt);
+        return memberType === "CORE" ? isCore : !isCore;
+      });
+    }
 
     // 2. Fetch all active forms for this org (for column headers)
     // Note: deletedAt: null in where clause is broken on MongoDB/Prisma — post-filter in JS instead

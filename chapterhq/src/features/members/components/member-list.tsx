@@ -207,7 +207,12 @@ export function MemberList() {
       const response = await fetch("/api/members/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberIds }),
+        body: JSON.stringify({
+          memberIds,
+          status: statusFilter,
+          memberType: memberTypeFilter,
+          search: debouncedSearch,
+        }),
       });
       if (!response.ok) throw new Error("Failed to export data");
       
