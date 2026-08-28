@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
-import { Calendar, Crown, Loader2, Plus, ShieldOff, Trash2, UserCheck, Users } from "lucide-react";
+import { Calendar, Crown, Loader2, Plus, ShieldOff, Trash2, UserCheck, Users, CheckSquare2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -199,6 +199,8 @@ export function CommitteeDetailsModal({
   const [members, setMembers] = useState<CommitteeMemberItem[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [bulkRemoving, setBulkRemoving] = useState(false);
 
   // Appointments state
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
@@ -260,9 +262,30 @@ export function CommitteeDetailsModal({
       const res = await fetch(`/api/committees/${committee.id}/members/${memberId}`, {
         method: "DELETE",
       });
-      if (res.ok) fetchCommitteeMembers();
+      if (res.ok) {
+        setSelectedMemberIds((prev) => prev.filter((id) => id !== memberId));
+        fetchCommitteeMembers();
+      }
     } finally {
       setRemovingMemberId(null);
+    }
+  }
+
+  async function handleBulkRemove() {
+    if (!committee || selectedMemberIds.length === 0) return;
+    setBulkRemoving(true);
+    try {
+      const res = await fetch(`/api/committees/${committee.id}/members`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberIds: selectedMemberIds }),
+      });
+      if (res.ok) {
+        setSelectedMemberIds([]);
+        fetchCommitteeMembers();
+      }
+    } finally {
+      setBulkRemoving(false);
     }
   }
 
@@ -329,13 +352,47 @@ export function CommitteeDetailsModal({
             {/* Members Tab */}
             {activeTab === "members" && (
               <div className="space-y-4">
-                <div className="flex justify-end">
+                {/* Toolbar */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {members.length > 0 && (
+                      <button
+                        onClick={() =>
+                          setSelectedMemberIds(
+                            selectedMemberIds.length === members.length
+                              ? []
+                              : members.map((m) => m.member.id)
+                          )
+                        }
+                        className="flex items-center gap-1.5 text-xs font-medium text-secondary-foreground hover:text-foreground transition-colors"
+                      >
+                        <CheckSquare2 className="h-3.5 w-3.5" />
+                        {selectedMemberIds.length === members.length ? "Deselect All" : "Select All"}
+                      </button>
+                    )}
+                    {selectedMemberIds.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="rounded-full gap-1.5 h-7 text-xs"
+                        onClick={handleBulkRemove}
+                        disabled={bulkRemoving}
+                      >
+                        {bulkRemoving ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                        Remove ({selectedMemberIds.length})
+                      </Button>
+                    )}
+                  </div>
                   <Button
                     size="sm"
                     className="rounded-full gap-1.5"
                     onClick={() => setAssignMemberOpen(true)}
                   >
-                    <Plus className="h-3.5 w-3.5" /> Assign Member
+                    <Plus className="h-3.5 w-3.5" /> Assign Members
                   </Button>
                 </div>
 
@@ -353,40 +410,59 @@ export function CommitteeDetailsModal({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {members.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 rounded-2xl border border-border bg-card hover:bg-secondary/30 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                            {(item.member.user.name ?? item.member.user.email ?? "?")[0]?.toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-foreground truncate">
-                              {item.member.user.name ?? "Unnamed"}
-                            </p>
-                            <p className="text-xs text-secondary-foreground truncate">
-                              {item.member.user.email}
-                            </p>
-                          </div>
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full"
-                          onClick={() => handleRemoveMember(item.member.id)}
-                          disabled={removingMemberId === item.member.id}
+                    {members.map((item) => {
+                      const isChecked = selectedMemberIds.includes(item.member.id);
+                      return (
+                        <div
+                          key={item.id}
+                          className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${
+                            isChecked
+                              ? "border-primary/30 bg-primary/5"
+                              : "border-border bg-card hover:bg-secondary/30"
+                          }`}
                         >
-                          {removingMemberId === item.member.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    ))}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() =>
+                              setSelectedMemberIds((prev) =>
+                                prev.includes(item.member.id)
+                                  ? prev.filter((id) => id !== item.member.id)
+                                  : [...prev, item.member.id]
+                              )
+                            }
+                            className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 shrink-0"
+                          />
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                              {(item.member.user.name ?? item.member.user.email ?? "?")[0]?.toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground truncate">
+                                {item.member.user.name ?? "Unnamed"}
+                              </p>
+                              <p className="text-xs text-secondary-foreground truncate">
+                                {item.member.user.email}
+                              </p>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full shrink-0"
+                            onClick={() => handleRemoveMember(item.member.id)}
+                            disabled={removingMemberId === item.member.id || bulkRemoving}
+                          >
+                            {removingMemberId === item.member.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -492,6 +568,7 @@ export function CommitteeDetailsModal({
       {/* Nested: Assign Member dialog */}
       <AssignMemberDialog
         committeeId={committee.id}
+        currentMembers={members.map((cm) => cm.member.id)}
         open={assignMemberOpen}
         onOpenChange={setAssignMemberOpen}
         onSuccess={fetchCommitteeMembers}

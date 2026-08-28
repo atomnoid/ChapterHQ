@@ -94,11 +94,11 @@ export class CommitteeMemberService {
   }
 
   /**
-   * Remove (soft-delete) a member from a committee.
+   * Remove (soft-delete) multiple members from a committee.
    */
-  async removeMemberFromCommittee(
+  async removeMembersFromCommittee(
     committeeId: string,
-    memberId: string,
+    memberIds: string[],
     organizationId: string,
     actorUserId?: string
   ) {
@@ -108,32 +108,37 @@ export class CommitteeMemberService {
       throw new CommitteeNotFoundError();
     }
 
-    // Validate member belongs to org
-    const member = await this.memberRepo.findByIdAndOrganization(memberId, organizationId);
-    if (!member) {
-      throw new MemberNotFoundError();
+    const removedResults = [];
+
+    for (const memberId of memberIds) {
+      // Validate member belongs to org
+      const member = await this.memberRepo.findByIdAndOrganization(memberId, organizationId);
+      if (!member) {
+        continue;
+      }
+
+      // Ensure assignment exists
+      const existing = await this.committeeMemberRepo.findAssignment(committeeId, memberId);
+      if (!existing) {
+        continue;
+      }
+
+      const result = await this.committeeMemberRepo.remove(committeeId, memberId);
+      removedResults.push(result);
+
+      if (actorUserId) {
+        await logActivity(
+          { userId: actorUserId, organizationId },
+          "remove",
+          "committee_member",
+          memberId,
+          member.user?.name ?? `Member ${memberId}`,
+          { committeeId, committeeName: committee.name }
+        );
+      }
     }
 
-    // Ensure assignment exists
-    const existing = await this.committeeMemberRepo.findAssignment(committeeId, memberId);
-    if (!existing) {
-      throw new MemberNotInCommitteeError();
-    }
-
-    const result = await this.committeeMemberRepo.remove(committeeId, memberId);
-
-    if (actorUserId) {
-      await logActivity(
-        { userId: actorUserId, organizationId },
-        "remove",
-        "committee_member",
-        memberId,
-        member.user?.name ?? `Member ${memberId}`,
-        { committeeId, committeeName: committee.name }
-      );
-    }
-
-    return result;
+    return removedResults;
   }
 
   /**

@@ -307,11 +307,13 @@ export function DeleteCommitteeDialog({
 
 export function AssignMemberDialog({
   committeeId,
+  currentMembers = [],
   open,
   onOpenChange,
   onSuccess,
 }: {
   committeeId: string | null;
+  currentMembers?: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
@@ -330,11 +332,15 @@ export function AssignMemberDialog({
       fetch("/api/members?limit=100")
         .then((res) => res.json())
         .then((data) => {
-          if (data && Array.isArray(data.items)) setMembers(data.items);
+          if (data && Array.isArray(data.items)) {
+            // Filter out members who are already in the committee
+            const filtered = data.items.filter((m: MemberOption) => !currentMembers.includes(m.id));
+            setMembers(filtered);
+          }
         })
         .catch(() => setMembers([]));
     }
-  }, [open]);
+  }, [open, currentMembers]);
 
   const filteredMembers = members.filter((m) => {
     const q = searchQuery.toLowerCase();

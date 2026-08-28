@@ -6,12 +6,11 @@ import { requirePermission } from "@/lib/permission-enforcer";
 import {
   CommitteeMemberService,
   CommitteeNotFoundError,
-  MemberNotFoundError,
-  MemberAlreadyInCommitteeError,
 } from "@/services/committee-member.service";
 import {
   assignCommitteeMemberSchema,
   committeeMemberQuerySchema,
+  removeCommitteeMembersSchema,
 } from "@/validators/committee-member.validator";
 
 import { isPresident, isCommitteeHead, isCommitteeMember } from "@/lib/committee-auth";
@@ -65,7 +64,7 @@ export async function GET(
   }
 }
 
-// POST /api/committees/[id]/members
+// POST /api/committees/[id]/members  – bulk assign
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -97,6 +96,52 @@ export async function POST(
     );
 
     return apiResponse.created({ assignments }, "Members assigned to committee successfully.");
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "PermissionDeniedError") {
+      return apiResponse.forbidden();
+    }
+    if (error instanceof ZodError) {
+      return apiResponse.badRequest(error.issues[0]?.message ?? "Invalid request.");
+    }
+    if (error instanceof CommitteeNotFoundError) {
+      return apiResponse.notFound(error.message);
+    }
+    return apiResponse.serverError();
+  }
+}
+
+// DELETE /api/committees/[id]/members  – bulk remove
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return apiResponse.unauthorized();
+    }
+
+    const { context: authContext } = await requirePermission(session.user.id, "committees:read");
+
+    const { id } = await context.params;
+    const isPres = await isPresident(session.user.id, authContext.organizationId);
+    const isHead = await isCommitteeHead(session.user.id, authContext.organizationId, id);
+
+    if (!isPres && !isHead) {
+      return apiResponse.forbidden("You do not have access to manage this committee's members.");
+    }
+
+    const body = await request.json();
+    const { memberIds } = removeCommitteeMembersSchema.parse(body);
+
+    await committeeMemberService.removeMembersFromCommittee(
+      id,
+      memberIds,
+      authContext.organizationId,
+      session.user.id
+    );
+
+    return apiResponse.success(null, "Members removed from committee successfully.");
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
