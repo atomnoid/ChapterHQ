@@ -39,6 +39,7 @@ export async function GET(
     if (error instanceof EventNotFoundError) {
       return apiResponse.notFound(error.message);
     }
+    console.error("[GET Registrations Error]:", error);
     return apiResponse.serverError();
   }
 }
