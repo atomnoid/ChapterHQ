@@ -317,16 +317,16 @@ export function AssignMemberDialog({
   onSuccess: () => void;
 }) {
   const [members, setMembers] = useState<MemberOption[]>([]);
-  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      Promise.resolve().then(() => {
-        setSelectedMemberId("");
-        setServerError(null);
-      });
+      setSelectedMemberIds([]);
+      setSearchQuery("");
+      setServerError(null);
       fetch("/api/members?limit=100")
         .then((res) => res.json())
         .then((data) => {
@@ -336,19 +336,40 @@ export function AssignMemberDialog({
     }
   }, [open]);
 
+  const filteredMembers = members.filter((m) => {
+    const q = searchQuery.toLowerCase();
+    const name = (m.user.name ?? "").toLowerCase();
+    const email = (m.user.email ?? "").toLowerCase();
+    return name.includes(q) || email.includes(q);
+  });
+
+  const toggleMember = (id: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((mId) => mId !== id) : [...prev, id]
+    );
+  };
+
+  const toggleAll = () => {
+    if (selectedMemberIds.length === filteredMembers.length) {
+      setSelectedMemberIds([]);
+    } else {
+      setSelectedMemberIds(filteredMembers.map((m) => m.id));
+    }
+  };
+
   async function handleAssign() {
-    if (!committeeId || !selectedMemberId) return;
+    if (!committeeId || selectedMemberIds.length === 0) return;
     setIsSubmitting(true);
     setServerError(null);
     try {
       const res = await fetch(`/api/committees/${committeeId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberId: selectedMemberId }),
+        body: JSON.stringify({ memberIds: selectedMemberIds }),
       });
       const json = await res.json();
       if (!res.ok) {
-        setServerError(json.message ?? "Failed to assign member.");
+        setServerError(json.message ?? "Failed to assign members.");
         return;
       }
       onOpenChange(false);
@@ -362,48 +383,86 @@ export function AssignMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md flex flex-col max-h-[85vh]">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
               <UserPlus className="h-5 w-5 text-primary" />
             </span>
-            <DialogTitle>Assign Member to Committee</DialogTitle>
+            <DialogTitle>Assign Members to Committee</DialogTitle>
           </div>
-          <DialogDescription>Select an organization member to add to this committee.</DialogDescription>
+          <DialogDescription>Select one or more organization members to add to this committee.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="assign-member-select">Select Member</Label>
-            <select
-              id="assign-member-select"
-              value={selectedMemberId}
-              onChange={(e) => setSelectedMemberId(e.target.value)}
-              className="flex h-11 w-full rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        <div className="space-y-4 py-2 flex-1 overflow-hidden flex flex-col min-h-0">
+          <div className="relative">
+            <Input
+              placeholder="Search members..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex items-center justify-between border-b pb-2">
+            <span className="text-xs font-semibold text-secondary-foreground uppercase tracking-wider">
+              {selectedMemberIds.length} of {filteredMembers.length} Selected
+            </span>
+            <Button
+              variant="link"
+              onClick={toggleAll}
+              className="h-auto p-0 text-xs font-semibold text-primary"
             >
-              <option value="">-- Choose a member --</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.user.name ?? m.user.email}
-                </option>
-              ))}
-            </select>
+              {selectedMemberIds.length === filteredMembers.length ? "Deselect All" : "Select All"}
+            </Button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto divide-y border rounded-xl bg-card max-h-[40vh] p-2 space-y-1">
+            {filteredMembers.length > 0 ? (
+              filteredMembers.map((m) => {
+                const isChecked = selectedMemberIds.includes(m.id);
+                return (
+                  <label
+                    key={m.id}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-[#fcf8f1] rounded-lg cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleMember(m.id)}
+                      className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
+                    />
+                    <div className="text-sm">
+                      <p className="font-semibold text-foreground">{m.user.name ?? "—"}</p>
+                      <p className="text-xs text-secondary-foreground">{m.user.email}</p>
+                    </div>
+                  </label>
+                );
+              })
+            ) : (
+              <div className="text-center py-6 text-sm text-secondary-foreground">
+                No members match your search.
+              </div>
+            )}
           </div>
 
           {serverError && (
-            <div className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <div className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive shrink-0">
               {serverError}
             </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 pt-2 border-t">
           <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button className="rounded-full" onClick={handleAssign} disabled={isSubmitting || !selectedMemberId}>
-            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Assign Member
+          <Button
+            className="rounded-full"
+            onClick={handleAssign}
+            disabled={isSubmitting || selectedMemberIds.length === 0}
+          >
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Assign ({selectedMemberIds.length})
           </Button>
         </DialogFooter>
       </DialogContent>

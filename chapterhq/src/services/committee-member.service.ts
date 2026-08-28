@@ -44,13 +44,13 @@ export class CommitteeMemberService {
   ) {}
 
   /**
-   * Assign an existing org member to a committee.
-   * Validates both committee and member belong to the organization.
-   * Prevents duplicate (active) assignments.
+   * Assign multiple existing org members to a committee.
+   * Validates both committee and members belong to the organization.
+   * Skips members already in the committee to remain idempotent.
    */
-  async assignMemberToCommittee(
+  async assignMembersToCommittee(
     committeeId: string,
-    memberId: string,
+    memberIds: string[],
     organizationId: string,
     actorUserId?: string
   ) {
@@ -60,32 +60,37 @@ export class CommitteeMemberService {
       throw new CommitteeNotFoundError();
     }
 
-    // Validate member exists and belongs to the org
-    const member = await this.memberRepo.findByIdAndOrganization(memberId, organizationId);
-    if (!member) {
-      throw new MemberNotFoundError();
+    const assignments = [];
+
+    for (const memberId of memberIds) {
+      // Validate member exists and belongs to the org
+      const member = await this.memberRepo.findByIdAndOrganization(memberId, organizationId);
+      if (!member) {
+        continue; // Skip invalid members
+      }
+
+      // Prevent duplicate active assignment
+      const existing = await this.committeeMemberRepo.findAssignment(committeeId, memberId);
+      if (existing) {
+        continue; // Skip already assigned members
+      }
+
+      const assignment = await this.committeeMemberRepo.assign(committeeId, memberId);
+      assignments.push(assignment);
+
+      if (actorUserId) {
+        await logActivity(
+          { userId: actorUserId, organizationId },
+          "assign",
+          "committee_member",
+          memberId,
+          member.user?.name ?? `Member ${memberId}`,
+          { committeeId, committeeName: committee.name }
+        );
+      }
     }
 
-    // Prevent duplicate active assignment
-    const existing = await this.committeeMemberRepo.findAssignment(committeeId, memberId);
-    if (existing) {
-      throw new MemberAlreadyInCommitteeError();
-    }
-
-    const assignment = await this.committeeMemberRepo.assign(committeeId, memberId);
-
-    if (actorUserId) {
-      await logActivity(
-        { userId: actorUserId, organizationId },
-        "assign",
-        "committee_member",
-        memberId,
-        member.user?.name ?? `Member ${memberId}`,
-        { committeeId, committeeName: committee.name }
-      );
-    }
-
-    return assignment;
+    return assignments;
   }
 
   /**

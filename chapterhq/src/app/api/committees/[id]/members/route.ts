@@ -87,16 +87,16 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { memberId } = assignCommitteeMemberSchema.parse(body);
+    const { memberIds } = assignCommitteeMemberSchema.parse(body);
 
-    const assignment = await committeeMemberService.assignMemberToCommittee(
+    const assignments = await committeeMemberService.assignMembersToCommittee(
       id,
-      memberId,
+      memberIds,
       authContext.organizationId,
       session.user.id
     );
 
-    return apiResponse.created(assignment, "Member assigned to committee successfully.");
+    return apiResponse.created({ assignments }, "Members assigned to committee successfully.");
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "PermissionDeniedError") {
       return apiResponse.forbidden();
@@ -106,12 +106,6 @@ export async function POST(
     }
     if (error instanceof CommitteeNotFoundError) {
       return apiResponse.notFound(error.message);
-    }
-    if (error instanceof MemberNotFoundError) {
-      return apiResponse.notFound(error.message);
-    }
-    if (error instanceof MemberAlreadyInCommitteeError) {
-      return apiResponse.conflict(error.message);
     }
     return apiResponse.serverError();
   }
