@@ -145,6 +145,17 @@ export class MemberRepository {
         coreMemberRecords: {
           select: { id: true, deletedAt: true },
         },
+        committeeMembers: {
+          include: {
+            committee: {
+              select: {
+                id: true,
+                name: true,
+                deletedAt: true,
+              },
+            },
+          },
+        },
       },
       orderBy,
     });

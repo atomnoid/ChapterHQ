@@ -38,6 +38,13 @@ interface Member {
   status: MemberStatus;
   joinedAt: string;
   user: { id: string; name: string | null; email: string | null; image: string | null };
+  committeeMembers?: Array<{
+    committee: {
+      id: string;
+      name: string;
+      deletedAt: string | null;
+    };
+  }>;
 }
 
 interface PaginatedMembers {
@@ -436,7 +443,7 @@ export function MemberList() {
         <>
           <div className="overflow-hidden rounded-[1.75rem] border border-border">
             {/* Table Head */}
-            <div className="hidden grid-cols-[40px_minmax(0,1fr)_160px_140px_52px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
+            <div className="hidden grid-cols-[40px_minmax(0,1.5fr)_minmax(0,1.2fr)_140px_120px_52px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
               <input
                 type="checkbox"
                 className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
@@ -452,6 +459,7 @@ export function MemberList() {
                 }}
               />
               <span>Member</span>
+              <span>Committees</span>
               <span>Joined</span>
               <span>Status</span>
               <span />
@@ -460,10 +468,14 @@ export function MemberList() {
             {/* Table Rows */}
             {data.items.map((member, idx) => {
               const isSelected = selectedIds.has(member.id);
+              const activeCommittees = member.committeeMembers
+                ?.filter((cm) => !cm.committee.deletedAt)
+                .map((cm) => cm.committee.name) ?? [];
+
               return (
                 <div
                   key={member.id}
-                  className={`grid grid-cols-[40px_minmax(0,1fr)_52px] items-center gap-3 px-5 py-4 transition-colors hover:bg-[#fcf8f1] sm:grid-cols-[40px_minmax(0,1fr)_160px_140px_52px] ${
+                  className={`grid grid-cols-[40px_minmax(0,1fr)_52px] items-center gap-3 px-5 py-4 transition-colors hover:bg-[#fcf8f1] sm:grid-cols-[40px_minmax(0,1.5fr)_minmax(0,1.2fr)_140px_120px_52px] ${
                     idx !== data.items.length - 1 ? "border-b border-border" : ""
                   } ${isSelected ? "bg-primary/5" : ""}`}
                 >
@@ -494,6 +506,22 @@ export function MemberList() {
                         {member.user.email ?? ""}
                       </p>
                     </div>
+                  </div>
+
+                  {/* Committees */}
+                  <div className="hidden sm:flex flex-wrap gap-1 min-w-0">
+                    {activeCommittees.length > 0 ? (
+                      activeCommittees.map((name, cIdx) => (
+                        <span
+                          key={cIdx}
+                          className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
+                        >
+                          {name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-secondary-foreground italic">None</span>
+                    )}
                   </div>
 
                   {/* Joined */}
