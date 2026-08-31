@@ -337,7 +337,8 @@ export class EventRegistrationService {
   async bulkDeleteAttendance(
     organizationId: string,
     eventId: string,
-    memberIds: string[],
+    memberIds: string[] = [],
+    externalIds: string[] = [],
     activeCommitteeId?: string | null
   ) {
     const event = await this.eventRepo.findById(eventId, organizationId);
@@ -348,16 +349,38 @@ export class EventRegistrationService {
       throw new EventNotFoundError();
     }
 
-    // Verify all members belong to the organization
-    for (const memberId of memberIds) {
-      const member = await this.memberRepo.findByIdAndOrganization(memberId, organizationId);
-      if (!member) {
-        throw new MemberNotFoundError();
+    // Verify all members belong to the organization (if memberIds provided)
+    if (memberIds && memberIds.length > 0) {
+      for (const memberId of memberIds) {
+        const member = await this.memberRepo.findByIdAndOrganization(memberId, organizationId);
+        if (!member) {
+          throw new MemberNotFoundError();
+        }
       }
     }
 
-    const result = await this.attendanceRepo.bulkDelete(eventId, memberIds);
-    return result;
+    let memberResult = { count: 0 };
+    if (memberIds && memberIds.length > 0) {
+      memberResult = await this.attendanceRepo.bulkDelete(eventId, memberIds);
+    }
+
+    let externalResult = { count: 0 };
+    if (externalIds && externalIds.length > 0) {
+      externalResult = await prisma.externalAttendance.deleteMany({
+        where: {
+          eventId,
+          registrationId: {
+            in: externalIds,
+          },
+        },
+      });
+    }
+
+    return {
+      membersDeleted: memberResult.count,
+      externalsDeleted: externalResult.count,
+      count: memberResult.count + externalResult.count,
+    };
   }
 
   async getAttendanceList(organizationId: string, eventId: string, activeCommitteeId?: string | null) {

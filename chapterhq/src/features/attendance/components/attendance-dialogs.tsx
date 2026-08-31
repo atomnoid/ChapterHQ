@@ -283,6 +283,7 @@ interface BulkDeleteAttendanceDialogProps {
   onSuccess: () => void;
   eventId: string;
   memberIds: string[];
+  externalIds?: string[];
   memberCount: number;
 }
 
@@ -292,6 +293,7 @@ export function BulkDeleteAttendanceDialog({
   onSuccess,
   eventId,
   memberIds,
+  externalIds = [],
   memberCount,
 }: BulkDeleteAttendanceDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
@@ -310,7 +312,7 @@ export function BulkDeleteAttendanceDialog({
       const res = await fetch(`/api/events/${eventId}/attendance`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberIds }),
+        body: JSON.stringify({ memberIds, externalIds }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -337,7 +339,7 @@ export function BulkDeleteAttendanceDialog({
             <DialogTitle>Delete Attendance Records</DialogTitle>
           </div>
           <DialogDescription>
-            Are you sure you want to remove attendance records for <strong>{memberCount} member{memberCount !== 1 ? 's' : ''}</strong>? This action cannot be undone.
+            Are you sure you want to remove attendance records for <strong>{memberCount} attendee{memberCount !== 1 ? 's' : ''}</strong>? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 

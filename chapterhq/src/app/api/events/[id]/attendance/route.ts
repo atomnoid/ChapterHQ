@@ -109,22 +109,27 @@ export async function DELETE(
 
     const body = await request.json();
     const { id: eventId } = await context.params;
-    const { memberIds } = body;
+    const { memberIds = [], externalIds = [] } = body;
 
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
-      return apiResponse.badRequest("memberIds array is required.");
+    const hasMembers = Array.isArray(memberIds) && memberIds.length > 0;
+    const hasExternals = Array.isArray(externalIds) && externalIds.length > 0;
+
+    if (!hasMembers && !hasExternals) {
+      return apiResponse.badRequest("At least one memberId or externalId is required.");
     }
 
     const result = await registrationService.bulkDeleteAttendance(
       authContext.organizationId,
       eventId,
-      memberIds,
+      hasMembers ? memberIds : [],
+      hasExternals ? externalIds : [],
       authContext.activeCommitteeId
     );
     return apiResponse.success(result, "Attendance records deleted successfully.");
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof EventNotFoundError) return apiResponse.notFound(error.message);
+    if (error instanceof MemberNotFoundError) return apiResponse.notFound(error.message);
     return apiResponse.serverError();
   }
 }

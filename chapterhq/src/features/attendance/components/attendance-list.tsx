@@ -301,10 +301,14 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
     }
   }
 
-  // Get raw selected members (only members can be bulk updated using single/bulk dialogs)
+  // Get raw selected IDs for members and external attendees
   const selectedMemberDbIds = selectedRowIds
     .filter(id => id.startsWith("member-"))
     .map(id => id.replace("member-", ""));
+
+  const selectedExternalDbIds = selectedRowIds
+    .filter(id => id.startsWith("external-"))
+    .map(id => id.replace("external-", ""));
 
   return (
     <div className="space-y-6">
@@ -458,16 +462,18 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           </Button>
         </div>
 
-        {selectedMemberDbIds.length > 0 && (
+        {selectedRowIds.length > 0 && (
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              className="rounded-full"
-              disabled={isPending}
-              onClick={() => setDialogState({ type: "bulk" })}
-            >
-              {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Mark ({selectedMemberDbIds.length})
-            </Button>
+            {selectedMemberDbIds.length > 0 && (
+              <Button
+                className="rounded-full"
+                disabled={isPending}
+                onClick={() => setDialogState({ type: "bulk" })}
+              >
+                {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Mark ({selectedMemberDbIds.length})
+              </Button>
+            )}
             <Button
               variant="destructive"
               size="sm"
@@ -476,7 +482,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
               onClick={() => setDialogState({ type: "delete" })}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete ({selectedMemberDbIds.length})
+              Delete ({selectedRowIds.length})
             </Button>
           </div>
         )}
@@ -681,7 +687,8 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
           }}
           eventId={eventId}
           memberIds={selectedMemberDbIds}
-          memberCount={selectedMemberDbIds.length}
+          externalIds={selectedExternalDbIds}
+          memberCount={selectedRowIds.length}
         />
       )}
 
