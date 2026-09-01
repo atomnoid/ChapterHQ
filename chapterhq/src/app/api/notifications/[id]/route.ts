@@ -24,6 +24,7 @@ export async function DELETE(
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "PermissionDeniedError") return apiResponse.forbidden();
     if (error instanceof NotificationNotFoundError) return apiResponse.notFound(error.message);
+    console.error("[DELETE /api/notifications/[id]] Unexpected error:", error);
     return apiResponse.serverError();
   }
 }

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { buildOrderBy, PaginationParams } from "@/lib/pagination";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/generated/prisma-client";
 
 export interface CreateNotificationData {
   organizationId: string;
@@ -71,11 +71,15 @@ export class NotificationRepository {
   }
 
   async delete(id: string, _organizationId?: string) {
-    await prisma.notificationRecipient.deleteMany({
-      where: {
-        notificationId: id,
-      },
-    });
+    try {
+      await prisma.notificationRecipient.deleteMany({
+        where: {
+          notificationId: id,
+        },
+      });
+    } catch (e) {
+      console.warn("[NotificationRepository.delete] Could not delete recipients (may not exist):", e);
+    }
 
     return prisma.notification.delete({
       where: {
