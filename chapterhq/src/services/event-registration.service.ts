@@ -362,6 +362,18 @@ export class EventRegistrationService {
     let memberResult = { count: 0 };
     if (memberIds && memberIds.length > 0) {
       memberResult = await this.attendanceRepo.bulkDelete(eventId, memberIds);
+      await prisma.eventRegistration.updateMany({
+        where: {
+          eventId,
+          memberId: {
+            in: memberIds,
+          },
+        },
+        data: {
+          status: "CANCELLED",
+          deletedAt: new Date(),
+        },
+      });
     }
 
     let externalResult = { count: 0 };
@@ -372,6 +384,18 @@ export class EventRegistrationService {
           registrationId: {
             in: externalIds,
           },
+        },
+      });
+      await prisma.externalRegistration.updateMany({
+        where: {
+          id: {
+            in: externalIds,
+          },
+          eventId,
+        },
+        data: {
+          status: "CANCELLED",
+          deletedAt: new Date(),
         },
       });
     }

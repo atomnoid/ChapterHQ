@@ -30,6 +30,15 @@ const nextConfig: NextConfig = {
   // condition (edge-light/browser → Accelerate WASM) instead of `node`
   // (binary engine). This forces Node's native resolver at runtime.
   serverExternalPackages: ["@prisma/client", ".prisma/client"],
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "radix-ui",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-alert-dialog",
+      "@radix-ui/react-label",
+    ],
+  },
 };
 
 export default nextConfig;

@@ -110,6 +110,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
   const [dialogState, setDialogState] = useState<{
     type: "none" | "single" | "bulk" | "delete";
     memberId?: string;
+    externalId?: string;
     memberName?: string;
     currentStatus?: AttendanceStatus;
     currentNotes?: string;
@@ -529,12 +530,12 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
       {/* Table */}
       {!loading && !error && filteredRows.length > 0 && (
         <div className="overflow-hidden rounded-[1.75rem] border border-border">
-          <div className="hidden grid-cols-[48px_minmax(0,1fr)_130px_120px_100px_160px_100px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
+          <div className="hidden grid-cols-[48px_minmax(0,1fr)_130px_120px_100px_160px_130px] items-center gap-4 border-b border-border bg-[#fcf8f1] px-5 py-3 text-xs font-medium uppercase tracking-[0.22em] text-secondary-foreground sm:grid">
             <input
               type="checkbox"
               onChange={handleSelectAll}
               disabled={isPending}
-              checked={selectedRowIds.length === filteredRows.length}
+              checked={selectedRowIds.length === filteredRows.length && filteredRows.length > 0}
               className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Select all rows"
             />
@@ -554,7 +555,7 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             return (
               <div
                 key={row.id}
-                className="grid grid-cols-[48px_minmax(0,1fr)_80px] items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors sm:grid-cols-[48px_minmax(0,1fr)_130px_120px_100px_160px_100px]"
+                className="grid grid-cols-[48px_minmax(0,1fr)_80px] items-center gap-3 px-5 py-4 border-b border-border last:border-b-0 hover:bg-[#fcf8f1] transition-colors sm:grid-cols-[48px_minmax(0,1fr)_130px_120px_100px_160px_130px]"
               >
                 <input
                   type="checkbox"
@@ -635,8 +636,25 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
                       Mark
                     </Button>
                   ) : (
-                    <span className="text-xs text-secondary-foreground italic px-3 py-2">QR Scan</span>
+                    <span className="text-xs text-secondary-foreground italic px-2 py-1 flex items-center">QR Scan</span>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full text-xs h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    disabled={isPending}
+                    title={`Delete attendance record for ${row.name}`}
+                    onClick={() =>
+                      setDialogState({
+                        type: "delete",
+                        memberId: row.type === "MEMBER" ? row.originalId : undefined,
+                        externalId: row.type === "EXTERNAL" ? row.originalId : undefined,
+                        memberName: row.name,
+                      })
+                    }
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             );
@@ -686,9 +704,21 @@ export function AttendanceList({ eventId, eventName }: AttendanceListProps) {
             setIsPending(false);
           }}
           eventId={eventId}
-          memberIds={selectedMemberDbIds}
-          externalIds={selectedExternalDbIds}
-          memberCount={selectedRowIds.length}
+          memberIds={
+            dialogState.memberId
+              ? [dialogState.memberId]
+              : selectedMemberDbIds
+          }
+          externalIds={
+            dialogState.externalId
+              ? [dialogState.externalId]
+              : selectedExternalDbIds
+          }
+          memberCount={
+            dialogState.memberId || dialogState.externalId
+              ? 1
+              : selectedRowIds.length
+          }
         />
       )}
 
