@@ -43,11 +43,10 @@ export class NotificationRepository {
     });
   }
 
-  async markAsRead(id: string, organizationId: string) {
+  async markAsRead(id: string, _organizationId?: string) {
     return prisma.notification.update({
       where: {
         id,
-        organizationId,
       },
       data: {
         isRead: true,
@@ -71,11 +70,16 @@ export class NotificationRepository {
     });
   }
 
-  async delete(id: string, organizationId: string) {
+  async delete(id: string, _organizationId?: string) {
+    await prisma.notificationRecipient.deleteMany({
+      where: {
+        notificationId: id,
+      },
+    });
+
     return prisma.notification.delete({
       where: {
         id,
-        organizationId,
       },
     });
   }

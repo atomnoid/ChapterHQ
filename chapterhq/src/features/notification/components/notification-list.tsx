@@ -370,8 +370,17 @@ export function NotificationList() {
   }
 
   async function deleteNotification(id: string) {
-    await fetch(`/api/notifications/${id}`, { method: "DELETE" });
-    fetchData();
+    try {
+      const res = await fetch(`/api/notifications/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setError(json.message ?? "Failed to delete notification.");
+        return;
+      }
+      fetchData();
+    } catch {
+      setError("Failed to delete notification.");
+    }
   }
 
   async function markAllRead() {
